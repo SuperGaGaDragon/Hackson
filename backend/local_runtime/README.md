@@ -18,6 +18,8 @@ Lst Modified by: Codex
 |-run_context_model_smoke.py local context + model runtime smoke runner
 |-run_idle_context_model_smoke.py local idle context + model runtime smoke runner without MongoDB
 |-run_idle_full_smoke.py local idle repository + context + model smoke runner
+|-run_companion1_full_smoke.py local companion_1 repository + transition context + model smoke runner
+|-run_companion2_full_smoke.py local companion_2 repository + context + model smoke runner
 
 ## 代办
-- Add local smoke runners for idle, companion_1, and companion_2 once Agent fixtures are finalized.
+- Add cleanup helpers for target-machine smoke databases if repeated runs become noisy.
