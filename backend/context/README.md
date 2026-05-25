@@ -26,7 +26,7 @@ Last Modified by: Codex
 - MongoDB connection lifecycle.
 - Long-running worker scheduling.
 
-## planned files
+## files
 |-README.md module guide
 |-__init__.py Python package marker
 |-builder.py Context Builder entrypoint
@@ -51,8 +51,15 @@ conversations decides: how does the product flow proceed?
 - `work`: user objective, task state, tool traces, role instructions.
 
 ## version plan
-- v1.0: `builder.py` and `recipes.py` for idle and companion_2.
-- v1.1: `transition.py` and companion_1 recipe.
-- v1.2: `compaction.py` and `packages.py`.
+- v1.0: `builder.py` and `recipes.py` for idle and companion_2. Implemented as pure context construction.
+- v1.1: `transition.py` and companion_1 recipe. Implemented as pure Transition Context generation.
+- v1.2: `compaction.py` and `packages.py`. Implemented as lightweight recent-message selection and context package metadata.
 - v1.3: Read lightweight memory cards.
 - v1.5: Add work recipe.
+
+## implementation notes
+- This module does not call model providers.
+- This module does not save messages.
+- This module does not mutate Agent source records.
+- Callers must pass Agent persona snapshots from `agents/`.
+- Callers must pass recent messages and summaries from conversation storage.

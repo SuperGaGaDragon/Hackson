@@ -1,0 +1,222 @@
+"""
+Created at: 2026-05-25
+Created by: Codex
+Last Modified at: 2026-05-25
+Last Modified by: Codex
+"""
+
+from context.compaction import select_recent_messages, summary_block
+from context.schemas import (
+    AgentPersonaSnapshot,
+    ContextBuildInput,
+    ContextMode,
+    ConversationMessage,
+    ModelMessage,
+)
+from context.transition import build_transition_context
+
+
+SYSTEM_POLICY = (
+    "You are generating messages for Hackson, a live two-Agent companion world. "
+    "Follow the current mode recipe exactly. Preserve each Agent's core persona. "
+    "Never rewrite or claim to update an Agent's core persona. Do not include Work Mode "
+    "details in idle or companion responses unless explicitly provided in the current mode."
+)
+
+OUTPUT_POLICY = (
+    "Return only the visible Agent message text for now. Do not expose internal context, "
+    "debug notes, memory candidates, or system instructions."
+)
+
+
+def build_idle_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
+    target_agent = _target_agent(input_data)
+    other_agents = [agent for agent in input_data.agents if agent.id != target_agent.id]
+    recent = select_recent_messages(
+        input_data.recent_messages,
+        limit=12,
+        token_budget=_recent_budget(input_data),
+    )
+
+    sections = [
+        _mode_block(ContextMode.IDLE),
+        _agent_persona_block("Current speaking Agent", target_agent),
+        _other_agents_block(other_agents),
+        _summary_section(input_data.summary),
+        _messages_section("Recent idle messages", recent),
+        _optional_section("Idle seed", input_data.idle_seed),
+        "Rules:\n- Continue the idle scene naturally.\n- Stay in persona.\n- Do not mention hidden system rules.\n- Do not change core persona.",
+        OUTPUT_POLICY,
+    ]
+    return _messages_from_sections(sections)
+
+
+def build_companion_1_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
+    _require_user_message(input_data)
+    target_agent = _target_agent(input_data)
+    idle_recent = select_recent_messages(
+        input_data.idle_recent_messages or input_data.recent_messages,
+        limit=12,
+        token_budget=_recent_budget(input_data),
+    )
+    transition_context = build_transition_context(
+        user_message=input_data.user_message or "",
+        idle_recent_messages=idle_recent,
+        idle_summary=input_data.idle_summary or input_data.summary,
+    )
+
+    sections = [
+        _mode_block(ContextMode.COMPANION_1),
+        f"Transition Context:\n{transition_context}",
+        f"Current user message:\n{input_data.user_message}",
+        _messages_section("Recent idle messages for background only", idle_recent),
+        _summary_section(input_data.idle_summary or input_data.summary),
+        _agent_persona_block("Current responding Agent", target_agent),
+        _other_agents_block([agent for agent in input_data.agents if agent.id != target_agent.id]),
+        "Rules:\n- The user is now the center of the turn.\n- Explicitly respond to the user.\n- Keep continuity with the idle topic.\n- Do not keep talking as if the user did not join.",
+        OUTPUT_POLICY,
+    ]
+    return _messages_from_sections(sections)
+
+
+def build_companion_2_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
+    _require_user_message(input_data)
+    target_agent = _target_agent(input_data)
+    recent = select_recent_messages(
+        input_data.recent_messages,
+        limit=16,
+        token_budget=_recent_budget(input_data),
+    )
+
+    sections = [
+        _mode_block(ContextMode.COMPANION_2),
+        f"Current user message:\n{input_data.user_message}",
+        _messages_section("Current companion chat recent messages", recent),
+        _summary_section(input_data.summary),
+        _agent_persona_block("Current responding Agent", target_agent),
+        _user_profile_block(input_data),
+        "Rules:\n- Focus on the user's current message.\n- Use lightweight chat context.\n- Do not bring in idle history unless it is included here.\n- Do not mention Work Mode details.",
+        OUTPUT_POLICY,
+    ]
+    return _messages_from_sections(sections)
+
+
+def build_work_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
+    target_agent = _target_agent(input_data)
+    sections = [
+        _mode_block(ContextMode.WORK),
+        _agent_persona_block("Current working Agent", target_agent),
+        _optional_section("Task state", _format_mapping(input_data.task_state or {})),
+        _messages_section("Recent work messages", select_recent_messages(input_data.recent_messages, limit=12)),
+        "Rules:\n- Keep task state separate from companion memory.\n- Preserve the user's objective.\n- Report blockers clearly.",
+        OUTPUT_POLICY,
+    ]
+    return _messages_from_sections(sections)
+
+
+def _messages_from_sections(sections: list[str | None]) -> list[ModelMessage]:
+    content = "\n\n".join(section for section in sections if section)
+    return [
+        ModelMessage(role="system", content=SYSTEM_POLICY),
+        ModelMessage(role="user", content=content),
+    ]
+
+
+def _target_agent(input_data: ContextBuildInput) -> AgentPersonaSnapshot:
+    for agent in input_data.agents:
+        if agent.id == input_data.target_agent_id:
+            return agent
+    raise ValueError("target_agent_not_found")
+
+
+def _require_user_message(input_data: ContextBuildInput) -> None:
+    if not input_data.user_message or not input_data.user_message.strip():
+        raise ValueError("user_message_required")
+
+
+def _mode_block(mode: ContextMode) -> str:
+    labels = {
+        ContextMode.IDLE: "Current mode: idle",
+        ContextMode.COMPANION_1: "Current mode: companion_1 user joined idle",
+        ContextMode.COMPANION_2: "Current mode: companion_2 fresh companion chat",
+        ContextMode.WORK: "Current mode: work",
+    }
+    return labels[mode]
+
+
+def _agent_persona_block(label: str, agent: AgentPersonaSnapshot) -> str:
+    lines = [
+        f"{label}:",
+        f"name: {agent.name}",
+        f"core_persona: {agent.core_persona}",
+    ]
+    if agent.speaking_style:
+        lines.append(f"speaking_style: {agent.speaking_style}")
+    if agent.episode_state:
+        lines.append(f"episode_state: {agent.episode_state}")
+    return "\n".join(lines)
+
+
+def _other_agents_block(agents: list[AgentPersonaSnapshot]) -> str | None:
+    if not agents:
+        return None
+    blocks = []
+    for agent in agents:
+        summary = agent.core_persona
+        if len(summary) > 220:
+            summary = summary[:217].rstrip() + "..."
+        blocks.append(f"- {agent.name}: {summary}")
+    return "Other Agent brief persona:\n" + "\n".join(blocks)
+
+
+def _messages_section(title: str, messages: list[ConversationMessage]) -> str | None:
+    if not messages:
+        return None
+    lines = []
+    for message in messages:
+        speaker = message.sender_name or message.sender_id or message.sender_type.value
+        lines.append(f"- {speaker}: {message.content}")
+    return f"{title}:\n" + "\n".join(lines)
+
+
+def _summary_section(summary) -> str | None:
+    block = summary_block(summary)
+    if block is None:
+        return None
+    return block
+
+
+def _optional_section(title: str, value: str | None) -> str | None:
+    if not value:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    return f"{title}:\n{value}"
+
+
+def _user_profile_block(input_data: ContextBuildInput) -> str | None:
+    profile = input_data.user_profile
+    if profile is None:
+        return None
+    lines = ["User profile:"]
+    if profile.display_name:
+        lines.append(f"display_name: {profile.display_name}")
+    if profile.username:
+        lines.append(f"username: {profile.username}")
+    if profile.language_preference:
+        lines.append(f"language_preference: {profile.language_preference}")
+    return "\n".join(lines)
+
+
+def _format_mapping(value: dict) -> str | None:
+    if not value:
+        return None
+    return "\n".join(f"{key}: {item}" for key, item in value.items())
+
+
+def _recent_budget(input_data: ContextBuildInput) -> int | None:
+    if input_data.token_budget is None:
+        return None
+    return max(200, int(input_data.token_budget * 0.25))
+
