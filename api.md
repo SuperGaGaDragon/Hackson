@@ -25,6 +25,11 @@ uvicorn main:app --host 127.0.0.1 --port 8100
 - Verified port: `127.0.0.1:8100`
 - Port status after verification: stopped/free
 - Database used in verification: MongoDB database `hackson_test`
+- Production database initialized: MongoDB database `hackson`
+- Production database status:
+  - collections: `users`
+  - `users` indexes: `_id_`, `username_normalized_1` unique, `email_normalized_1` unique
+  - `users` document count at initialization: `0`
 - Last verified at: 2026-05-25
 
 ## port map
