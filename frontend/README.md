@@ -6,11 +6,15 @@ Lst Modified by: Codex
 
 ## brief intro
 - goal for this folder.
-  - React + Vite frontend for the Hackson product prototype.
+  - React + Vite frontend for Hackson verified backend flows.
 - 架构思路
-  - Build the V1 product shell around Idle, Chat, Agents, and future Work surfaces.
-  - Keep the frontend model-driven and local-first until backend conversation APIs are ready.
-  - Follow `docs/frontend/design.md` for the calm observatory interface direction.
+  - Build only the surfaces backed by verified APIs in root `api.md`.
+  - Current product surfaces are Auth, Idle, Chat, and Me.
+  - Local dev calls `/api` through the Vite proxy to avoid browser CORS.
+  - `src/api/` owns HTTP calls.
+  - `src/domain/` owns fixed MVP Agent slot and message mapping.
+  - `src/features/` owns product flows.
+  - Follow `docs/frontend/intro.md` for the current integration blueprint.
   - Do not expose model endpoint, provider, API key, or local model path settings in user UI.
 
 ## folder structure
@@ -23,5 +27,5 @@ Lst Modified by: Codex
 |-public/ static public assets folder
 
 ## 代办
-- Connect Idle, Chat, and Agents screens to verified backend APIs as they are implemented.
-- Add browser screenshot QA loop once Playwright or the in-app browser flow is available.
+- Add Agent editing only after verified Agent APIs exist.
+- Add Work only after verified Work APIs exist.

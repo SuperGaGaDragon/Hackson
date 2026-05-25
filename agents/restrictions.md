@@ -1,6 +1,6 @@
 
 1. Actively use skills in .agents/ 
-2. For each folder(and subfolder), a README.md is required. 每次执行以前必须先落文档，然后严格按照文档落代码。The README.md must be in this format:
+2. For each folder(and subfolder), a README.md is required. 每次执行以前必须先落文档，然后严格按照文档落代码。代码架构必须非常清晰。The README.md must be in this format:
 
 ## header
 Created at: 

@@ -14,6 +14,7 @@ Lst Modified by: Codex
 ## folder structure
 |-README.md frontend docs folder guide
 |-design.md Hackson frontend product design direction
+|-intro.md current backend integration blueprint for the frontend
 
 ## 代办
-- Add implementation notes when the React + Vite frontend folder is created.
+- Keep `intro.md` aligned with `api.md` when verified backend APIs change.

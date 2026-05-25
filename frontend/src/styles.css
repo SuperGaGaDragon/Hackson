@@ -31,7 +31,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  overflow: hidden;
+  overflow: auto;
   background:
     radial-gradient(circle at 12% 8%, rgba(57, 208, 196, 0.08), transparent 30%),
     linear-gradient(135deg, #080a0c 0%, #0d1013 52%, #090b0d 100%);
@@ -39,6 +39,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -50,13 +51,14 @@ button {
 .app-shell {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr);
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-height: 100vh;
   padding: 16px 12px;
   border-right: 1px solid var(--line);
   background: rgba(8, 10, 12, 0.86);
@@ -71,8 +73,7 @@ button {
 .agent-line,
 .composer,
 .system-event,
-.switch-row,
-.tool-trace {
+.switch-row {
   display: flex;
   align-items: center;
 }
@@ -139,6 +140,7 @@ button {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
+  min-height: 100vh;
 }
 
 .topbar {
@@ -190,21 +192,53 @@ h2 {
 }
 
 .icon-button,
-.composer button {
+.composer button,
+.primary-button,
+.secondary-button {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
   border: 1px solid #344047;
   border-radius: 8px;
   background: #141a1f;
   color: var(--text);
 }
 
+.icon-button,
+.composer button {
+  width: 38px;
+  height: 38px;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.primary-button {
+  border-color: rgba(57, 208, 196, 0.55);
+  background: #12312f;
+}
+
+.secondary-button {
+  background: #11171b;
+}
+
+.secondary-button.active {
+  border-color: rgba(155, 229, 143, 0.58);
+  color: var(--green);
+}
+
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .idle-grid,
 .chat-grid {
   display: grid;
-  min-height: 0;
+  min-height: max(720px, calc(100vh - 79px));
   padding: 16px;
   gap: 16px;
 }
@@ -217,19 +251,25 @@ h2 {
   grid-template-columns: minmax(420px, 1fr) 280px;
 }
 
+.chat-grid.with-history {
+  grid-template-columns: 260px minmax(420px, 1fr) 280px;
+}
+
 .agent-rail,
 .timeline-panel,
 .context-rail,
-.settings-view,
-.work-view {
+.history-rail,
+.settings-view {
   min-height: 0;
+  max-height: max(560px, calc(100vh - 111px));
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(16, 20, 24, 0.9);
 }
 
 .agent-rail,
-.context-rail {
+.context-rail,
+.history-rail {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -239,6 +279,7 @@ h2 {
 .timeline-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
 }
 
 .panel-head {
@@ -246,6 +287,11 @@ h2 {
   gap: 12px;
   padding: 16px;
   border-bottom: 1px solid var(--line);
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .panel-head.compact {
@@ -317,9 +363,7 @@ h2 {
 }
 
 .mini-panel,
-.context-item,
-.work-lane,
-.tool-trace {
+.context-item {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-2);
@@ -335,13 +379,42 @@ h2 {
   display: block;
 }
 
+.mini-panel select {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .timeline {
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-height: 0;
   padding: 16px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #3a444b transparent;
+  scrollbar-width: thin;
+}
+
+.timeline::-webkit-scrollbar,
+.history-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.timeline::-webkit-scrollbar-thumb,
+.history-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #3a444b;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  border: 1px dashed #303941;
+  border-radius: 8px;
+  color: var(--muted);
 }
 
 .message-row {
@@ -397,6 +470,10 @@ h2 {
 
 .composer input,
 .settings-view input,
+.settings-view select,
+.auth-form input,
+.auth-form select,
+.mini-panel select,
 .settings-view textarea {
   width: 100%;
   border: 1px solid #303941;
@@ -413,6 +490,9 @@ h2 {
 
 .composer input:focus,
 .settings-view input:focus,
+.settings-view select:focus,
+.auth-form input:focus,
+.mini-panel select:focus,
 .settings-view textarea:focus {
   border-color: var(--teal);
 }
@@ -432,8 +512,7 @@ h2 {
   line-height: 1.4;
 }
 
-.settings-view,
-.work-view {
+.settings-view {
   margin: 16px;
   padding: 16px;
   overflow: auto;
@@ -452,40 +531,32 @@ h2 {
   color: var(--muted);
 }
 
-.agent-editor-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.editor-card {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
-}
-
-.editor-card.teal {
-  border-top: 3px solid var(--teal);
-}
-
-.editor-card.amber {
-  border-top: 3px solid var(--amber);
-}
-
-.editor-card label {
+.settings-form,
+.auth-form {
   display: grid;
   gap: 6px;
 }
 
-.editor-card label span {
+.settings-form {
+  max-width: 480px;
+  gap: 14px;
+}
+
+.settings-form label,
+.auth-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-form label span,
+.auth-form label span {
   color: var(--muted);
   font-size: 12px;
 }
 
 .settings-view input,
+.settings-view select,
+.auth-form input,
 .settings-view textarea {
   padding: 10px;
 }
@@ -495,46 +566,129 @@ h2 {
   resize: vertical;
 }
 
-.work-view {
+.auth-shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 16px;
+  place-items: center;
+  min-height: 100vh;
+  padding: 20px;
 }
 
-.work-board {
+.auth-panel {
+  width: min(420px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 22px;
+  background: rgba(16, 20, 24, 0.94);
+}
+
+.auth-panel h1 {
+  margin-bottom: 16px;
+}
+
+.segmented {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.work-lane {
-  min-height: 220px;
-  padding: 14px;
+.segmented button,
+.agent-target {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #10161a;
+  color: var(--muted);
 }
 
-.work-lane span {
+.segmented button {
+  min-height: 38px;
+}
+
+.segmented button.active,
+.agent-target.active {
+  border-color: rgba(57, 208, 196, 0.5);
+  color: var(--text);
+}
+
+.agent-target {
+  padding: 0;
+  text-align: left;
+}
+
+.agent-target .agent-slot {
+  border: 0;
+}
+
+.status-line {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.status-line.error,
+.error-chip {
+  color: #ff9e9e;
+}
+
+.error-chip {
+  border-color: rgba(255, 158, 158, 0.42);
+}
+
+.context-item p {
+  overflow-wrap: anywhere;
+}
+
+.system-event small {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+.history-new {
+  width: 100%;
+}
+
+.history-list {
+  display: grid;
+  gap: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #10161a;
+  color: var(--muted);
+  text-align: left;
+}
+
+.history-item strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item span {
   color: var(--muted);
   font-size: 12px;
 }
 
-.work-lane p {
-  margin-top: 12px;
-}
-
-.tool-trace {
-  gap: 10px;
-  padding: 12px;
-  color: var(--muted);
+.history-item.active {
+  border-color: rgba(57, 208, 196, 0.5);
+  background: #12201f;
 }
 
 @media (max-width: 1120px) {
-  body {
-    overflow: auto;
-  }
-
   .app-shell {
     min-height: 100vh;
-    height: auto;
   }
 
   .idle-grid {
@@ -545,7 +699,18 @@ h2 {
     grid-column: 1 / -1;
   }
 
+  .agent-rail,
+  .context-rail,
+  .history-rail,
+  .settings-view {
+    max-height: max(560px, calc(100vh - 111px));
+  }
+
   .chat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-grid.with-history {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -603,16 +768,11 @@ h2 {
   }
 
   .timeline-panel {
-    min-height: 64vh;
+    min-height: 560px;
+    max-height: max(560px, calc(100vh - 111px));
   }
 
-  .agent-editor-grid,
-  .work-board {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-view,
-  .work-view {
+  .settings-view {
     margin: 10px;
   }
 }
