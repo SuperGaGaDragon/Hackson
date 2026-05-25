@@ -5,6 +5,8 @@ Last Modified at: 2026-05-25
 Last Modified by: Codex
 """
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query, status
 
 from conversations.repository import ConversationRepository
@@ -72,11 +74,20 @@ def append_message(
 def list_messages(
     conversation_id: str,
     after_sequence: int | None = Query(default=None, alias="afterSequence", ge=0),
+    created_after: datetime | None = Query(default=None, alias="createdAfter"),
+    created_before: datetime | None = Query(default=None, alias="createdBefore"),
     limit: int = Query(default=50, ge=1, le=100),
     current_user_id: str = Depends(get_current_user_id),
     service: ConversationService = Depends(get_conversation_service),
 ) -> dict:
-    return service.list_messages(current_user_id, conversation_id, after_sequence, limit)
+    return service.list_messages(
+        current_user_id,
+        conversation_id,
+        after_sequence,
+        created_after,
+        created_before,
+        limit,
+    )
 
 
 @idle_router.get("/conversation", response_model=ConversationResponse)

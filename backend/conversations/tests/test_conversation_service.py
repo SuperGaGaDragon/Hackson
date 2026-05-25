@@ -80,6 +80,8 @@ class FakeConversationRepository:
         conversation_id: str,
         user_id: str,
         after_sequence: int | None,
+        created_after,
+        created_before,
         limit: int,
     ) -> list[dict[str, Any]]:
         rows = [
@@ -87,7 +89,11 @@ class FakeConversationRepository:
             for message in self.messages.get(conversation_id, [])
             if message["user_id"] == user_id
             and (after_sequence is None or message["sequence"] > after_sequence)
+            and (created_after is None or message["created_at"] >= created_after)
+            and (created_before is None or message["created_at"] < created_before)
         ]
+        if created_after is not None or created_before is not None:
+            rows = sorted(rows, key=lambda row: row["created_at"], reverse=True)
         return rows[:limit]
 
 
@@ -135,7 +141,40 @@ class ConversationServiceTest(TestCase):
             ),
         )
 
-        page = service.list_messages("user_1", conversation["id"], after_sequence=0, limit=10)
+        page = service.list_messages(
+            "user_1",
+            conversation["id"],
+            after_sequence=0,
+            created_after=None,
+            created_before=None,
+            limit=10,
+        )
 
         self.assertEqual([message["sequence"] for message in page["messages"]], [1, 2])
+        self.assertIsNone(page["nextAfterSequence"])
+
+    def test_page_messages_by_created_time(self) -> None:
+        service = ConversationService(FakeConversationRepository())
+        conversation = service.create_conversation("user_1", ConversationCreateRequest(mode="companion_2"))
+        first = service.append_message(
+            "user_1",
+            conversation["id"],
+            MessageAppendRequest(sender_type="user", sender_id="user_1", role="user", content="first"),
+        )
+        second = service.append_message(
+            "user_1",
+            conversation["id"],
+            MessageAppendRequest(sender_type="user", sender_id="user_1", role="user", content="second"),
+        )
+
+        page = service.list_messages(
+            "user_1",
+            conversation["id"],
+            after_sequence=None,
+            created_after=first["createdAt"],
+            created_before=None,
+            limit=10,
+        )
+
+        self.assertEqual([message["content"] for message in page["messages"]], ["second", "first"])
         self.assertIsNone(page["nextAfterSequence"])

@@ -5,6 +5,7 @@ Last Modified at: 2026-05-25
 Last Modified by: Codex
 """
 
+from datetime import datetime
 from typing import Any
 
 from bson import ObjectId
@@ -110,6 +111,8 @@ class ConversationRepository:
         conversation_id: str,
         user_id: str,
         after_sequence: int | None,
+        created_after: datetime | None,
+        created_before: datetime | None,
         limit: int,
     ) -> list[dict[str, Any]]:
         if not ObjectId.is_valid(conversation_id):
@@ -120,4 +123,12 @@ class ConversationRepository:
         }
         if after_sequence is not None:
             query["sequence"] = {"$gt": after_sequence}
+        if created_after is not None or created_before is not None:
+            created_filter: dict[str, datetime] = {}
+            if created_after is not None:
+                created_filter["$gte"] = created_after
+            if created_before is not None:
+                created_filter["$lt"] = created_before
+            query["created_at"] = created_filter
+            return list(self.messages.find(query).sort("created_at", DESCENDING).limit(limit))
         return list(self.messages.find(query).sort("sequence", ASCENDING).limit(limit))

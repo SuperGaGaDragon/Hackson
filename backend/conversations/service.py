@@ -5,6 +5,7 @@ Last Modified at: 2026-05-25
 Last Modified by: Codex
 """
 
+from datetime import datetime
 from typing import Any, Protocol
 
 from fastapi import HTTPException, status
@@ -33,6 +34,8 @@ class ConversationRepositoryProtocol(Protocol):
         conversation_id: str,
         user_id: str,
         after_sequence: int | None,
+        created_after: datetime | None,
+        created_before: datetime | None,
         limit: int,
     ) -> list[dict[str, Any]]: ...
 
@@ -122,14 +125,35 @@ class ConversationService:
         user_id: str,
         conversation_id: str,
         after_sequence: int | None,
+        created_after: datetime | None,
+        created_before: datetime | None,
         limit: int,
     ) -> dict[str, Any]:
         if self.repository.find_conversation(conversation_id, user_id) is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="conversation_not_found")
+        if after_sequence is not None and (created_after is not None or created_before is not None):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="use_sequence_or_time_filter_not_both",
+            )
+        if created_after is not None and created_before is not None and created_after >= created_before:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="created_after_must_be_before_created_before",
+            )
         safe_limit = min(max(limit, 1), 100)
-        documents = self.repository.list_messages(conversation_id, user_id, after_sequence, safe_limit)
+        documents = self.repository.list_messages(
+            conversation_id,
+            user_id,
+            after_sequence,
+            created_after,
+            created_before,
+            safe_limit,
+        )
         messages = [public_message(document) for document in documents]
-        next_after = messages[-1]["sequence"] if len(messages) == safe_limit else None
+        next_after = None
+        if after_sequence is not None:
+            next_after = messages[-1]["sequence"] if len(messages) == safe_limit else None
         return {"messages": messages, "nextAfterSequence": next_after}
 
     def _validate_parent(

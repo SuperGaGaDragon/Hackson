@@ -99,7 +99,7 @@ Sequence rule:
 - `GET /api/conversations`: list current user's conversations.
 - `GET /api/conversations/{conversation_id}`: read one conversation.
 - `POST /api/conversations/{conversation_id}/messages`: append a message.
-- `GET /api/conversations/{conversation_id}/messages`: page messages by sequence.
+- `GET /api/conversations/{conversation_id}/messages`: page messages by sequence or filter by created time.
 - `GET /api/idle/conversation`: get or create the current active idle conversation for the user.
 
 ## main flow

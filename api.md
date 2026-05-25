@@ -383,7 +383,7 @@ Notes:
 - Message order inside a conversation is determined by `sequence`.
 
 ### GET /api/conversations/{conversationId}/messages
-Purpose: page messages in sequence order.
+Purpose: page messages in sequence order or query messages by created time.
 
 Headers:
 
@@ -393,7 +393,16 @@ Authorization: Bearer <accessToken>
 
 Query parameters:
 - `afterSequence`: optional integer cursor.
+- `createdAfter`: optional ISO datetime lower bound, inclusive.
+- `createdBefore`: optional ISO datetime upper bound, exclusive.
 - `limit`: optional integer, 1 to 100.
+
+Rules:
+- Use `afterSequence` for stable transcript pagination.
+- Use `createdAfter` / `createdBefore` for time-window lookup.
+- Do not combine `afterSequence` with time filters.
+- Time-filtered responses are sorted by `createdAt` descending.
+- Sequence pagination responses are sorted by `sequence` ascending.
 
 Verified response shape:
 
@@ -419,6 +428,41 @@ Verified response shape:
   "nextAfterSequence": null
 }
 ```
+
+Verified time query:
+
+```bash
+curl "http://127.0.0.1:8100/api/conversations/<conversationId>/messages?createdAfter=2026-05-25T21%3A41%3A59.248000&limit=10" \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+Verified time-query response shape:
+
+```json
+{
+  "messages": [
+    {
+      "sequence": 2,
+      "senderType": "agent",
+      "senderSlot": "agent_1",
+      "content": "time indexed reply",
+      "createdAt": "2026-05-25T21:42:00.258000"
+    },
+    {
+      "sequence": 1,
+      "senderType": "user",
+      "senderSlot": null,
+      "content": "time indexed hello",
+      "createdAt": "2026-05-25T21:41:59.248000"
+    }
+  ],
+  "nextAfterSequence": null
+}
+```
+
+MongoDB index verification:
+- Query by current user and time uses `user_id_1_created_at_-1`.
+- Query by conversation and time uses `conversation_id_1_created_at_-1`.
 
 ### GET /api/idle/conversation
 Purpose: get or create the current user's active idle conversation.
