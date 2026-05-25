@@ -14,6 +14,7 @@ Lst Modified by: Codex
 ## folder structure
 |-README.md agents folder guide
 |-restrictions project workflow restrictions
+|-frontend_restrictions.md frontend design restrictions
 
 ## 代办
 - Convert restrictions into structured markdown if the rule list keeps growing.
