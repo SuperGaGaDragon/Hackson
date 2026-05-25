@@ -36,6 +36,72 @@ Last Modified by: Codex
 |-service.py conversation product flow
 |-tests/ conversation module tests
 
+## storage design
+- Use one `conversations` collection for all modes.
+- Use one `messages` collection for all message rows.
+- Do not split companion_1 and companion_2 into separate collections. Their storage shape is the same; their context recipes differ.
+- Do not embed messages inside conversation documents. Idle can grow indefinitely, so messages need independent pagination and indexing.
+
+## conversation document
+Required fields:
+- `_id`
+- `user_id`
+- `mode`: `idle`, `companion_1`, `companion_2`, or `work`
+- `status`: `active`, `paused`, or `archived`
+- `title`
+- `participant_slots`: fixed V1 Agent slots such as `agent_1` and `agent_2`
+- `parent_conversation_id`: set for `companion_1`, usually null otherwise
+- `message_count`
+- `last_message_at`
+- `metadata`
+- `created_at`
+- `updated_at`
+
+V1 Agent slot rule:
+- The backend assumes two fixed Agent slots: `agent_1` and `agent_2`.
+- These are Agent identity slots, not user-configurable model endpoints.
+- Message rows should use `sender_slot` when an Agent speaks.
+
+## message document
+Required fields:
+- `_id`
+- `conversation_id`
+- `user_id`
+- `mode`
+- `sequence`
+- `sender_type`: `user`, `agent`, `system`, or `tool`
+- `sender_id`
+- `sender_slot`: `agent_1`, `agent_2`, or null
+- `role`: `user`, `assistant`, `system`, or `tool`
+- `content`
+- `content_type`: default `text`
+- `metadata`
+- `created_at`
+
+Sequence rule:
+- `sequence` is the stable ordering key inside a conversation.
+- Do not rely only on `created_at` for ordering because idle and async writes can happen close together.
+
+## indexes
+`conversations` indexes:
+- `{ user_id: 1, mode: 1, status: 1, updated_at: -1 }`
+- `{ user_id: 1, mode: 1, last_message_at: -1 }`
+- `{ parent_conversation_id: 1 }`
+
+`messages` indexes:
+- `{ conversation_id: 1, sequence: 1 }`, unique
+- `{ conversation_id: 1, created_at: -1 }`
+- `{ user_id: 1, created_at: -1 }`
+- `{ user_id: 1, sender_slot: 1, created_at: -1 }`
+
+## initial implemented APIs
+- `POST /api/conversations`: create a conversation container.
+- `GET /api/conversations`: list current user's conversations.
+- `GET /api/conversations/{conversation_id}`: read one conversation.
+- `POST /api/conversations/{conversation_id}/messages`: append a message.
+- `GET /api/conversations/{conversation_id}/messages`: page messages by sequence.
+- `GET /api/idle/conversation`: get or create the current active idle conversation for the user.
+
 ## main flow
 ```text
 request or idle tick

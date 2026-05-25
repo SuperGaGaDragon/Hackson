@@ -27,9 +27,11 @@ uvicorn main:app --host 127.0.0.1 --port 8100
 - Database used in verification: MongoDB database `hackson_test`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
-  - collections: `users`
+  - collections: `users`, `conversations`, `messages`, `conversation_counters`
   - `users` indexes: `_id_`, `username_normalized_1` unique, `email_normalized_1` unique
-  - `users` document count at initialization: `0`
+  - `conversations` indexes: `_id_`, `user_id_1_mode_1_status_1_updated_at_-1`, `user_id_1_mode_1_last_message_at_-1`, `parent_conversation_id_1`
+  - `messages` indexes: `_id_`, `conversation_id_1_sequence_1` unique, `conversation_id_1_created_at_-1`, `user_id_1_created_at_-1`, `user_id_1_sender_slot_1_created_at_-1`
+  - `conversation_counters` indexes: `_id_`, `conversation_id_1` unique
 - Last verified at: 2026-05-25
 
 ## port map
@@ -194,9 +196,228 @@ Notes:
 - V1 does not maintain server-side token revocation.
 - Frontend should discard the access token.
 
+### POST /api/conversations
+Purpose: create a conversation container for `idle`, `companion_1`, `companion_2`, or future `work`.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Verified request body:
+
+```json
+{
+  "mode": "companion_2",
+  "title": "Demo Chat"
+}
+```
+
+Verified response shape:
+
+```json
+{
+  "id": "<conversation_id>",
+  "userId": "<user_id>",
+  "mode": "companion_2",
+  "status": "active",
+  "title": "Demo Chat",
+  "participantSlots": ["agent_1", "agent_2"],
+  "parentConversationId": null,
+  "messageCount": 0,
+  "lastMessageAt": null,
+  "metadata": {},
+  "createdAt": "<iso_datetime>",
+  "updatedAt": "<iso_datetime>"
+}
+```
+
+Notes:
+- `companion_1` and `companion_2` use the same `conversations` collection.
+- `mode` controls context behavior; storage remains unified.
+- `agent_1` and `agent_2` are fixed Agent identity slots, not user model endpoints.
+
+### GET /api/conversations
+Purpose: list the current user's conversations.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+Verified query:
+
+```bash
+curl "http://127.0.0.1:8100/api/conversations?mode=companion_2" \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+Verified response shape:
+
+```json
+[
+  {
+    "id": "<conversation_id>",
+    "userId": "<user_id>",
+    "mode": "companion_2",
+    "status": "active",
+    "title": "Demo Chat",
+    "participantSlots": ["agent_1", "agent_2"],
+    "parentConversationId": null,
+    "messageCount": 2,
+    "lastMessageAt": "<iso_datetime>",
+    "metadata": {},
+    "createdAt": "<iso_datetime>",
+    "updatedAt": "<iso_datetime>"
+  }
+]
+```
+
+### GET /api/conversations/{conversationId}
+Purpose: read one current-user-owned conversation.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+Status:
+- Implemented with the same response shape as `POST /api/conversations`.
+- Ownership is enforced by `userId`.
+
+### POST /api/conversations/{conversationId}/messages
+Purpose: append a raw message to a conversation.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Verified user message body:
+
+```json
+{
+  "sender_type": "user",
+  "sender_id": "me",
+  "role": "user",
+  "content": "hello"
+}
+```
+
+Verified Agent message body:
+
+```json
+{
+  "sender_type": "agent",
+  "sender_slot": "agent_1",
+  "role": "assistant",
+  "content": "hi from agent 1"
+}
+```
+
+Verified response shape:
+
+```json
+{
+  "id": "<message_id>",
+  "conversationId": "<conversation_id>",
+  "userId": "<user_id>",
+  "mode": "companion_2",
+  "sequence": 1,
+  "senderType": "user",
+  "senderId": "me",
+  "senderSlot": null,
+  "role": "user",
+  "content": "hello",
+  "contentType": "text",
+  "metadata": {},
+  "createdAt": "<iso_datetime>"
+}
+```
+
+Notes:
+- Agent messages require `sender_slot`.
+- Valid V1 Agent slots are `agent_1` and `agent_2`.
+- Message order inside a conversation is determined by `sequence`.
+
+### GET /api/conversations/{conversationId}/messages
+Purpose: page messages in sequence order.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+Query parameters:
+- `afterSequence`: optional integer cursor.
+- `limit`: optional integer, 1 to 100.
+
+Verified response shape:
+
+```json
+{
+  "messages": [
+    {
+      "id": "<message_id>",
+      "conversationId": "<conversation_id>",
+      "userId": "<user_id>",
+      "mode": "companion_2",
+      "sequence": 1,
+      "senderType": "user",
+      "senderId": "me",
+      "senderSlot": null,
+      "role": "user",
+      "content": "hello",
+      "contentType": "text",
+      "metadata": {},
+      "createdAt": "<iso_datetime>"
+    }
+  ],
+  "nextAfterSequence": null
+}
+```
+
+### GET /api/idle/conversation
+Purpose: get or create the current user's active idle conversation.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+Verified response shape:
+
+```json
+{
+  "id": "<conversation_id>",
+  "userId": "<user_id>",
+  "mode": "idle",
+  "status": "active",
+  "title": "Idle",
+  "participantSlots": ["agent_1", "agent_2"],
+  "parentConversationId": null,
+  "messageCount": 0,
+  "lastMessageAt": null,
+  "metadata": {
+    "created_by": "get_or_create_active_idle"
+  },
+  "createdAt": "<iso_datetime>",
+  "updatedAt": "<iso_datetime>"
+}
+```
+
 ## developer notes
 - All protected user APIs require `Authorization: Bearer <accessToken>`.
 - The user module is under `backend/users/`.
+- The conversation and raw message module is under `backend/conversations/`.
 - Shared backend config, database, and security utilities are under `backend/core/`.
 - MongoDB is required for full API verification.
 - Do not stop existing target-machine services. Use a new free port for tests.
