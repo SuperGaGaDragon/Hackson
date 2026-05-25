@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     Those settings should remain platform runtime configuration.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="HACKSON_")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="HACKSON_", extra="ignore")
 
     app_env: str = Field(default="development")
     mongo_uri: str = Field(default="mongodb://127.0.0.1:27017")

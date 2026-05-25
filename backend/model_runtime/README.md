@@ -26,7 +26,7 @@ Last Modified by: Codex
 - Conversation persistence.
 - Memory or summary generation.
 
-## planned files
+## files
 |-README.md module guide
 |-__init__.py Python package marker
 |-client.py low-level provider HTTP or SDK calls
@@ -39,9 +39,17 @@ Last Modified by: Codex
 - Users do not configure endpoint, provider, API key, Claude/OpenAI key, or local model path in V1.
 - Platform API keys should live in secret refs or environment variables.
 - `model_runtime_configs` may store `api_key_secret_ref`, never raw user-facing secrets.
+- MVP supports one platform-managed OpenAI-compatible Codex relay.
+- MVP reads `HACKSON_MODEL_*` env vars first, then falls back to local Codex/OpenAI-compatible env vars such as `OPENAI_API_KEY` and `STYLE_REPORT_MODEL`.
 
 ## version plan
-- v1.0: Basic generate call through one platform-managed endpoint.
+- v1.0: Basic generate call through one platform-managed endpoint. Implemented.
 - v1.1: Support companion_1 calls through the same interface.
 - v1.2: Add token budget awareness and better timeout handling.
 - v1.5: Support work-mode tool-call-oriented prompts if needed.
+
+## implementation notes
+- This module does not know idle, companion_1, companion_2, or work prompt rules.
+- This module accepts generic model messages and returns normalized text.
+- This module does not persist messages or context packages.
+- This module must not expose raw auth tokens in response objects, errors, or logs.

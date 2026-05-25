@@ -7,7 +7,7 @@ Last Modified by: Codex
 ## brief intro
 - This document is the verified API and port map for Hackson.
 - Only APIs that have been tested on the target machine are listed here.
-- Backend uses FastAPI. Frontend will use React + Vite.
+- Backend uses FastAPI. Frontend uses React + Vite.
 - V1 demo model endpoint is platform-managed and is not exposed through user APIs.
 
 ## verified environment
@@ -38,6 +38,42 @@ uvicorn main:app --host 127.0.0.1 --port 8100
 | Port | Service | Bind | Status | Purpose |
 | --- | --- | --- | --- | --- |
 | 8100 | FastAPI backend temporary test server | `127.0.0.1` | Verified, not kept running | Local target-machine API verification without touching existing services |
+| 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
+
+## verified frontend
+
+### React + Vite prototype
+Purpose: local product-level frontend prototype for Idle, Chat, Agents, and future Work surfaces.
+
+Directory:
+
+```text
+frontend/
+```
+
+Run:
+
+```bash
+cd frontend
+npm install
+npm run dev -- --port 5173
+```
+
+Verified URL:
+
+```text
+http://127.0.0.1:5173/
+```
+
+Verified checks:
+
+- `npm run build`
+- desktop screenshot at `1440x960`
+- mobile screenshot at `390x844`
+
+Notes:
+- Frontend does not expose model endpoint, provider, API key, Claude/OpenAI key, or local model path settings.
+- V1 product copy is intentionally short per `agents/frontend_restrictions.md`.
 
 ## verified APIs
 
