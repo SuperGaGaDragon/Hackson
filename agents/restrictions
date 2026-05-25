@@ -1,0 +1,32 @@
+
+1. Actively use skills in .agents/ 
+2. For each folder(and subfolder), a README.md is required. The README.md must be in this format:
+
+## header
+Created at: 
+Created by: 
+Last Modified at: 
+Lst Modified by: 
+
+## brief intro
+- goal for this folder. 
+- 架构思路
+
+## folder structure 
+|-test.py intro to this file 
+|-tests/ intro to this subfolder (and another READNE doc is necessary in this subfolder)
+|......
+
+## 代办
+not finished stuff (or what should be done in the future)
+
+3. For each file, there must be an header:
+
+Created at:
+Created by:
+Last Modified at:
+Last Modified by:
+
+comments is necessary. 
+
+4. We have a server at docs/数据库/machine.md Backend should be deployed at that machine. Be sure to test in that machine frequently. 
