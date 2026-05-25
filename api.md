@@ -50,6 +50,30 @@ cd ~/hackson_backend_test/backend
 | 8101 | FastAPI backend temporary test server | `127.0.0.1` | Verified, not kept running | Target-machine interaction/context/model API verification without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 
+## api端口集合
+| Method | API | Auth | Verified Port | Module | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/health` | No | `8100`, `8101` | `backend/main.py` | Backend health check |
+| POST | `/api/users/register` | No | `8100`, `8101` | `backend/users/` | Register user and return JWT |
+| POST | `/api/users/login` | No | `8100` | `backend/users/` | Login by email or username |
+| GET | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Read current user |
+| PATCH | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Update current user settings |
+| POST | `/api/users/logout` | No server state | `8100` | `backend/users/` | Client-side JWT logout placeholder |
+| POST | `/api/conversations` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Create conversation container |
+| GET | `/api/conversations` | Bearer JWT | `8100` | `backend/conversations/` | List current user's conversations |
+| GET | `/api/conversations/{conversationId}` | Bearer JWT | `8100` | `backend/conversations/` | Read one owned conversation |
+| POST | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100` | `backend/conversations/` | Append raw historical message |
+| GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Page conversation messages |
+| GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Get or create active idle conversation |
+| POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101` | `backend/interactions/` | Generate one idle Agent reply |
+| POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101` | `backend/interactions/` | Create companion_1 from idle and reply |
+| POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101` | `backend/interactions/` | Save companion_2 user message and reply |
+
+Notes:
+- Ports `8100` and `8101` were temporary target-machine verification ports and are not kept running.
+- The API paths are mounted by the same FastAPI app; use the active backend deployment base URL in production.
+- Detailed request and response shapes are listed below.
+
 ## verified frontend
 
 ### React + Vite prototype
