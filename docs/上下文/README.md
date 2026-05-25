@@ -19,5 +19,9 @@ Lst Modified by: Codex
 |-context-innovation-proposal.md Context OS innovation proposal
 |-plan.md product-level context system implementation plan
 
+## related documents
+- ../backend-architecture.md explains where backend modules such as `context/`, `model_runtime/`, `conversations/`, and `workers/` should live.
+- `plan.md` explains what the context system should do by product version.
+
 ## 代办
 - Update this folder when agents, conversations, messages, summaries, and context builder modules are implemented.
