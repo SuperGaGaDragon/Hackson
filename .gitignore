@@ -1,1 +1,5 @@
 docs/数据库/machine.md
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
