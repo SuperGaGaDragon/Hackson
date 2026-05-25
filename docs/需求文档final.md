@@ -12,8 +12,8 @@ editted by: Quanhao Li, Jorlanda Chen
 - ai自己修改自己性格文档。
 
 ## 注意点
-- 用户自行配置的env
-- web要提供用户自行配置模型路径的东西，并且能打到模型上。（让用户使用我们的异步层，我们的并发层接用户的模型）
+- V1 demo 不做用户自行配置 env / endpoint / api key / 本地模型路径。
+- 模型 endpoint 由我们在后端统一配置；web 只提供产品功能入口，不提供模型配置入口。后续版本可以再开放用户自选模型配置。
 
 ## 三种模式
 1.  Mode1: idle mode 
@@ -33,4 +33,3 @@ editted by: Quanhao Li, Jorlanda Chen
 3. Work mode
 - 两个ai进行分工合作，相当于领导调动codex cli。他们可以要求codex cli返回什么东西。并且在网站上实施显示进度，可以24x7后台跑。
 - 桌宠的结合。桌宠出现进度。
-

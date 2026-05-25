@@ -1,3 +1,6 @@
+2026.5.25 1pm 
+editted by: Quanhao Li, Jorlanda Chen 
+
 
 Step数字相同为同步进行。
 
@@ -6,8 +9,8 @@ V1: idle mode和companion mode1/2
 
 准备工作
 
-- Step1: 用户系统处理。用户系统表需要存什么？用户名，email，密码。这个模型config要不要做？比如如果是gpt的话，api key，claude api key，或者本地大模型的路径。
-- Step1: 先写模型异步层/用户配置层。目标：用户自行配置 Model Endpoint，系统通过统一异步推理层调用用户指定模型服务。
+- Step1: 用户系统处理。V1 用户系统表先存用户名、email、密码等基础身份信息；不存模型 endpoint、api key、Claude/OpenAI key 或本地模型路径。模型运行配置由后端平台侧统一维护。
+- Step1: 先写模型异步层/平台模型配置层。V1 demo 不做用户自选 Model Endpoint，也不在前端暴露 api key / 本地模型路径配置；由我们在后端统一配置可用 endpoint，系统通过统一异步推理层调用。
 - Step2: 科研上下文处理系统。阅读最新论文，找到最好方案（参考：chatgpt网页端跨对话机制）
 - Step2: 模型调用工具对codex cli的调用处理 - 交流层。（参考openclaw）
 - Step2: 数据库准备，数据库记录聊天记录等。（idle/companion2的设计）。可能数据库需要异步写入，不然爆炸。
