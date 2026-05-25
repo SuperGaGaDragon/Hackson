@@ -13,7 +13,7 @@ Last Modified by: Codex
 ## verified environment
 - Target machine: documented locally in `docs/数据库/machine.md`; that file is ignored and must not be pushed.
 - Backend test directory on target machine: `~/hackson_backend_test/backend`
-- Verified backend command:
+- Verified raw user/conversation backend command:
 
 ```bash
 HACKSON_MONGO_DATABASE=hackson_test \
@@ -22,9 +22,18 @@ PYTHONPATH=. \
 uvicorn main:app --host 127.0.0.1 --port 8100
 ```
 
-- Verified port: `127.0.0.1:8100`
+- Verified interaction/model backend command:
+
+```bash
+cd ~/hackson_backend_test/backend
+.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8101
+```
+
+- Verified raw user/conversation port: `127.0.0.1:8100`
+- Verified interaction/model port: `127.0.0.1:8101`
 - Port status after verification: stopped/free
-- Database used in verification: MongoDB database `hackson_test`
+- Database used in raw user/conversation verification: MongoDB database `hackson_test`
+- Database used in interaction/model verification: MongoDB database `hackson_target_smoke`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
   - collections: `users`, `conversations`, `messages`, `conversation_counters`
@@ -37,7 +46,8 @@ uvicorn main:app --host 127.0.0.1 --port 8100
 ## port map
 | Port | Service | Bind | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 8100 | FastAPI backend temporary test server | `127.0.0.1` | Verified, not kept running | Local target-machine API verification without touching existing services |
+| 8100 | FastAPI backend temporary test server | `127.0.0.1` | Verified, not kept running | Target-machine raw user/conversation API verification without touching existing services |
+| 8101 | FastAPI backend temporary test server | `127.0.0.1` | Verified, not kept running | Target-machine interaction/context/model API verification without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 
 ## verified frontend
@@ -494,10 +504,235 @@ Verified response shape:
 }
 ```
 
+### POST /api/idle/{conversationId}/tick
+Purpose: generate one idle Agent reply through the full interaction chain.
+
+Chain:
+
+```text
+interactions -> conversations -> context -> model_runtime -> conversations
+```
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Verified request body:
+
+```json
+{
+  "targetAgentId": "agent_1",
+  "idleSeed": "继续 idle 对话，保持自然、简短、有生活感。",
+  "metadata": {}
+}
+```
+
+Verified status:
+
+```text
+201 Created
+```
+
+Verified response shape:
+
+```json
+{
+  "conversation": {
+    "id": "<idle_conversation_id>",
+    "mode": "idle",
+    "messageCount": 1
+  },
+  "userMessage": null,
+  "agentMessage": {
+    "id": "<message_id>",
+    "conversationId": "<idle_conversation_id>",
+    "sequence": 1,
+    "senderType": "agent",
+    "senderSlot": "agent_1",
+    "role": "assistant",
+    "content": "<model_text>",
+    "metadata": {
+      "prompt_hash": "<sha256>",
+      "token_estimate": "<integer>",
+      "model_name": "<platform_model_name>"
+    }
+  },
+  "context": {
+    "promptHash": "<sha256>",
+    "tokenEstimate": "<integer>",
+    "modelName": "<platform_model_name>"
+  }
+}
+```
+
+Verified target-machine smoke values:
+- `agentMessage.sequence`: `1`
+- `context.promptHash`: non-empty SHA-256 string
+
+Notes:
+- This API does not create a user message.
+- `targetAgentId` defaults to `agent_1`.
+- `agent_1` and `agent_2` map to fixed MVP Agent snapshots until `backend/agents/` persistence exists.
+
+### POST /api/idle/{conversationId}/join
+Purpose: let the user join an idle conversation and create a `companion_1` child conversation.
+
+Chain:
+
+```text
+interactions -> conversations create child -> conversations save user message -> context transition -> model_runtime -> conversations save Agent reply
+```
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Verified request body:
+
+```json
+{
+  "content": "我可以加入刚才的话题吗？",
+  "targetAgentId": "agent_1",
+  "metadata": {}
+}
+```
+
+Verified status:
+
+```text
+201 Created
+```
+
+Verified response shape:
+
+```json
+{
+  "conversation": {
+    "id": "<companion_1_conversation_id>",
+    "mode": "companion_1",
+    "parentConversationId": "<idle_conversation_id>",
+    "messageCount": 2
+  },
+  "userMessage": {
+    "conversationId": "<companion_1_conversation_id>",
+    "sequence": 1,
+    "senderType": "user",
+    "role": "user",
+    "content": "我可以加入刚才的话题吗？"
+  },
+  "agentMessage": {
+    "conversationId": "<companion_1_conversation_id>",
+    "sequence": 2,
+    "senderType": "agent",
+    "senderSlot": "agent_1",
+    "role": "assistant",
+    "content": "<model_text>"
+  },
+  "context": {
+    "promptHash": "<sha256>",
+    "tokenEstimate": "<integer>",
+    "modelName": "<platform_model_name>"
+  }
+}
+```
+
+Verified target-machine smoke values:
+- `userMessage.sequence`: `1`
+- `agentMessage.sequence`: `2`
+- `context.promptHash`: non-empty SHA-256 string
+
+Notes:
+- The path parameter is the source idle conversation id.
+- The returned conversation is the newly created `companion_1` child.
+- Use `conversation.parentConversationId` to link back to idle history.
+
+### POST /api/companion/{conversationId}/messages
+Purpose: append a `companion_2` user message and generate one Agent reply.
+
+Chain:
+
+```text
+interactions -> conversations save user message -> context -> model_runtime -> conversations save Agent reply
+```
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Verified request body:
+
+```json
+{
+  "content": "一句话说明 Hackson V1 目标。",
+  "targetAgentId": "agent_2",
+  "metadata": {}
+}
+```
+
+Verified status:
+
+```text
+201 Created
+```
+
+Verified response shape:
+
+```json
+{
+  "conversation": {
+    "id": "<companion_2_conversation_id>",
+    "mode": "companion_2",
+    "messageCount": 2
+  },
+  "userMessage": {
+    "conversationId": "<companion_2_conversation_id>",
+    "sequence": 1,
+    "senderType": "user",
+    "role": "user",
+    "content": "一句话说明 Hackson V1 目标。"
+  },
+  "agentMessage": {
+    "conversationId": "<companion_2_conversation_id>",
+    "sequence": 2,
+    "senderType": "agent",
+    "senderSlot": "agent_2",
+    "role": "assistant",
+    "content": "<model_text>"
+  },
+  "context": {
+    "promptHash": "<sha256>",
+    "tokenEstimate": "<integer>",
+    "modelName": "<platform_model_name>"
+  }
+}
+```
+
+Verified target-machine smoke values:
+- `userMessage.sequence`: `1`
+- `agentMessage.sequence`: `2`
+- `context.promptHash`: non-empty SHA-256 string
+- Follow-up `GET /api/conversations/{conversationId}/messages?limit=10` returned two messages with sequences `1,2`.
+
+Notes:
+- This is the product interaction endpoint for `companion_2`.
+- `POST /api/conversations/{conversationId}/messages` remains the raw historical append endpoint and should not be used by the frontend for model replies.
+
 ## developer notes
 - All protected user APIs require `Authorization: Bearer <accessToken>`.
 - The user module is under `backend/users/`.
-- The conversation and raw message module is under `backend/conversations/`.
+- The conversation and raw message history module is under `backend/conversations/`.
+- The product interaction orchestration module is under `backend/interactions/`.
+- The context builder module is under `backend/context/`.
+- The model runtime module is under `backend/model_runtime/`.
 - Shared backend config, database, and security utilities are under `backend/core/`.
 - MongoDB is required for full API verification.
 - Do not stop existing target-machine services. Use a new free port for tests.

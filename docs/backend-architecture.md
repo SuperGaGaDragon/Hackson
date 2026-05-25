@@ -30,6 +30,7 @@ Hackson 后端要支撑三个核心产品能力：
 
 - `core/` 放所有模块共享的基础设施。
 - `users/`、`agents/`、`conversations/` 这类目录按产品领域拆。
+- `interactions/` 放同步产品主链路，决定一次用户消息或 idle tick 后应该发生什么。
 - `context/` 专门负责“这次模型应该看什么”。
 - `model_runtime/` 专门负责“怎么调用模型”。
 - `workers/` 放不阻塞主链路的异步任务。
@@ -70,6 +71,13 @@ backend/
     service.py
     repository.py
     model.py
+    tests/
+
+  interactions/
+    routes.py
+    schemas.py
+    service.py
+    agent_fixtures.py
     tests/
 
   context/
@@ -120,13 +128,21 @@ backend/
   main.py
   core/
   users/
+  conversations/
+  context/
+  model_runtime/
+  interactions/
 ```
 
 当前判断：
 
 - `core/` 的方向正确，继续放配置、数据库连接、安全能力。
 - `users/` 的方向正确，继续保持 routes / schemas / service / repository / model 的结构。
-- 下一步应该新增 `agents/` 和 `conversations/`，再接 `model_runtime/` 和 `context/`。
+- `conversations/` 已经作为历史事实源落地。
+- `context/` 已经负责 idle / companion_1 / companion_2 的上下文拼接。
+- `model_runtime/` 已经负责平台统一模型调用。
+- `interactions/` 已经负责 idle tick、用户插入 idle、companion_2 用户消息的同步主链路。
+- 下一步应该把 `interactions/agent_fixtures.py` 替换为真实 `agents/` 持久化快照，并补 streaming。
 
 ## 5. 模块职责
 
@@ -204,26 +220,52 @@ V1 最小字段：
 - 创建 idle / companion_1 / companion_2 / work conversation。
 - 保存和读取 messages。
 - 维护 conversation 状态。
-- 组织一次用户消息到 Agent 回复的主链路。
+- 提供稳定的历史分页和时间索引查询。
+
+不负责：
+
+- 决定下一步由哪个 Agent 回复。
+- 具体 prompt 配方。
+- 具体模型 provider 细节。
+- 同步产品主链路编排。
+- 异步 summary 和 memory 生成。
+
+### 5.5 interactions
+
+职责：
+
+- 执行 idle tick：读取 idle 历史、构建 context、调用模型、保存 Agent 回复。
+- 执行用户插入 idle：创建 companion_1 子会话、保存用户消息、构建 Transition Context、保存 Agent 回复。
+- 执行 companion_2 用户消息：保存用户消息、构建 context、调用模型、保存 Agent 回复。
+- 给前端返回 conversation、userMessage、agentMessage、context 调试信息。
+
+不负责：
+
+- 原始消息存储实现。
+- prompt recipe 内部细节。
+- 模型 provider 请求细节。
+- 长期 memory、diary、relationship 派生任务。
+
+推荐文件：
+
+- `routes.py`：FastAPI interaction routes。
+- `service.py`：同步产品主链路编排。
+- `schemas.py`：interaction 请求和响应类型。
+- `agent_fixtures.py`：MVP 临时 Agent 快照，后续由 `agents/` 替代。
 
 主链路：
 
 ```text
 用户请求或 idle tick
-  -> conversations 保存输入 message
+  -> interactions 判断产品动作
+  -> conversations 保存或读取 message
   -> context 构建 context package
   -> model_runtime 调用模型
   -> conversations 保存 Agent 回复
-  -> 返回前端
+  -> interactions 返回前端
 ```
 
-不负责：
-
-- 具体 prompt 配方。
-- 具体模型 provider 细节。
-- 异步 summary 和 memory 生成。
-
-### 5.5 context
+### 5.6 context
 
 职责：
 
@@ -254,10 +296,11 @@ V1 最小字段：
 ```text
 context 决定“模型看什么”
 model_runtime 决定“怎么问模型”
-conversations 决定“产品流程怎么走”
+interactions 决定“产品流程怎么走”
+conversations 决定“历史事实怎么存取”
 ```
 
-### 5.6 model_runtime
+### 5.7 model_runtime
 
 职责：
 
@@ -286,7 +329,7 @@ V1 重要约束：
 - 前端不暴露 provider 选择。
 - 用户数据不包含 API key。
 
-### 5.7 workers
+### 5.8 workers
 
 职责：
 
@@ -303,7 +346,7 @@ V1 重要约束：
 V1.0 可以没有 workers。  
 V1.2 开始加入 `summary_worker.py`。
 
-### 5.8 memory
+### 5.9 memory
 
 职责：
 
@@ -319,7 +362,7 @@ V1.2 开始加入 `summary_worker.py`。
 
 V1.3 再实现。
 
-### 5.9 tasks
+### 5.10 tasks
 
 职责：
 
@@ -335,9 +378,9 @@ V3.0 再做完整 Work Mode。
 ### 6.1 Companion 2 主链路
 
 ```text
-POST /api/companion/conversations/:id/messages
-  -> conversations.routes
-  -> conversations.service
+POST /api/companion/{conversation_id}/messages
+  -> interactions.routes
+  -> interactions.service
   -> messages repository 保存 user message
   -> context.builder.build(mode="companion_2")
   -> model_runtime.orchestrator.generate()
@@ -348,9 +391,9 @@ POST /api/companion/conversations/:id/messages
 ### 6.2 Idle tick 主链路
 
 ```text
-POST /api/idle/tick
-  -> conversations.routes
-  -> conversations.service
+POST /api/idle/{conversation_id}/tick
+  -> interactions.routes
+  -> interactions.service
   -> context.builder.build(mode="idle")
   -> model_runtime.orchestrator.generate()
   -> messages repository 保存 agent message
@@ -360,9 +403,9 @@ POST /api/idle/tick
 ### 6.3 用户插入 Idle 主链路
 
 ```text
-POST /api/idle/join
-  -> conversations.routes
-  -> conversations.service 创建或读取 companion_1 conversation
+POST /api/idle/{conversation_id}/join
+  -> interactions.routes
+  -> interactions.service 创建 companion_1 conversation
   -> messages repository 保存 user message
   -> context.transition 生成 Transition Context
   -> context.builder.build(mode="companion_1")
@@ -379,6 +422,7 @@ POST /api/idle/join
 
 - `agents/`
 - `conversations/`
+- `interactions/`
 - `model_runtime/`
 - `context/builder.py`
 - `context/recipes.py`
@@ -522,7 +566,8 @@ context/
 后端最重要的边界是：
 
 ```text
-conversations：产品流程怎么走
+interactions：产品流程怎么走
+conversations：历史事实怎么存取
 context：模型这次看什么
 model_runtime：怎么问模型
 workers：哪些派生结果异步生成
