@@ -40,7 +40,7 @@ export function toTimelineItem(message, agentBySlot = FALLBACK_AGENT_BY_SLOT) {
 
 export function makeSystemMessage(content, sequence = null) {
   return {
-    id: `system-${crypto.randomUUID()}`,
+    id: `system-${makeClientId()}`,
     type: "system",
     senderType: "system",
     content,
@@ -52,7 +52,7 @@ export function makeSystemMessage(content, sequence = null) {
 export function makePendingUserMessage(conversation, content, messages, sequence = null) {
   const maxSequence = Math.max(0, ...messages.map((message) => message.sequence || 0));
   return {
-    id: `pending-${crypto.randomUUID()}`,
+    id: `pending-${makeClientId()}`,
     conversationId: conversation.id,
     userId: conversation.userId,
     mode: conversation.mode,
@@ -66,6 +66,14 @@ export function makePendingUserMessage(conversation, content, messages, sequence
     metadata: { pending: true },
     createdAt: new Date().toISOString(),
   };
+}
+
+export function makeClientId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  const randomPart = Math.random().toString(36).slice(2);
+  return `${Date.now().toString(36)}-${randomPart}`;
 }
 
 function formatTime(value) {

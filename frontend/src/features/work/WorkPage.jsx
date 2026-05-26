@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { getConversationMessages } from "../../api/conversations";
 import { createTask, listTasks, sendTaskMessage } from "../../api/tasks";
 import { FALLBACK_AGENTS, normalizeAgents } from "../../domain/agents";
-import { sortMessages, uniqueMessages } from "../../domain/messages";
+import { makeClientId, sortMessages, uniqueMessages } from "../../domain/messages";
 import AgentSlot from "../../shared/components/AgentSlot";
 import StatusLine from "../../shared/components/StatusLine";
 import Timeline from "../../shared/components/Timeline";
@@ -215,7 +215,7 @@ function WorkPage({ agents = FALLBACK_AGENTS }) {
 function makePendingWorkMessage(task, content, messages) {
   const maxSequence = Math.max(0, ...messages.map((message) => message.sequence || 0));
   return {
-    id: `pending-${crypto.randomUUID()}`,
+    id: `pending-${makeClientId()}`,
     conversationId: task.conversationId,
     userId: task.userId,
     mode: "work",

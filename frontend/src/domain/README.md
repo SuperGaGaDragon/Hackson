@@ -12,6 +12,7 @@ Lst Modified by: Codex
   - Frontend keeps only fallback display data for loading and degraded states.
   - Message display mapping belongs here so product features stay simple.
   - Pending outgoing user-message construction belongs here so Chat and companion_1 continuation use the same optimistic turn shape.
+  - Client-only ids must work on the target-machine HTTP production URL, not only on secure local contexts.
 
 ## folder structure
 |-README.md domain folder guide
