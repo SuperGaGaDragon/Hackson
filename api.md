@@ -49,6 +49,7 @@ cd ~/hackson_backend_test/backend
 | 8100 | FastAPI backend temporary test server | `127.0.0.1` | Verified, not kept running | Target-machine raw user/conversation API verification without touching existing services |
 | 8101 | FastAPI backend temporary test server | `127.0.0.1` | Running on target machine during latest frontend check | Target-machine interaction/context/model API verification without touching existing services |
 | 8120 | FastAPI backend temporary test server | `127.0.0.1` | Verified, stopped after check | Target-machine Agent catalog API verification without touching existing services |
+| 8122 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest diagnosis | Target-machine latest backend verification for Agent catalog and idle join without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 | 18101 | SSH local tunnel to target backend | `127.0.0.1` | Running locally during latest frontend check | Local browser access to target-machine `127.0.0.1:8101` |
 | 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Running locally during latest frontend check | Local frontend connected to target backend through Vite proxy |
@@ -62,7 +63,7 @@ cd ~/hackson_backend_test/backend
 | GET | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Read current user |
 | PATCH | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Update current user settings |
 | POST | `/api/users/logout` | No server state | `8100` | `backend/users/` | Client-side JWT logout placeholder |
-| GET | `/api/agents` | No | `8120` | `backend/agents/` | List fixed V1 Agent display profiles |
+| GET | `/api/agents` | No | `8120`, `8122` | `backend/agents/` | List fixed V1 Agent display profiles |
 | POST | `/api/conversations` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Create conversation container |
 | GET | `/api/conversations` | Bearer JWT | `8100` | `backend/conversations/` | List current user's conversations |
 | GET | `/api/conversations/{conversationId}` | Bearer JWT | `8100` | `backend/conversations/` | Read one owned conversation |
@@ -70,7 +71,7 @@ cd ~/hackson_backend_test/backend
 | GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Page conversation messages |
 | GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Get or create active idle conversation |
 | POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101` | `backend/interactions/` | Generate one idle Agent reply |
-| POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101` | `backend/interactions/` | Create companion_1 from idle and reply |
+| POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101`, `8122` | `backend/interactions/` | Create companion_1 from idle and reply |
 | POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101` | `backend/interactions/` | Save companion_2 user message and reply |
 
 Notes:
@@ -331,6 +332,7 @@ Verified response:
 Notes:
 - Prompt persona and frontend display profiles come from the same backend `agents` catalog.
 - This API does not expose core persona, speaking style, model endpoint, provider, or API keys.
+- If a frontend proxy returns 404 for this path, it is pointed at an older backend process that has not loaded `backend/agents/routes.py`.
 
 ### POST /api/conversations
 Purpose: create a conversation container for `idle`, `companion_1`, `companion_2`, or future `work`.
@@ -736,11 +738,13 @@ Verified target-machine smoke values:
 - `userMessage.sequence`: `1`
 - `agentMessage.sequence`: `2`
 - `context.promptHash`: non-empty SHA-256 string
+- Latest diagnosis on port `8122`: HTTP curl returned `201 Created` with `conversation.mode=companion_1`, `agentMessage.senderSlot=agent_1`, and `context.modelName=gpt-5.1`.
 
 Notes:
 - The path parameter is the source idle conversation id.
 - The returned conversation is the newly created `companion_1` child.
 - Use `conversation.parentConversationId` to link back to idle history.
+- If this route returns `500 model_api_key_missing`, the backend process did not load platform model secrets. Model runtime now reads process env, `.env`, `../.env`, and `~/.env`.
 
 ### POST /api/companion/{conversationId}/messages
 Purpose: append a `companion_2` user message and generate one Agent reply.

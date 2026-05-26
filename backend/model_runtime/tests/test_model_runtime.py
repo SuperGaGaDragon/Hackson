@@ -6,6 +6,8 @@ Last Modified by: Codex
 """
 
 import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -53,6 +55,20 @@ class ModelRuntimeTest(TestCase):
         self.assertEqual(config.base_url, "https://api.openai.com/v1")
         self.assertEqual(config.model_name, "gpt-5.1")
         self.assertEqual(config.api_key, "secret-openai")
+
+    def test_config_reads_explicit_env_file(self) -> None:
+        with TemporaryDirectory() as directory:
+            env_file = Path(directory) / "model.env"
+            env_file.write_text(
+                "OPENAI_API_KEY=secret-file\nSTYLE_REPORT_MODEL=file-model\n",
+                encoding="utf-8",
+            )
+
+            with patch.dict(os.environ, {}, clear=True):
+                config = ModelRuntimeConfigRepository(env_file=str(env_file)).get_enabled_config()
+
+        self.assertEqual(config.model_name, "file-model")
+        self.assertEqual(config.api_key, "secret-file")
 
     def test_orchestrator_returns_normalized_response_without_exposing_secret(self) -> None:
         fake_client = FakeClient()

@@ -41,6 +41,7 @@ Last Modified by: Codex
 - `model_runtime_configs` may store `api_key_secret_ref`, never raw user-facing secrets.
 - MVP supports one platform-managed OpenAI-compatible Codex relay.
 - MVP reads `HACKSON_MODEL_*` env vars first, then falls back to local Codex/OpenAI-compatible env vars such as `OPENAI_API_KEY` and `STYLE_REPORT_MODEL`.
+- Runtime config reads process env first, then `.env`, `../.env`, and `~/.env` so target-machine secrets can stay outside the synced backend folder.
 
 ## version plan
 - v1.0: Basic generate call through one platform-managed endpoint. Implemented.
