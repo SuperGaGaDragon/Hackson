@@ -52,7 +52,8 @@ cd ~/hackson_backend_test/backend
 | 8122 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest diagnosis | Target-machine latest backend verification for Agent catalog and idle join without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 | 18101 | SSH local tunnel to target backend | `127.0.0.1` | Running locally during latest frontend check | Local browser access to target-machine `127.0.0.1:8101` |
-| 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Running locally during latest frontend check | Local frontend connected to target backend through Vite proxy |
+| 18122 | SSH local tunnel to target backend | `127.0.0.1` | Verified, running during latest diagnosis | Local browser access to latest target backend `127.0.0.1:8122` |
+| 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified after restart against `18122`; running as PID recorded in `/tmp/hackson_frontend_5175.pid` | Local frontend connected to latest target backend through Vite proxy |
 
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
@@ -111,6 +112,8 @@ Verified checks:
 - mobile screenshot at `390x844`
 - target-machine API smoke through `8101`
 - local browser E2E through SSH tunnel `18101` and Vite port `5175`
+- latest diagnosis uses SSH tunnel `18122` to target backend `8122`, then Vite port `5175`
+- latest `5175` API smoke: `/api/agents` returned `200 OK`; `/api/idle/{conversationId}/join` returned `201 Created`
 
 Notes:
 - Frontend does not expose model endpoint, provider, API key, Claude/OpenAI key, or local model path settings.
@@ -121,8 +124,8 @@ Notes:
 - Local browser checks should use Vite proxy to avoid CORS:
 
 ```bash
-ssh -N -L 127.0.0.1:18101:127.0.0.1:8101 catadragon@100.70.248.39
-VITE_API_PROXY_TARGET=http://127.0.0.1:18101 npm run dev -- --port 5175
+ssh -N -L 127.0.0.1:18122:127.0.0.1:8122 catadragon@100.70.248.39
+VITE_API_PROXY_TARGET=http://127.0.0.1:18122 npm run dev -- --port 5175
 ```
 
 Latest frontend E2E result:
@@ -141,6 +144,7 @@ Latest frontend issue check:
 - Idle auto mode is frontend-driven by repeated `tick` calls. There is no verified backend scheduler or 24x7 idle loop yet.
 - Browser E2E verified auto idle produced both fixed MVP Agent slots: Nora then Vale.
 - Timeline has `overflow: auto` and auto-scrolls to the latest message. If content is shorter than the panel, there is no scroll range.
+- Latest diagnosis: `5175` was returning `/api/agents` 404 because it was still proxying to older `8101`. Restarting `5175` against `18122 -> 8122` makes `/api/agents` return 200 and idle join return 201.
 
 ## verified APIs
 

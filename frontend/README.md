@@ -11,6 +11,7 @@ Lst Modified by: Codex
   - Build only the surfaces backed by verified APIs in root `api.md`.
   - Current product surfaces are Auth, Idle, Chat, and Me.
   - Local dev calls `/api` through the Vite proxy to avoid browser CORS.
+  - Current verified local proxy target is `127.0.0.1:18122`, which tunnels to target backend `127.0.0.1:8122`.
   - `src/api/` owns HTTP calls.
   - `src/domain/` owns fixed MVP Agent slot and message mapping.
   - `src/features/` owns product flows.
@@ -29,3 +30,4 @@ Lst Modified by: Codex
 ## 代办
 - Add Agent editing only after verified Agent APIs exist.
 - Add Work only after verified Work APIs exist.
+- Replace the temporary `18122 -> 8122` dev proxy after a stable backend process is finalized.

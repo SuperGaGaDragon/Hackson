@@ -153,16 +153,18 @@ Default:
 Local dev proxy:
 
 ```text
-VITE_API_PROXY_TARGET=http://127.0.0.1:8101
+VITE_API_PROXY_TARGET=http://127.0.0.1:18122
 ```
 
 Reason:
 
-- `api.md` says ports `8100` and `8101` are temporary verification ports.
+- `api.md` says target port `8122` is the latest verified backend for Agent catalog and idle join.
+- Local port `18122` is the SSH tunnel to target `127.0.0.1:8122`.
 - The same FastAPI app mounts the API paths.
 - Browser requests from Vite to a different backend origin can hit CORS.
 - Vite proxy keeps browser requests same-origin while forwarding to the active backend.
 - `VITE_API_BASE_URL` is reserved for environments where the backend explicitly allows cross-origin requests.
+- If `/api/agents` returns 404 through Vite, the dev server is pointed at an older backend process.
 
 ## 4. Frontend Architecture
 
