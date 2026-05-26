@@ -11,6 +11,7 @@ Last Modified by: Codex
   - Build only the surfaces backed by verified APIs in root `api.md`.
   - Current product surfaces are Auth, Idle, Chat, Work, and Me.
   - Local dev calls `/api` through the Vite proxy to avoid browser CORS.
+  - Production serves the built `dist/` bundle from FastAPI at `http://100.70.248.39:8130/`.
   - Current product-level local proxy target is `127.0.0.1:18126`, which tunnels to target backend `127.0.0.1:8126` using MongoDB database `hackson`.
   - Current verified local product dev port is `127.0.0.1:5178`.
   - `src/api/` owns HTTP calls.

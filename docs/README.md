@@ -6,6 +6,7 @@
 - docs/需求文档final.md final version of functions 
 - docs/plan.md: overall product roadmap
 - docs/backend-architecture.md: backend product-level module architecture plan
+- docs/deployment/production.md: production deployment topology and verification record
 - docs/frontend/design.md: frontend product design direction
 - docs/上下文/context-mainstream-research.md: 主流上下文处理方案与论文综述
 - docs/上下文/context-requirements-for-hackson.md: 结合 Hackson 产品模式的上下文系统需求文档
@@ -19,5 +20,6 @@
 2. docs/上下文/plan.md
 3. docs/backend-architecture.md
 4. docs/frontend/design.md
-5. backend/README.md
-6. docs/plan.md
+5. docs/deployment/production.md
+6. backend/README.md
+7. docs/plan.md

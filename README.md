@@ -22,6 +22,11 @@ Last Modified by: Codex
 | Backend test path | `~/hackson_backend_test/backend` |
 | Backend test venv | `~/hackson_backend_test/.venv` |
 | Backend env file | `~/hackson_backend_test/backend/.env` |
+| Production app URL | `http://100.70.248.39:8130/`, verified and running |
+| Production service | `hackson-production.service`, user-level systemd, enabled |
+| Production path | `~/hackson_production` |
+| Production backend bind | `0.0.0.0:8130` |
+| Production frontend assets | served by FastAPI from `~/hackson_production/frontend/dist` |
 | Current product smoke backend path | `~/hackson_backend_current_8125/backend` |
 | Current product smoke venv | `~/hackson_backend_review_smoke/backend/.venv` |
 | Raw API verification port | `127.0.0.1:8100`, verified, not kept running |
@@ -44,6 +49,7 @@ Last Modified by: Codex
 | `agents/frontend_restrictions.md` | Frontend implementation rules |
 | `api.md` | Verified API, port map, request/response shapes |
 | `docs/backend-architecture.md` | Backend module boundaries |
+| `docs/deployment/production.md` | Production deployment topology and verification record |
 | `docs/上下文/plan.md` | Context system product plan |
 | `docs/数据库/machine.md` | Target machine access note; ignored locally |
 
