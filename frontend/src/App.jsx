@@ -1,10 +1,10 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 */
-import { Activity, MessageSquare, Sparkles, UserRound } from "lucide-react";
+import { Activity, BriefcaseBusiness, MessageSquare, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listAgents } from "./api/agents";
 import { getToken } from "./api/client";
@@ -14,11 +14,13 @@ import AuthPage from "./features/auth/AuthPage";
 import ChatPage from "./features/chat/ChatPage";
 import IdlePage from "./features/idle/IdlePage";
 import MePage from "./features/me/MePage";
+import WorkPage from "./features/work/WorkPage";
 import StatusLine from "./shared/components/StatusLine";
 
 const navItems = [
   { id: "idle", label: "Idle", icon: Activity },
   { id: "chat", label: "Chat", icon: MessageSquare },
+  { id: "work", label: "Work", icon: BriefcaseBusiness },
   { id: "me", label: "Me", icon: UserRound },
 ];
 
@@ -80,6 +82,7 @@ function App() {
         <Topbar error={error} view={view} />
         {view === "idle" && <IdlePage agents={agents} />}
         {view === "chat" && <ChatPage agents={agents} />}
+        {view === "work" && <WorkPage agents={agents} />}
         {view === "me" && (
           <MePage
             onLogout={() => {
@@ -142,7 +145,8 @@ function Sidebar({ setView, user, view }) {
 }
 
 function Topbar({ error, view }) {
-  const title = view === "idle" ? "Live timeline" : view === "chat" ? "Companion" : "Settings";
+  const title =
+    view === "idle" ? "Live timeline" : view === "chat" ? "Companion" : view === "work" ? "Work" : "Settings";
 
   return (
     <header className="topbar">

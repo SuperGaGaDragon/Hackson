@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -65,16 +65,22 @@ def build_companion_1_messages(input_data: ContextBuildInput) -> list[ModelMessa
         idle_recent_messages=idle_recent,
         idle_summary=input_data.idle_summary or input_data.summary,
     )
+    recent = select_recent_messages(
+        input_data.recent_messages,
+        limit=12,
+        token_budget=_recent_budget(input_data),
+    )
 
     sections = [
         _mode_block(ContextMode.COMPANION_1),
-        f"Transition Context:\n{transition_context}",
+        _optional_section("Transition Context", transition_context if idle_recent or input_data.idle_summary else None),
         f"Current user message:\n{input_data.user_message}",
+        _messages_section("Current companion conversation recent messages", recent),
         _messages_section("Recent idle messages for background only", idle_recent),
         _summary_section(input_data.idle_summary or input_data.summary),
         _agent_persona_block("Current responding Agent", target_agent),
         _other_agents_block([agent for agent in input_data.agents if agent.id != target_agent.id]),
-        "Rules:\n- The user is now the center of the turn.\n- Explicitly respond to the user.\n- Keep continuity with the idle topic.\n- Do not keep talking as if the user did not join.",
+        _companion_1_rules(has_transition=bool(idle_recent or input_data.idle_summary)),
         OUTPUT_POLICY,
     ]
     return _messages_from_sections(sections)
@@ -220,6 +226,20 @@ def _user_profile_block(input_data: ContextBuildInput) -> str | None:
     if profile.language_preference:
         lines.append(f"language_preference: {profile.language_preference}")
     return "\n".join(lines)
+
+
+def _companion_1_rules(*, has_transition: bool) -> str:
+    if has_transition:
+        return (
+            "Rules:\n- The user is now the center of the turn.\n- Explicitly respond to the user.\n"
+            "- Keep continuity with the idle topic.\n- Do not keep talking as if the user did not join."
+        )
+    return (
+        "Rules:\n- Continue the companion_1 child conversation with the user as the center.\n"
+        "- Use the child conversation recent messages as the direct conversation history.\n"
+        "- Keep the original idle topic in mind only if it is present in context.\n"
+        "- Do not speak as if the user is joining for the first time again."
+    )
 
 
 def _format_mapping(value: dict) -> str | None:

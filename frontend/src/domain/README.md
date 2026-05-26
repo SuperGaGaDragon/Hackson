@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Lst Modified by: Codex
 
 ## brief intro
@@ -11,6 +11,7 @@ Lst Modified by: Codex
   - Backend owns fixed MVP Agent slots before Agent persistence exists.
   - Frontend keeps only fallback display data for loading and degraded states.
   - Message display mapping belongs here so product features stay simple.
+  - Pending outgoing user-message construction belongs here so Chat and companion_1 continuation use the same optimistic turn shape.
 
 ## folder structure
 |-README.md domain folder guide

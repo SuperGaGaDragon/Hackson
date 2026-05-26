@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -80,6 +80,33 @@ class InteractionRoutesTest(TestCase):
         self.assertEqual(body["userMessage"]["content"], "我现在加入这个 idle 话题。")
         self.assertEqual(body["agentMessage"]["sequence"], 2)
         self.assertIn("promptHash", body["context"])
+
+    def test_companion_route_continues_companion_1_child(self) -> None:
+        idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)
+        joined = self.client.post(
+            f"/api/idle/{idle['id']}/join",
+            json={
+                "content": "我现在加入这个 idle 话题。",
+                "targetAgentId": "agent_1",
+            },
+        ).json()
+
+        response = self.client.post(
+            f"/api/companion/{joined['conversation']['id']}/messages",
+            json={
+                "content": "继续说。",
+                "targetAgentId": "agent_2",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["conversation"]["mode"], "companion_1")
+        self.assertEqual(body["conversation"]["parentConversationId"], idle["id"])
+        self.assertEqual(body["conversation"]["messageCount"], 4)
+        self.assertEqual(body["userMessage"]["sequence"], 3)
+        self.assertEqual(body["agentMessage"]["sequence"], 4)
+        self.assertEqual(body["agentMessage"]["senderSlot"], "agent_2")
 
     def test_companion_message_route_saves_user_and_agent_messages(self) -> None:
         companion = self.conversation_service.create_conversation(

@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Lst Modified by: Codex
 
 ## brief intro
@@ -24,9 +24,13 @@ Lst Modified by: Codex
 | Backend env file | `~/hackson_backend_test/backend/.env` |
 | Raw API verification port | `127.0.0.1:8100`, verified, not kept running |
 | Interaction/model verification port | `127.0.0.1:8101`, verified, not kept running |
-| Frontend local dev port | `127.0.0.1:5173` |
+| Latest target smoke backend | `127.0.0.1:8125`, verified and running |
+| Latest local backend tunnel | `127.0.0.1:18125 -> 127.0.0.1:8125`, verified but not kept running |
+| Latest verified frontend dev port | `127.0.0.1:5177`, verified but not kept running |
+| Default frontend local dev port | `127.0.0.1:5173` |
 | Production MongoDB database | `hackson` |
-| Smoke MongoDB databases | `hackson_test`, `hackson_target_smoke` |
+| Latest smoke MongoDB database | `hackson_current_8125` |
+| Older smoke MongoDB databases | `hackson_test`, `hackson_target_smoke`, `hackson_review_smoke_latest` |
 
 ## must-read documents
 | Path | Purpose |
@@ -49,3 +53,4 @@ Lst Modified by: Codex
 
 ## 代办
 - Keep `api.md` updated only with APIs that were actually verified.
+- Keep this root README synchronized when verified ports change.

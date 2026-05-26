@@ -1,15 +1,15 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 */
 import { Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getConversationMessages, getIdleConversation } from "../../api/conversations";
-import { joinIdle, tickIdle } from "../../api/interactions";
+import { joinIdle, sendCompanionMessage, tickIdle } from "../../api/interactions";
 import { FALLBACK_AGENTS, nextAgentSlot, normalizeAgents } from "../../domain/agents";
-import { makeSystemMessage, sortMessages, uniqueMessages } from "../../domain/messages";
+import { makePendingUserMessage, makeSystemMessage, sortMessages, uniqueMessages } from "../../domain/messages";
 import AgentSlot from "../../shared/components/AgentSlot";
 import StatusLine from "../../shared/components/StatusLine";
 import Timeline from "../../shared/components/Timeline";
@@ -18,15 +18,18 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
   const agentProfiles = normalizeAgents(agents);
   const [conversation, setConversation] = useState(null);
   const [idleConversation, setIdleConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [idleMessages, setIdleMessages] = useState([]);
+  const [companionMessages, setCompanionMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [targetAgentId, setTargetAgentId] = useState("agent_1");
-  const [mode, setMode] = useState("Idle");
+  const [mode, setMode] = useState("idle");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [autoIdle, setAutoIdle] = useState(false);
   const [error, setError] = useState("");
   const timelineRef = useRef(null);
+  const isIdle = mode === "idle";
+  const timelineMessages = isIdle ? idleMessages : [...idleMessages, ...companionMessages];
 
   useEffect(() => {
     let mounted = true;
@@ -40,7 +43,8 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
         if (!mounted) return;
         setIdleConversation(idle);
         setConversation(idle);
-        setMessages(sortMessages(history.messages || []));
+        setIdleMessages(sortMessages(history.messages || []));
+        setCompanionMessages([]);
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -54,23 +58,21 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     };
   }, []);
 
-  useEffect(() => {
-    timelineRef.current?.scrollTo({
-      top: timelineRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages.length, busy]);
+  useLayoutEffect(() => {
+    if (!timelineRef.current) return;
+    timelineRef.current.scrollTop = timelineRef.current.scrollHeight;
+  }, [timelineMessages.length, busy]);
 
   useEffect(() => {
-    if (!autoIdle || mode !== "Idle" || busy || loading) return undefined;
+    if (!autoIdle || !isIdle || busy || loading) return undefined;
     const timer = window.setTimeout(() => {
       tick();
-    }, messages.length ? 3500 : 800);
+    }, idleMessages.length ? 3500 : 800);
     return () => window.clearTimeout(timer);
-  }, [autoIdle, mode, busy, loading, messages.length, targetAgentId]);
+  }, [autoIdle, isIdle, busy, loading, idleMessages.length, targetAgentId]);
 
   async function tick() {
-    if (!idleConversation || busy || mode !== "Idle") return;
+    if (!idleConversation || busy || !isIdle) return;
     setBusy(true);
     setError("");
     const activeTarget = targetAgentId;
@@ -81,7 +83,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
         metadata: {},
       });
       setConversation((current) => ({ ...current, ...data.conversation }));
-      setMessages((current) => uniqueMessages([...current, data.agentMessage]));
+      setIdleMessages((current) => uniqueMessages([...current, data.agentMessage]));
       setTargetAgentId(nextAgentSlot(activeTarget, agentProfiles));
     } catch (err) {
       setError(err.message || "Tick failed");
@@ -93,23 +95,63 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
   async function join() {
     const content = draft.trim();
     if (!idleConversation || !content || busy) return;
+    if (!isIdle) {
+      await sendCompanionTurn(content);
+      return;
+    }
     setBusy(true);
     setError("");
+    setDraft("");
+    const joinMarker = makeSystemMessage("Joined");
+    const pendingMessage = makePendingUserMessage(
+      { ...idleConversation, mode: "companion_1" },
+      content,
+      [],
+    );
+    setCompanionMessages([joinMarker, pendingMessage]);
     try {
       const data = await joinIdle(idleConversation.id, {
         content,
         targetAgentId,
         metadata: {},
       });
-      setMode("Joined");
+      setMode("companion_1");
       setAutoIdle(false);
       setConversation(data.conversation);
-      setMessages((current) =>
-        uniqueMessages([...current, makeSystemMessage("Joined"), data.userMessage, data.agentMessage]),
-      );
-      setDraft("");
+      setCompanionMessages([joinMarker, data.userMessage, data.agentMessage]);
+      setTargetAgentId(nextAgentSlot(targetAgentId, agentProfiles));
     } catch (err) {
       setError(err.message || "Join failed");
+      setCompanionMessages([]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendCompanionTurn(content) {
+    if (!conversation || conversation.mode !== "companion_1") return;
+    const pendingMessage = makePendingUserMessage(conversation, content, companionMessages);
+    setBusy(true);
+    setError("");
+    setDraft("");
+    setCompanionMessages((current) => uniqueMessages([...current, pendingMessage]));
+    try {
+      const data = await sendCompanionMessage(conversation.id, {
+        content,
+        targetAgentId,
+        metadata: {},
+      });
+      setConversation((current) => ({ ...current, ...data.conversation }));
+      setCompanionMessages((current) =>
+        uniqueMessages([
+          ...current.filter((message) => message.id !== pendingMessage.id),
+          data.userMessage,
+          data.agentMessage,
+        ]),
+      );
+      setTargetAgentId(nextAgentSlot(targetAgentId, agentProfiles));
+    } catch (err) {
+      setError(err.message || "Send failed");
     } finally {
       setBusy(false);
     }
@@ -135,36 +177,36 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
       <section className="timeline-panel">
         <div className="panel-head">
           <div>
-            <p className="eyebrow">{mode}</p>
+            <p className="eyebrow">{isIdle ? "Idle" : "Companion"}</p>
             <h2>Timeline</h2>
           </div>
           <div className="panel-actions">
             <button
               className={autoIdle ? "secondary-button active" : "secondary-button"}
-              disabled={loading || mode !== "Idle"}
+              disabled={loading || !isIdle}
               onClick={() => setAutoIdle((current) => !current)}
               type="button"
             >
               Auto
             </button>
-            <button className="secondary-button" disabled={busy || loading || mode !== "Idle"} onClick={tick} type="button">
+            <button className="secondary-button" disabled={busy || loading || !isIdle} onClick={tick} type="button">
               {busy ? "Wait" : "Tick"}
             </button>
           </div>
         </div>
-        <Timeline agents={agentProfiles} messages={messages} timelineRef={timelineRef} />
+        <Timeline agents={agentProfiles} messages={timelineMessages} timelineRef={timelineRef} />
         <div className="composer">
           <input
             aria-label="Join"
-            disabled={busy || loading || mode !== "Idle"}
+            disabled={busy || loading}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") join();
             }}
-            placeholder={mode === "Idle" ? "Join" : "Joined"}
+            placeholder={isIdle ? "Join" : "Message"}
             value={draft}
           />
-          <button disabled={busy || loading || mode !== "Idle"} onClick={join} title="Send" type="button">
+          <button disabled={busy || loading} onClick={join} title="Send" type="button">
             <Send size={18} />
           </button>
         </div>
@@ -173,14 +215,14 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
         <div className="panel-head compact">
           <div>
             <p className="eyebrow">State</p>
-            <h2>{mode}</h2>
+            <h2>{isIdle ? "Idle" : "Companion"}</h2>
           </div>
         </div>
         <section className="context-item">
           <span>ID</span>
           <p>{conversation?.id || "none"}</p>
         </section>
-        {mode === "Joined" && (
+        {!isIdle && (
           <section className="context-item">
             <span>Parent</span>
             <p>{idleConversation?.id || "none"}</p>
@@ -188,7 +230,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
         )}
         <section className="context-item">
           <span>Count</span>
-          <p>{messages.length}</p>
+          <p>{timelineMessages.length}</p>
         </section>
         <section className="context-item">
           <span>Auto</span>

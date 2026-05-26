@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -51,7 +51,8 @@ class ContextBuilder:
 def _included_message_ids(input_data: ContextBuildInput) -> list[str]:
     messages: list[ConversationMessage] = []
     if input_data.mode == ContextMode.COMPANION_1:
-        messages.extend(input_data.idle_recent_messages or input_data.recent_messages)
+        messages.extend(input_data.recent_messages)
+        messages.extend(input_data.idle_recent_messages)
     else:
         messages.extend(input_data.recent_messages)
     return [message.id for message in messages if message.id]

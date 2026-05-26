@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 */
 import { FALLBACK_AGENT_BY_SLOT, resolveAgent } from "./agents";
@@ -45,6 +45,25 @@ export function makeSystemMessage(content, sequence = null) {
     senderType: "system",
     content,
     sequence,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function makePendingUserMessage(conversation, content, messages, sequence = null) {
+  const maxSequence = Math.max(0, ...messages.map((message) => message.sequence || 0));
+  return {
+    id: `pending-${crypto.randomUUID()}`,
+    conversationId: conversation.id,
+    userId: conversation.userId,
+    mode: conversation.mode,
+    sequence: sequence ?? maxSequence + 0.5,
+    senderType: "user",
+    senderId: "me",
+    senderSlot: null,
+    role: "user",
+    content,
+    contentType: "text",
+    metadata: { pending: true },
     createdAt: new Date().toISOString(),
   };
 }

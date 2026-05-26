@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Lst Modified by: Codex
 
 ## brief intro
@@ -20,6 +20,7 @@ Lst Modified by: Codex
 |-users.js user auth and settings APIs
 |-conversations.js conversation and message history APIs
 |-interactions.js idle and companion product interaction APIs
+|-tasks.js Work Mode task APIs
 
 ## 代办
 - Add refresh-token support only if the backend implements it.

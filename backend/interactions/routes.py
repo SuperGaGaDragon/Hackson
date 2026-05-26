@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -76,4 +76,4 @@ def companion_message(
     current_user_id: str = Depends(get_current_user_id),
     service: InteractionService = Depends(get_interaction_service),
 ) -> dict:
-    return service.run_companion_2_message(current_user_id, conversation_id, payload)
+    return service.run_companion_message(current_user_id, conversation_id, payload)

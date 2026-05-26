@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 */
 import { Send } from "lucide-react";
@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { createConversation, getConversationMessages, listConversations } from "../../api/conversations";
 import { sendCompanionMessage } from "../../api/interactions";
 import { FALLBACK_AGENTS, normalizeAgents } from "../../domain/agents";
-import { sortMessages, uniqueMessages } from "../../domain/messages";
+import { makePendingUserMessage, sortMessages, uniqueMessages } from "../../domain/messages";
 import AgentSlot from "../../shared/components/AgentSlot";
 import StatusLine from "../../shared/components/StatusLine";
 import Timeline from "../../shared/components/Timeline";
@@ -283,25 +283,6 @@ function makeLocalTitle(content) {
   const trimmed = content.replace(/\s+/g, " ").trim();
   if (trimmed.length <= 18) return trimmed || "Chat";
   return `${trimmed.slice(0, 18)}...`;
-}
-
-function makePendingUserMessage(conversation, content, messages) {
-  const maxSequence = Math.max(0, ...messages.map((message) => message.sequence || 0));
-  return {
-    id: `pending-${crypto.randomUUID()}`,
-    conversationId: conversation.id,
-    userId: conversation.userId,
-    mode: conversation.mode,
-    sequence: maxSequence + 0.5,
-    senderType: "user",
-    senderId: "me",
-    senderSlot: null,
-    role: "user",
-    content,
-    contentType: "text",
-    metadata: { pending: true },
-    createdAt: new Date().toISOString(),
-  };
 }
 
 export default ChatPage;

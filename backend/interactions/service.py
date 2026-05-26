@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -122,6 +122,24 @@ class InteractionService:
         updated_companion = self.conversation_service.get_conversation(user_id, companion["id"])
         return self._response(updated_companion, user_message, agent_message, package, model_response)
 
+    def run_companion_message(
+        self,
+        user_id: str,
+        conversation_id: str,
+        payload: InteractionUserMessageRequest,
+    ) -> dict:
+        conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        if conversation["mode"] == "companion_1":
+            return self._run_companion_1_message(user_id, conversation, payload)
+        if conversation["mode"] == "companion_2":
+            return self.run_companion_2_message(user_id, conversation_id, payload)
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="conversation_must_be_companion",
+        )
+
     def run_companion_2_message(
         self,
         user_id: str,
@@ -162,6 +180,61 @@ class InteractionService:
             model_response,
             package,
             extra_metadata=None,
+        )
+        self._enqueue_derived_work(
+            user_id,
+            conversation_id,
+            [user_message["id"], agent_message["id"]],
+            conversation["mode"],
+        )
+        updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        return self._response(updated_conversation, user_message, agent_message, package, model_response)
+
+    def _run_companion_1_message(
+        self,
+        user_id: str,
+        conversation: dict,
+        payload: InteractionUserMessageRequest,
+    ) -> dict:
+        conversation_id = conversation["id"]
+        user_message = self.conversation_service.append_message(
+            user_id,
+            conversation_id,
+            MessageAppendRequest(
+                sender_type="user",
+                sender_id=user_id,
+                role="user",
+                content=payload.content,
+                metadata=payload.metadata,
+            ),
+        )
+        recent = self._recent_context_messages(user_id, conversation_id)
+        idle_recent = []
+        parent_id = conversation.get("parentConversationId")
+        if parent_id:
+            idle_recent = self._recent_context_messages(user_id, parent_id)
+        target_agent_id = ensure_agent_id(payload.target_agent_id)
+        package = self.context_builder.build(
+            ContextBuildInput(
+                mode=ContextMode.COMPANION_1,
+                conversation_id=conversation_id,
+                target_agent_id=target_agent_id,
+                agents=default_agent_snapshots(),
+                user_message=payload.content,
+                recent_messages=recent,
+                idle_recent_messages=idle_recent,
+                user_profile=UserProfileSnapshot(id=user_id, language_preference="zh"),
+                token_budget=6000,
+            )
+        )
+        model_response = self._generate(package)
+        agent_message = self._save_agent_message(
+            user_id,
+            conversation_id,
+            target_agent_id,
+            model_response,
+            package,
+            extra_metadata={"parentIdleConversationId": parent_id} if parent_id else None,
         )
         self._enqueue_derived_work(
             user_id,

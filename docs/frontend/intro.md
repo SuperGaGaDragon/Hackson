@@ -2,7 +2,7 @@
 
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 
 ## 1. Scope
@@ -21,11 +21,12 @@ Supported:
 - Idle join.
 - Companion chat.
 - Companion message history.
+- Work tasks.
+- Work task messages.
 
 Not supported in this pass:
 
 - Agent editing.
-- Work mode.
 - Diary.
 - Memory cards.
 - Relationship editor.
@@ -63,6 +64,7 @@ Uses:
 - `GET /api/conversations/{conversationId}/messages`
 - `POST /api/idle/{conversationId}/tick`
 - `POST /api/idle/{conversationId}/join`
+- `POST /api/companion/{conversationId}/messages`
 
 UI:
 
@@ -79,8 +81,9 @@ Behavior:
 - `Tick` creates one Agent message.
 - `Auto` drives repeated `Tick` calls while the page is open.
 - Auto mode alternates `agent_1` and `agent_2` so idle looks like two Agents taking turns.
-- `Join` creates a `companion_1` child and keeps the visible parent idle history above the returned user and Agent messages.
-- After `Join`, the UI shows `Joined` and disables further sending because no verified API continues a `companion_1` child conversation yet.
+- `Join` creates a `companion_1` child and freezes the parent idle transcript as transition context.
+- After `Join`, the UI enters `Companion` mode and sends later turns to the child conversation through `/api/companion/{conversationId}/messages`.
+- Parent idle messages and child companion messages are not globally sequence-sorted together; parent context stays above child turns.
 - New messages auto-scroll to the bottom of the visible timeline.
 
 Backend note:
@@ -142,6 +145,34 @@ UI:
 - `Save`
 - `Logout`
 
+### Work
+
+Purpose: create a task and send Work Mode messages.
+
+Uses:
+
+- `GET /api/agents`
+- `POST /api/tasks`
+- `GET /api/tasks`
+- `GET /api/conversations/{conversationId}/messages`
+- `POST /api/tasks/{taskId}/messages`
+
+UI:
+
+- `Work`
+- `Tasks`
+- `Objective`
+- `Send`
+
+Behavior:
+
+- List existing tasks.
+- Create a new task from an objective.
+- Load selected task transcript.
+- Send work messages through the task interaction endpoint.
+- Show the user message immediately while the model reply is pending.
+- New work messages auto-scroll to the bottom.
+
 ## 3. API Base
 
 The frontend uses same-origin `/api` calls in local dev.
@@ -155,13 +186,13 @@ Default:
 Local dev proxy:
 
 ```text
-VITE_API_PROXY_TARGET=http://127.0.0.1:18122
+VITE_API_PROXY_TARGET=http://127.0.0.1:18125
 ```
 
 Reason:
 
-- `api.md` says target port `8122` is the latest verified backend for Agent catalog and idle join.
-- Local port `18122` is the SSH tunnel to target `127.0.0.1:8122`.
+- `api.md` says target port `8125` is the latest verified backend for companion_1 continuation and Work Mode UI smoke.
+- Local port `18125` is the SSH tunnel to target `127.0.0.1:8125`.
 - The same FastAPI app mounts the API paths.
 - Browser requests from Vite to a different backend origin can hit CORS.
 - Vite proxy keeps browser requests same-origin while forwarding to the active backend.
@@ -178,6 +209,7 @@ src/
     users.js
     conversations.js
     interactions.js
+    tasks.js
   domain/
     agents.js
     messages.js
@@ -185,6 +217,7 @@ src/
     auth/
     idle/
     chat/
+    work/
     me/
   shared/
     components/
@@ -245,4 +278,8 @@ Manual backend verification:
 - Send `Join`.
 - Open Chat.
 - Send a message.
+- Open Work.
+- Create a task.
+- Send a work message.
+- Verify `companion_1` follow-up after `Join`.
 - Save user settings.

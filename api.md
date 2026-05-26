@@ -31,11 +31,11 @@ cd ~/hackson_backend_test/backend
 
 - Verified raw user/conversation port: `127.0.0.1:8100`
 - Verified interaction/model port: `127.0.0.1:8101`
-- Verified review smoke port: `127.0.0.1:8124`
-- Port status after verification: stopped/free
+- Verified review smoke port: `127.0.0.1:8125`
+- Port status after verification: target smoke ports are running; local tunnels/dev servers are temporary.
 - Database used in raw user/conversation verification: MongoDB database `hackson_test`
 - Database used in interaction/model verification: MongoDB database `hackson_target_smoke`
-- Database used in review smoke verification: MongoDB database `hackson_review_smoke_latest`
+- Database used in review smoke verification: MongoDB database `hackson_current_8125`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
   - collections: `users`, `conversations`, `messages`, `conversation_counters`
@@ -43,7 +43,7 @@ cd ~/hackson_backend_test/backend
   - `conversations` indexes: `_id_`, `user_id_1_mode_1_status_1_updated_at_-1`, `user_id_1_mode_1_last_message_at_-1`, `parent_conversation_id_1`
   - `messages` indexes: `_id_`, `conversation_id_1_sequence_1` unique, `conversation_id_1_created_at_-1`, `user_id_1_created_at_-1`, `user_id_1_sender_slot_1_created_at_-1`
   - `conversation_counters` indexes: `_id_`, `conversation_id_1` unique
-- Last verified at: 2026-05-25
+- Last verified at: 2026-05-26
 
 ## port map
 | Port | Service | Bind | Status | Purpose |
@@ -53,11 +53,15 @@ cd ~/hackson_backend_test/backend
 | 8120 | FastAPI backend temporary test server | `127.0.0.1` | Verified, stopped after check | Target-machine Agent catalog API verification without touching existing services |
 | 8122 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest diagnosis | Target-machine latest backend verification for Agent catalog and idle join without touching existing services |
 | 8123 | FastAPI backend temporary test server | `127.0.0.1` | Older review smoke, superseded by `8124` | Target-machine review smoke for task API and new backend modules without touching existing services |
-| 8124 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest backend review smoke | Latest target-machine review smoke for task API and new backend modules without touching existing services |
+| 8124 | FastAPI backend temporary test server | `127.0.0.1` | Older review smoke, superseded by `8125` | Target-machine review smoke for task API and new backend modules without touching existing services |
+| 8125 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest backend review smoke | Latest target-machine smoke for companion_1 continuation and Work Mode without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 | 18101 | SSH local tunnel to target backend | `127.0.0.1` | Running locally during latest frontend check | Local browser access to target-machine `127.0.0.1:8101` |
 | 18122 | SSH local tunnel to target backend | `127.0.0.1` | Verified, running during latest diagnosis | Local browser access to latest target backend `127.0.0.1:8122` |
+| 18124 | SSH local tunnel to target backend | `127.0.0.1` | Historical Work frontend integration | Local browser access to target backend `127.0.0.1:8124` |
+| 18125 | SSH local tunnel to target backend | `127.0.0.1` | Verified during latest frontend integration, not kept running locally | Local browser access to latest target backend `127.0.0.1:8125` |
 | 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified after restart against `18122`; running as PID recorded in `/tmp/hackson_frontend_5175.pid` | Local frontend connected to latest target backend through Vite proxy |
+| 5177 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified against `18125 -> 8125`, not kept running locally | Local frontend E2E for companion_1 continuation and Work Mode |
 
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
@@ -76,12 +80,12 @@ cd ~/hackson_backend_test/backend
 | GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Page conversation messages |
 | GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Get or create active idle conversation |
 | POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101` | `backend/interactions/` | Generate one idle Agent reply |
-| POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101`, `8122` | `backend/interactions/` | Create companion_1 from idle and reply |
-| POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101` | `backend/interactions/` | Save companion_2 user message and reply |
-| POST | `/api/tasks` | Bearer JWT | `8124` | `backend/tasks/` | Create Work Mode task and its `work` conversation |
-| GET | `/api/tasks` | Bearer JWT | `8124` | `backend/tasks/` | List current user's Work Mode tasks |
+| POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101`, `8122`, `8125` | `backend/interactions/` | Create companion_1 from idle and reply |
+| POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101`, `8125` | `backend/interactions/` | Save companion_1 or companion_2 user message and reply |
+| POST | `/api/tasks` | Bearer JWT | `8124`, `8125` | `backend/tasks/` | Create Work Mode task and its `work` conversation |
+| GET | `/api/tasks` | Bearer JWT | `8124`, `8125` | `backend/tasks/` | List current user's Work Mode tasks |
 | GET | `/api/tasks/{taskId}` | Bearer JWT | Local tests | `backend/tasks/` | Read one current-user-owned Work Mode task |
-| POST | `/api/tasks/{taskId}/messages` | Bearer JWT | Local tests | `backend/tasks/`, `backend/interactions/` | Send a minimal Work Mode message using task state |
+| POST | `/api/tasks/{taskId}/messages` | Bearer JWT | `8124`, `8125` | `backend/tasks/`, `backend/interactions/` | Send a minimal Work Mode message using task state |
 
 Notes:
 - Ports `8100` and `8101` were temporary target-machine verification ports and are not kept running.
@@ -122,14 +126,18 @@ Verified checks:
 - target-machine API smoke through `8101`
 - local browser E2E through SSH tunnel `18101` and Vite port `5175`
 - latest diagnosis uses SSH tunnel `18122` to target backend `8122`, then Vite port `5175`
+- Work frontend integration used SSH tunnel `18124` to target backend `8124`
+- Latest frontend integration uses SSH tunnel `18125` to target backend `8125`, then Vite port `5177`
 - latest `5175` API smoke: `/api/agents` returned `200 OK`; `/api/idle/{conversationId}/join` returned `201 Created`
 
 Notes:
 - Frontend does not expose model endpoint, provider, API key, Claude/OpenAI key, or local model path settings.
 - V1 product copy is intentionally short per `agents/frontend_restrictions.md`.
-- Current frontend only renders backend-backed surfaces: Auth, Idle, Chat, and Me.
+- Current frontend only renders backend-backed surfaces: Auth, Idle, Chat, Work, and Me.
 - Idle uses `/api/idle/conversation`, message history, `/api/idle/{conversationId}/tick`, and `/api/idle/{conversationId}/join`.
+- Companion follow-up uses `/api/companion/{conversationId}/messages` for `companion_1` and `companion_2`.
 - Chat uses `companion_2` conversation creation/history and `/api/companion/{conversationId}/messages`.
+- Work uses `/api/tasks`, task history, and `/api/tasks/{taskId}/messages`.
 - Local browser checks should use Vite proxy to avoid CORS:
 
 ```bash
@@ -137,17 +145,26 @@ ssh -N -L 127.0.0.1:18122:127.0.0.1:8122 catadragon@100.70.248.39
 VITE_API_PROXY_TARGET=http://127.0.0.1:18122 npm run dev -- --port 5175
 ```
 
+For current frontend integration against the latest review backend:
+
+```bash
+ssh -N -L 127.0.0.1:18125:127.0.0.1:8125 catadragon@100.70.248.39
+VITE_API_PROXY_TARGET=http://127.0.0.1:18125 npm run dev -- --port 5177
+```
+
 Latest frontend E2E result:
 - Register succeeded.
 - Idle loaded.
 - Tick created one Agent message.
 - Join created a `companion_1` child with user and Agent messages.
+- Companion_1 child follow-up sent through `/api/companion/{conversationId}/messages` and returned user `#3` plus Agent `#4`.
 - Chat created/sent a `companion_2` message pair.
 - Chat send now shows the outgoing user message immediately, replaces it with the persisted user message after the API returns, then appends the Agent reply.
+- Work created a task, sent a Work message, and returned user `#1` plus Agent `#2`.
 - Me loaded current user settings.
 
 Latest frontend issue check:
-- Idle / `companion_1` link is backend-healthy. Frontend now keeps parent idle history visible, inserts a `Joined` event, then shows returned `companion_1` user and Agent messages.
+- Idle / `companion_1` link is backend-healthy. Frontend now keeps parent idle history visible, inserts a `Joined` event, shows returned `companion_1` user and Agent messages, then keeps the composer enabled for child follow-up turns.
 - `companion_2` history selection uses existing `GET /api/conversations?mode=companion_2` plus message history. No new backend endpoint is required for selection.
 - Local auto title is derived from the first user message. Persistent server-side renaming would require a future verified conversation update endpoint.
 - Browser E2E verified: two idle ticks, join continuity from 2 to 4 visible messages, two chat conversations, history switch back to the first conversation.
@@ -156,6 +173,8 @@ Latest frontend issue check:
 - Timeline has `overflow: auto` and auto-scrolls to the latest message. If content is shorter than the panel, there is no scroll range.
 - Latest diagnosis: `5175` was returning `/api/agents` 404 because it was still proxying to older `8101`. Restarting `5175` against `18122 -> 8122` makes `/api/agents` return 200 and idle join return 201.
 - Latest `companion_2` diagnosis: local browser E2E verified pending order `You #0.5`, final order `You #1` then `Vale #2`, timeline pinned to bottom, no browser console errors, and no failed requests.
+- Latest target backend smoke on `8125`: register, idle join, companion_1 follow-up, task create, and Work message all returned 2xx; companion follow-up ended at `You #3` and Agent `#4`; Work ended at `You #1` and Agent `#2`; both model calls used `gpt-5.1`.
+- Latest UI E2E on `5177 -> 18125 -> 8125`: Join entered `Companion`, composer stayed enabled, follow-up returned visible `You #3` then `Vale #4`, Work create/send returned visible `You #1` then `Vale #2`, with no browser console errors and no failed requests.
 
 ## verified APIs
 
@@ -762,7 +781,7 @@ Notes:
 - If this route returns `500 model_api_key_missing`, the backend process did not load platform model secrets. Model runtime now reads process env, `.env`, `../.env`, and `~/.env`.
 
 ### POST /api/companion/{conversationId}/messages
-Purpose: append a `companion_2` user message and generate one Agent reply.
+Purpose: append a `companion_1` or `companion_2` user message and generate one Agent reply.
 
 Chain:
 
@@ -831,8 +850,18 @@ Verified target-machine smoke values:
 - `context.promptHash`: non-empty SHA-256 string
 - Follow-up `GET /api/conversations/{conversationId}/messages?limit=10` returned two messages with sequences `1,2`.
 
+Verified `companion_1` continuation values on port `8125`:
+- HTTP status: `201 Created`
+- `conversation.mode`: `companion_1`
+- `conversation.parentConversationId`: original idle conversation id
+- `conversation.messageCount`: `4`
+- `userMessage.sequence`: `3`
+- `agentMessage.sequence`: `4`
+- `agentMessage.senderSlot`: `agent_2`
+- `context.modelName`: `gpt-5.1`
+
 Notes:
-- This is the product interaction endpoint for `companion_2`.
+- This is the product interaction endpoint for `companion_1` continuation and `companion_2`.
 - `POST /api/conversations/{conversationId}/messages` remains the raw historical append endpoint and should not be used by the frontend for model replies.
 
 ### POST /api/tasks
@@ -873,7 +902,7 @@ Verified response shape:
 }
 ```
 
-Verified target-machine smoke values on port `8124`:
+Verified target-machine smoke values on port `8125`:
 - `status`: `active`
 - linked `conversationId`: non-empty Mongo id
 - `GET /api/tasks` returned the created task.
@@ -881,9 +910,13 @@ Verified target-machine smoke values on port `8124`:
 ### POST /api/tasks/{taskId}/messages
 Purpose: send one minimal Work Mode message using the task state in `ContextMode.WORK`.
 
-Status:
-- Implemented and covered by backend integration-style tests.
-- Full target-machine model smoke depends on platform model credentials, because this endpoint calls `model_runtime`.
+Verified target-machine smoke values on port `8125`:
+- HTTP status: `201 Created`
+- `conversation.mode`: `work`
+- `userMessage.sequence`: `1`
+- `agentMessage.sequence`: `2`
+- `agentMessage.senderSlot`: `agent_2`
+- `context.modelName`: `gpt-5.1`
 
 Notes:
 - V1.5 does not run Codex CLI or autonomous tools.

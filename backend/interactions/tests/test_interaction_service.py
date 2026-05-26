@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -95,6 +95,30 @@ class InteractionServiceTest(TestCase):
         prompt = _prompt_text(self.model_runtime.requests[-1])
         self.assertIn("用户刚刚加入", prompt)
         self.assertIn("我可以加入吗？", prompt)
+
+    def test_companion_1_child_accepts_followup_message(self) -> None:
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        joined = self.service.run_companion_1_join(
+            "user_1",
+            idle["id"],
+            InteractionUserMessageRequest(content="我加入聊这个话题。"),
+        )
+
+        response = self.service.run_companion_message(
+            "user_1",
+            joined["conversation"]["id"],
+            InteractionUserMessageRequest(content="继续解释一下。", targetAgentId="agent_2"),
+        )
+
+        self.assertEqual(response["conversation"]["mode"], "companion_1")
+        self.assertEqual(response["conversation"]["parentConversationId"], idle["id"])
+        self.assertEqual(response["conversation"]["messageCount"], 4)
+        self.assertEqual(response["userMessage"]["sequence"], 3)
+        self.assertEqual(response["agentMessage"]["sequence"], 4)
+        self.assertEqual(response["agentMessage"]["senderSlot"], "agent_2")
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("Current mode: companion_1", prompt)
+        self.assertIn("继续解释一下。", prompt)
 
     def test_companion_2_message_saves_user_and_agent_messages(self) -> None:
         companion = self.conversation_service.create_conversation(

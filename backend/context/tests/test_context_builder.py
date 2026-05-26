@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -109,6 +109,51 @@ class ContextBuilderTest(TestCase):
         self.assertNotIn("must not appear", prompt)
         self.assertIn("transition_context=enabled", package.debug_notes)
         self.assertIn("summary_1", package.included_summary_ids)
+
+    def test_companion_1_context_includes_child_conversation_recent_messages(self) -> None:
+        package = self.builder.build(
+            ContextBuildInput(
+                mode=ContextMode.COMPANION_1,
+                conversation_id="conv_join",
+                target_agent_id="agent_a",
+                agents=[self.agent_a, self.agent_b],
+                user_message="继续说。",
+                recent_messages=[
+                    ConversationMessage(
+                        id="child_1",
+                        sender_type=SenderType.USER,
+                        sender_id="user_1",
+                        sender_name="User",
+                        content="我刚才已经加入了。",
+                    ),
+                    ConversationMessage(
+                        id="child_2",
+                        sender_type=SenderType.AGENT,
+                        sender_id="agent_a",
+                        sender_name="Aster",
+                        content="我们正在把 idle 话题转向你。",
+                    ),
+                ],
+                idle_recent_messages=[
+                    ConversationMessage(
+                        id="idle_1",
+                        sender_type=SenderType.AGENT,
+                        sender_id="agent_b",
+                        sender_name="Beryl",
+                        content="目标可以很轻。",
+                    ),
+                ],
+            )
+        )
+
+        prompt = _prompt_text(package)
+        self.assertIn("Current companion conversation recent messages", prompt)
+        self.assertIn("我刚才已经加入了。", prompt)
+        self.assertIn("我们正在把 idle 话题转向你。", prompt)
+        self.assertIn("目标可以很轻。", prompt)
+        self.assertIn("child_1", package.included_message_ids)
+        self.assertIn("child_2", package.included_message_ids)
+        self.assertIn("idle_1", package.included_message_ids)
 
     def test_companion_2_context_does_not_auto_include_idle_history(self) -> None:
         package = self.builder.build(

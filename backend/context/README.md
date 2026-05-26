@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 
 ## brief intro
@@ -46,7 +46,7 @@ conversations decides: how does the product flow proceed?
 
 ## recipe plan
 - `idle`: strong Agent persona, recent idle messages, idle seed, optional summary.
-- `companion_1`: Transition Context, user message, recent idle messages, idle summary, Agent persona.
+- `companion_1`: Transition Context on join, user message, recent child companion messages, recent idle messages, idle summary, Agent persona.
 - `companion_2`: user message, current chat recent messages, Agent persona, lightweight profile.
 - `work`: user objective, task state, tool traces, role instructions.
 

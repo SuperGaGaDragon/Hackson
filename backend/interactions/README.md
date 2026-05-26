@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 
 ## brief intro
@@ -17,6 +17,7 @@ Last Modified by: Codex
 ## responsibilities
 - Run idle tick generation.
 - Run companion_1 user-joins-idle generation.
+- Run companion_1 continuation turns after the join-created child conversation exists.
 - Run companion_2 user-message generation.
 - Save user messages through `conversations/`.
 - Read recent messages through `conversations/`.
@@ -42,7 +43,7 @@ Last Modified by: Codex
 ## route plan
 |-POST /api/idle/{conversation_id}/tick generate one idle Agent reply
 |-POST /api/idle/{conversation_id}/join create companion_1 turn from idle
-|-POST /api/companion/{conversation_id}/messages append a companion_2 user message and generate Agent reply
+|-POST /api/companion/{conversation_id}/messages append a companion_1 or companion_2 user message and generate Agent reply
 
 ## 代办
 - Add speaker selection policy instead of fixed target Agent defaults.

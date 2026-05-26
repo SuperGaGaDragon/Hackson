@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Lst Modified by: Codex
 
 ## brief intro
@@ -9,9 +9,9 @@ Lst Modified by: Codex
   - React + Vite frontend for Hackson verified backend flows.
 - 架构思路
   - Build only the surfaces backed by verified APIs in root `api.md`.
-  - Current product surfaces are Auth, Idle, Chat, and Me.
+  - Current product surfaces are Auth, Idle, Chat, Work, and Me.
   - Local dev calls `/api` through the Vite proxy to avoid browser CORS.
-  - Current verified local proxy target is `127.0.0.1:18122`, which tunnels to target backend `127.0.0.1:8122`.
+  - Current verified local proxy target is `127.0.0.1:18125`, which tunnels to target backend `127.0.0.1:8125`.
   - `src/api/` owns HTTP calls.
   - `src/domain/` owns fixed MVP Agent slot and message mapping.
   - `src/features/` owns product flows.
@@ -29,5 +29,5 @@ Lst Modified by: Codex
 
 ## 代办
 - Add Agent editing only after verified Agent APIs exist.
-- Add Work only after verified Work APIs exist.
-- Replace the temporary `18122 -> 8122` dev proxy after a stable backend process is finalized.
+- Add tool trace views only after verified Work trace read APIs exist.
+- Replace the temporary `18125 -> 8125` dev proxy after a stable backend process is finalized.
