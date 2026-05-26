@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Lst Modified by: Codex
 
 ## brief intro
@@ -20,6 +20,7 @@ Lst Modified by: Codex
   - Keep async derived work such as summary, memory, diary, and relationship updates under `workers/` when those features are introduced.
   - Use MongoDB as the persistence layer on the target machine.
   - V1 demo model endpoint is platform-managed and is not part of user data.
+  - In production, FastAPI can also serve the built React frontend when `HACKSON_STATIC_FRONTEND_DIR` points at `frontend/dist`.
 
 ## folder structure
 |-README.md backend folder guide
@@ -37,10 +38,12 @@ Lst Modified by: Codex
 |-memory/ long-term memory cards and memory governance
 |-diary/ user-visible Agent diary entries
 |-tasks/ future Work Mode task and tool-trace module
+|-tests/ cross-module backend app tests
 
 ## implementation status
 - `core/`, `users/`, `agents/`, `conversations/`, `context/`, `model_runtime/`, and `interactions/` contain working V1 code.
 - `workers/`, `memory/`, `summaries/`, `diary/`, and `tasks/` contain product-level module documentation and are implemented incrementally by tracer-bullet vertical slices.
+- `main.py` mounts production frontend assets only when explicitly configured by deployment env.
 
 ## module boundaries
 - `interactions/` owns the product flow: save input message when needed, ask `context/` for a context package, ask `model_runtime/` for a model response, save the Agent reply, and return it to the frontend.

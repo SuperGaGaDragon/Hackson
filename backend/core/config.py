@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="dev-only-change-me-with-at-least-32-bytes")
     jwt_algorithm: str = Field(default="HS256")
     access_token_minutes: int = Field(default=60 * 24)
+    static_frontend_dir: str | None = Field(default=None)
 
 
 @lru_cache

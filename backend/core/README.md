@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Lst Modified by: Codex
 
 ## brief intro
@@ -11,6 +11,7 @@ Lst Modified by: Codex
   - `config.py` reads platform-side backend configuration.
   - `database.py` owns MongoDB connection lifecycle.
   - `security.py` owns password hashing and JWT primitives.
+  - Production static frontend hosting is controlled by `HACKSON_STATIC_FRONTEND_DIR`.
   - User-selected model endpoint configuration is intentionally absent from user-facing settings in V1.
 
 ## folder structure
