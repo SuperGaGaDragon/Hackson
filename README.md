@@ -2,7 +2,7 @@
 Created at: 2026-05-25
 Created by: Codex
 Last Modified at: 2026-05-26
-Lst Modified by: Codex
+Last Modified by: Codex
 
 ## brief intro
 - goal for this folder.
@@ -20,13 +20,18 @@ Lst Modified by: Codex
 | Target machine | `catadragon@100.70.248.39` |
 | Secret connection note | See ignored local file `docs/数据库/machine.md`; never push it |
 | Backend test path | `~/hackson_backend_test/backend` |
-| Backend venv | `~/hackson_backend_test/backend/.venv` |
+| Backend test venv | `~/hackson_backend_test/.venv` |
 | Backend env file | `~/hackson_backend_test/backend/.env` |
+| Current product smoke backend path | `~/hackson_backend_current_8125/backend` |
+| Current product smoke venv | `~/hackson_backend_review_smoke/backend/.venv` |
 | Raw API verification port | `127.0.0.1:8100`, verified, not kept running |
 | Interaction/model verification port | `127.0.0.1:8101`, verified, not kept running |
 | Latest target smoke backend | `127.0.0.1:8125`, verified and running |
 | Latest local backend tunnel | `127.0.0.1:18125 -> 127.0.0.1:8125`, verified but not kept running |
 | Latest verified frontend dev port | `127.0.0.1:5177`, verified but not kept running |
+| Product database smoke backend | `127.0.0.1:8126`, verified and running |
+| Product database local tunnel | `127.0.0.1:18126 -> 127.0.0.1:8126`, verified and running |
+| Product database frontend dev port | `127.0.0.1:5178`, verified and running |
 | Default frontend local dev port | `127.0.0.1:5173` |
 | Production MongoDB database | `hackson` |
 | Latest smoke MongoDB database | `hackson_current_8125` |

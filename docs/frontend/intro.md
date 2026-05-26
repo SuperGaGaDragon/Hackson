@@ -186,13 +186,14 @@ Default:
 Local dev proxy:
 
 ```text
-VITE_API_PROXY_TARGET=http://127.0.0.1:18125
+VITE_API_PROXY_TARGET=http://127.0.0.1:18126
 ```
 
 Reason:
 
-- `api.md` says target port `8125` is the latest verified backend for companion_1 continuation and Work Mode UI smoke.
-- Local port `18125` is the SSH tunnel to target `127.0.0.1:8125`.
+- `api.md` says target port `8126` is the latest product-level backend smoke for the production MongoDB database `hackson`.
+- Local port `18126` is the SSH tunnel to target `127.0.0.1:8126`.
+- User registration must land in `hackson.users`, not a temporary review database.
 - The same FastAPI app mounts the API paths.
 - Browser requests from Vite to a different backend origin can hit CORS.
 - Vite proxy keeps browser requests same-origin while forwarding to the active backend.

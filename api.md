@@ -13,6 +13,8 @@ Last Modified by: Codex
 ## verified environment
 - Target machine: documented locally in `docs/数据库/machine.md`; that file is ignored and must not be pushed.
 - Backend test directory on target machine: `~/hackson_backend_test/backend`
+- Latest current backend directory on target machine: `~/hackson_backend_current_8125/backend`
+- Latest smoke venv used by current backend ports: `~/hackson_backend_review_smoke/backend/.venv`
 - Verified raw user/conversation backend command:
 
 ```bash
@@ -32,10 +34,12 @@ cd ~/hackson_backend_test/backend
 - Verified raw user/conversation port: `127.0.0.1:8100`
 - Verified interaction/model port: `127.0.0.1:8101`
 - Verified review smoke port: `127.0.0.1:8125`
-- Port status after verification: target smoke ports are running; local tunnels/dev servers are temporary.
+- Verified product database smoke port: `127.0.0.1:8126`
+- Port status after verification: target smoke ports are running; local tunnels/dev servers are temporary unless listed as running.
 - Database used in raw user/conversation verification: MongoDB database `hackson_test`
 - Database used in interaction/model verification: MongoDB database `hackson_target_smoke`
 - Database used in review smoke verification: MongoDB database `hackson_current_8125`
+- Database used in product database smoke verification: MongoDB database `hackson`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
   - collections: `users`, `conversations`, `messages`, `conversation_counters`
@@ -43,6 +47,10 @@ cd ~/hackson_backend_test/backend
   - `conversations` indexes: `_id_`, `user_id_1_mode_1_status_1_updated_at_-1`, `user_id_1_mode_1_last_message_at_-1`, `parent_conversation_id_1`
   - `messages` indexes: `_id_`, `conversation_id_1_sequence_1` unique, `conversation_id_1_created_at_-1`, `user_id_1_created_at_-1`, `user_id_1_sender_slot_1_created_at_-1`
   - `conversation_counters` indexes: `_id_`, `conversation_id_1` unique
+- Production user write verification:
+  - Vite proxy path `5178 -> 18126 -> 8126` registered `viteprod_1779763130`.
+  - MongoDB query found `viteprod_1779763130@example.com` in `hackson.users`.
+  - The same email was absent from `hackson_current_8125.users`.
 - Last verified at: 2026-05-26
 
 ## port map
@@ -55,21 +63,24 @@ cd ~/hackson_backend_test/backend
 | 8123 | FastAPI backend temporary test server | `127.0.0.1` | Older review smoke, superseded by `8124` | Target-machine review smoke for task API and new backend modules without touching existing services |
 | 8124 | FastAPI backend temporary test server | `127.0.0.1` | Older review smoke, superseded by `8125` | Target-machine review smoke for task API and new backend modules without touching existing services |
 | 8125 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest backend review smoke | Latest target-machine smoke for companion_1 continuation and Work Mode without touching existing services |
+| 8126 | FastAPI backend temporary product database smoke server | `127.0.0.1` | Verified and running | Product database auth smoke using MongoDB database `hackson` without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 | 18101 | SSH local tunnel to target backend | `127.0.0.1` | Running locally during latest frontend check | Local browser access to target-machine `127.0.0.1:8101` |
 | 18122 | SSH local tunnel to target backend | `127.0.0.1` | Verified, running during latest diagnosis | Local browser access to latest target backend `127.0.0.1:8122` |
 | 18124 | SSH local tunnel to target backend | `127.0.0.1` | Historical Work frontend integration | Local browser access to target backend `127.0.0.1:8124` |
 | 18125 | SSH local tunnel to target backend | `127.0.0.1` | Verified during latest frontend integration, not kept running locally | Local browser access to latest target backend `127.0.0.1:8125` |
+| 18126 | SSH local tunnel to target backend | `127.0.0.1` | Verified and running | Local browser access to product database backend `127.0.0.1:8126` |
 | 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified after restart against `18122`; running as PID recorded in `/tmp/hackson_frontend_5175.pid` | Local frontend connected to latest target backend through Vite proxy |
 | 5177 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified against `18125 -> 8125`, not kept running locally | Local frontend E2E for companion_1 continuation and Work Mode |
+| 5178 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running | Local frontend product database auth smoke through default proxy `18126 -> 8126` |
 
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/health` | No | `8100`, `8101` | `backend/main.py` | Backend health check |
-| POST | `/api/users/register` | No | `8100`, `8101` | `backend/users/` | Register user and return JWT |
+| GET | `/health` | No | `8100`, `8101`, `8126` | `backend/main.py` | Backend health check |
+| POST | `/api/users/register` | No | `8100`, `8101`, `8126` | `backend/users/` | Register user and return JWT |
 | POST | `/api/users/login` | No | `8100` | `backend/users/` | Login by email or username |
-| GET | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Read current user |
+| GET | `/api/users/me` | Bearer JWT | `8100`, `8126` | `backend/users/` | Read current user |
 | PATCH | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Update current user settings |
 | POST | `/api/users/logout` | No server state | `8100` | `backend/users/` | Client-side JWT logout placeholder |
 | GET | `/api/agents` | No | `8120`, `8122` | `backend/agents/` | List fixed V1 Agent display profiles |
@@ -128,6 +139,7 @@ Verified checks:
 - latest diagnosis uses SSH tunnel `18122` to target backend `8122`, then Vite port `5175`
 - Work frontend integration used SSH tunnel `18124` to target backend `8124`
 - Latest frontend integration uses SSH tunnel `18125` to target backend `8125`, then Vite port `5177`
+- Product database auth smoke uses SSH tunnel `18126` to target backend `8126`, then Vite port `5178`
 - latest `5175` API smoke: `/api/agents` returned `200 OK`; `/api/idle/{conversationId}/join` returned `201 Created`
 
 Notes:
@@ -150,6 +162,13 @@ For current frontend integration against the latest review backend:
 ```bash
 ssh -N -L 127.0.0.1:18125:127.0.0.1:8125 catadragon@100.70.248.39
 VITE_API_PROXY_TARGET=http://127.0.0.1:18125 npm run dev -- --port 5177
+```
+
+For product database auth verification:
+
+```bash
+ssh -fN -L 127.0.0.1:18126:127.0.0.1:8126 catadragon@100.70.248.39
+npm run dev -- --host 127.0.0.1 --port 5178
 ```
 
 Latest frontend E2E result:
@@ -175,6 +194,7 @@ Latest frontend issue check:
 - Latest `companion_2` diagnosis: local browser E2E verified pending order `You #0.5`, final order `You #1` then `Vale #2`, timeline pinned to bottom, no browser console errors, and no failed requests.
 - Latest target backend smoke on `8125`: register, idle join, companion_1 follow-up, task create, and Work message all returned 2xx; companion follow-up ended at `You #3` and Agent `#4`; Work ended at `You #1` and Agent `#2`; both model calls used `gpt-5.1`.
 - Latest UI E2E on `5177 -> 18125 -> 8125`: Join entered `Companion`, composer stayed enabled, follow-up returned visible `You #3` then `Vale #4`, Work create/send returned visible `You #1` then `Vale #2`, with no browser console errors and no failed requests.
+- Product database auth smoke on `5178 -> 18126 -> 8126`: `POST /api/users/register` and `GET /api/users/me` returned 2xx for `viteprod_1779763130`; MongoDB confirmed the user exists in `hackson.users` and not in `hackson_current_8125.users`.
 
 ## verified APIs
 

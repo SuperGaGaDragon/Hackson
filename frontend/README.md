@@ -2,7 +2,7 @@
 Created at: 2026-05-25
 Created by: Codex
 Last Modified at: 2026-05-26
-Lst Modified by: Codex
+Last Modified by: Codex
 
 ## brief intro
 - goal for this folder.
@@ -11,7 +11,8 @@ Lst Modified by: Codex
   - Build only the surfaces backed by verified APIs in root `api.md`.
   - Current product surfaces are Auth, Idle, Chat, Work, and Me.
   - Local dev calls `/api` through the Vite proxy to avoid browser CORS.
-  - Current verified local proxy target is `127.0.0.1:18125`, which tunnels to target backend `127.0.0.1:8125`.
+  - Current product-level local proxy target is `127.0.0.1:18126`, which tunnels to target backend `127.0.0.1:8126` using MongoDB database `hackson`.
+  - Current verified local product dev port is `127.0.0.1:5178`.
   - `src/api/` owns HTTP calls.
   - `src/domain/` owns fixed MVP Agent slot and message mapping.
   - `src/features/` owns product flows.
@@ -30,4 +31,4 @@ Lst Modified by: Codex
 ## 代办
 - Add Agent editing only after verified Agent APIs exist.
 - Add tool trace views only after verified Work trace read APIs exist.
-- Replace the temporary `18125 -> 8125` dev proxy after a stable backend process is finalized.
+- Keep the default dev proxy pointed at the production-database smoke backend, not review smoke databases.
