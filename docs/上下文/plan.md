@@ -99,7 +99,7 @@ Summary 的作用是降低 token 成本，不是替代原始 message。Summary �
 
 长期记忆。V1 不急着做复杂记忆系统。
 
-早期只需要支持少量用户偏好和 Agent 关系摘要。后续再做带证据链的 memory card。
+早期只需要支持少量用户偏好和 Agent 关系摘要。Memory Card 必须带证据链；没有 source message id 的内容只能停留在临时上下文或日记草稿，不能作为长期事实写入。
 
 ## 4. 总体工程原则
 
@@ -317,7 +317,78 @@ Async Workers 可以从 v1.2 开始逐步加入。
 - `prompt_hash`
 - `created_at`
 
-### 6.7 model_runtime_configs
+### 6.7 memory_cards
+
+用途：保存少量长期可复用的、带证据的记忆。
+
+必要字段：
+
+- `id`
+- `user_id`
+- `scope`
+- `owner_type`
+- `owner_id`
+- `memory_type`
+- `summary`
+- `source_message_ids`
+- `importance_score`
+- `confidence`
+- `status`
+- `metadata`
+- `created_at`
+- `updated_at`
+
+隔离规则：
+
+- `scope=companion` 的记忆可以进入 companion_2。
+- `scope=idle` 的关系摘要只进入 idle 或用户插入 idle 的背景。
+- `scope=work` 的任务记忆默认不能进入 companion 或 idle。
+
+### 6.8 derived_jobs
+
+用途：保存 summary、memory、diary、relationship 等异步派生任务。
+
+必要字段：
+
+- `id`
+- `job_type`
+- `user_id`
+- `conversation_id`
+- `source_message_ids`
+- `status`
+- `attempt_count`
+- `last_error`
+- `metadata`
+- `created_at`
+- `updated_at`
+
+关键规则：
+
+- interactions 主链路只负责 enqueue，不负责同步执行重型派生逻辑。
+- worker 失败不能影响用户聊天。
+- derived output 必须能从原始 message 重建。
+
+### 6.9 tasks
+
+用途：保存 Work Mode 的任务状态。
+
+必要字段：
+
+- `id`
+- `user_id`
+- `conversation_id`
+- `objective`
+- `status`
+- `current_phase`
+- `plan_summary`
+- `progress_summary`
+- `open_questions`
+- `blockers`
+- `metadata`
+- `created_at`
+- `updated_at`
+
+### 6.10 model_runtime_configs
 
 用途：后端平台统一维护模型调用配置。
 
@@ -588,6 +659,7 @@ V1 不完整实现 Work Mode，但数据和设计要预留。
 - companion session summary。
 - Context Builder 使用 summary + recent messages。
 - 简单 token budget 裁剪。
+- Worker job 失败不影响同步聊天主链路。
 
 ### 前端需要支持
 
@@ -606,6 +678,7 @@ V1 不完整实现 Work Mode，但数据和设计要预留。
 - 最近消息仍然保留在 prompt 中。
 - 旧消息通过 summary 进入 prompt。
 - Summary Worker 失败时不影响聊天主链路。
+- Summary 必须引用 source message 范围，能从原始 message 重建。
 
 ## v1.3：轻量 Memory Card
 
@@ -620,6 +693,7 @@ V1 不完整实现 Work Mode，但数据和设计要预留。
 - Memory Governor v0。
 - 每条 memory 至少包含 source message id。
 - Context Builder 可以按 mode 读取少量 memory。
+- Memory Card 按 `user_id + scope + owner_type + owner_id` 隔离。
 
 ### Memory Card 最小字段
 
@@ -652,6 +726,7 @@ V1 不完整实现 Work Mode，但数据和设计要预留。
 - 用户明确说“我喜欢中文交流”后，可以生成一条带证据的 memory。
 - 下次 companion_2 对话可以使用这条 memory。
 - 没有 source message id 的 memory 不能写入。
+- Work scope memory 不会进入 companion_2 prompt。
 
 ## v1.4：日记和关系摘要
 
@@ -665,6 +740,7 @@ V1 不完整实现 Work Mode，但数据和设计要预留。
 - Relationship Summary。
 - Agent-Agent 关系摘要注入 idle recipe。
 - 用户可在设置页或 Agent 页面查看 diary。
+- Diary 和 relationship 都必须带 source messages 或 evidence memory。
 
 ### 不做
 
@@ -692,6 +768,7 @@ V1 不完整实现 Work Mode，但数据和设计要预留。
 - `work` recipe 草稿。
 - task memory namespace。
 - Work Mode 内容不进入 companion memory。
+- 最小 Work Mode message API：创建 task 后，用户能在 work conversation 里收到基于 task_state 的回复。
 
 ### 不做
 
@@ -705,6 +782,7 @@ V1 不完整实现 Work Mode，但数据和设计要预留。
 - 可以保存工具调用结果。
 - Context Builder 能构建 work prompt。
 - Work Mode 的消息不会出现在 companion_1 或 companion_2 的默认上下文里。
+- Work Mode 不需要在 v1.5 自动调用 Codex CLI。
 
 ## v2.0：桌宠和 World State
 
@@ -987,7 +1065,8 @@ Hackson V1 的上下文系统不要一开始追求复杂记忆系统。
   -> 调用模型
   -> 保存 Agent 回复
   -> 前端实时展示
-  -> 异步生成 summary
+  -> enqueue derived_jobs
+  -> 异步生成 summary / memory / diary / relationship
 ```
 
 只要这条链路稳定，后续的 memory、diary、relationship、work mode 都可以逐步加上去。

@@ -83,6 +83,26 @@ class ConversationSummary(BaseModel):
         return value
 
 
+class MemoryCardSnapshot(BaseModel):
+    id: str
+    scope: Literal["idle", "companion", "work"]
+    owner_type: str
+    owner_id: str
+    memory_type: str
+    summary: str
+    source_message_ids: list[str] = Field(default_factory=list)
+    importance_score: float = 0.5
+    confidence: float = 0.5
+
+    @field_validator("summary")
+    @classmethod
+    def require_summary(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("memory_summary_required")
+        return value
+
+
 class UserProfileSnapshot(BaseModel):
     id: str
     username: str | None = None
@@ -102,6 +122,7 @@ class ContextBuildInput(BaseModel):
     idle_seed: str | None = None
     idle_recent_messages: list[ConversationMessage] = Field(default_factory=list)
     idle_summary: ConversationSummary | None = None
+    memory_cards: list[MemoryCardSnapshot] = Field(default_factory=list)
     task_state: dict[str, Any] | None = None
     token_budget: int | None = None
 
@@ -113,6 +134,7 @@ class ContextPackage(BaseModel):
     messages: list[ModelMessage]
     included_message_ids: list[str] = Field(default_factory=list)
     included_summary_ids: list[str] = Field(default_factory=list)
+    included_memory_ids: list[str] = Field(default_factory=list)
     included_agent_ids: list[str] = Field(default_factory=list)
     token_estimate: int
     prompt_hash: str

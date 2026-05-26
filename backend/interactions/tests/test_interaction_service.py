@@ -15,6 +15,8 @@ from context.builder import ContextBuilder
 from interactions.schemas import IdleTickRequest, InteractionUserMessageRequest
 from interactions.service import InteractionService
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse
+from workers.tests.test_derived_jobs import FakeDerivedJobRepository
+from workers.derived_jobs import DerivedJobService
 
 
 class FakeModelRuntime:
@@ -41,6 +43,7 @@ class InteractionServiceTest(TestCase):
             conversation_service=self.conversation_service,
             context_builder=ContextBuilder(),
             model_runtime=self.model_runtime,
+            derived_jobs=DerivedJobService(FakeDerivedJobRepository()),
         )
 
     def test_idle_tick_saves_agent_reply_with_context_metadata(self) -> None:
@@ -115,6 +118,55 @@ class InteractionServiceTest(TestCase):
         self.assertIn("一句话说 V1 目标", prompt)
         self.assertIn("name: Vale", prompt)
         self.assertNotIn("name: Beryl", prompt)
+
+    def test_companion_2_enqueues_summary_and_memory_jobs_after_reply(self) -> None:
+        derived_repository = FakeDerivedJobRepository()
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=self.model_runtime,
+            derived_jobs=DerivedJobService(derived_repository),
+        )
+        companion = self.conversation_service.create_conversation(
+            "user_1",
+            ConversationCreateRequest(mode="companion_2"),
+        )
+
+        service.run_companion_2_message(
+            "user_1",
+            companion["id"],
+            InteractionUserMessageRequest(content="我喜欢中文简短回复。"),
+        )
+
+        self.assertEqual([job["job_type"] for job in derived_repository.rows], ["summary", "memory_candidate"])
+        self.assertEqual(derived_repository.rows[0]["source_message_ids"], ["message_1", "message_2"])
+
+    def test_work_message_uses_task_state_and_enqueues_summary(self) -> None:
+        derived_repository = FakeDerivedJobRepository()
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=self.model_runtime,
+            derived_jobs=DerivedJobService(derived_repository),
+        )
+        work = self.conversation_service.create_conversation(
+            "user_1",
+            ConversationCreateRequest(mode="work"),
+        )
+
+        response = service.run_work_message(
+            "user_1",
+            work["id"],
+            InteractionUserMessageRequest(content="下一步做什么？", targetAgentId="agent_2"),
+            task_state={"objective": "Prepare a launch demo.", "status": "active"},
+        )
+
+        self.assertEqual(response["conversation"]["mode"], "work")
+        self.assertEqual(response["agentMessage"]["senderSlot"], "agent_2")
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("Current mode: work", prompt)
+        self.assertIn("Prepare a launch demo.", prompt)
+        self.assertEqual([job["job_type"] for job in derived_repository.rows], ["summary"])
 
 
 def _prompt_text(request: ModelGenerateRequest) -> str:

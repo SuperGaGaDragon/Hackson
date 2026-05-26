@@ -190,8 +190,8 @@ V1 重要约束：
 
 职责：
 
-- 创建和更新用户拥有的 Agent。
-- 保存 Agent 名字、头像、core persona、speaking style、episode state。
+- V1 提供后端固定 `agent_1` / `agent_2` catalog。
+- 保存固定 Agent 名字、显示 profile、core persona、speaking style、episode state。
 - 给 context 模块提供 Agent persona。
 
 不负责：
@@ -201,17 +201,15 @@ V1 重要约束：
 - 保存聊天消息。
 - 自动人格成长。
 
-V1 最小字段：
+V1 固定 catalog 最小字段：
 
 - `id`
-- `owner_user_id`
+- `slot`
 - `name`
-- `avatar_url`
+- `display_profile`
 - `core_persona`
 - `speaking_style`
 - `episode_state`
-- `created_at`
-- `updated_at`
 
 ### 5.4 conversations
 
@@ -237,6 +235,8 @@ V1 最小字段：
 - 执行 idle tick：读取 idle 历史、构建 context、调用模型、保存 Agent 回复。
 - 执行用户插入 idle：创建 companion_1 子会话、保存用户消息、构建 Transition Context、保存 Agent 回复。
 - 执行 companion_2 用户消息：保存用户消息、构建 context、调用模型、保存 Agent 回复。
+- 执行最小 Work Mode 消息：读取 task state、构建 work context、调用模型、保存 Agent 回复。
+- 在消息保存后 enqueue derived jobs，不能同步执行 summary/memory/diary/relationship 重活。
 - 给前端返回 conversation、userMessage、agentMessage、context 调试信息。
 
 不负责：
@@ -262,6 +262,7 @@ V1 最小字段：
   -> context 构建 context package
   -> model_runtime 调用模型
   -> conversations 保存 Agent 回复
+  -> workers enqueue derived jobs
   -> interactions 返回前端
 ```
 
@@ -273,6 +274,7 @@ V1 最小字段：
 - 构建 idle / companion_1 / companion_2 / work 的 context。
 - 生成 Transition Context。
 - 做 summary + recent messages 的上下文压缩。
+- 注入 mode-appropriate memory snapshots。
 - 生成 context package 调试记录。
 
 不负责：
@@ -337,6 +339,7 @@ V1 重要约束：
 - 异步生成 memory candidate。
 - 异步生成 diary。
 - 异步更新 relationship summary。
+- 保存 derived job 状态和错误，保证 worker 失败不影响聊天主链路。
 
 不负责：
 
@@ -344,7 +347,8 @@ V1 重要约束：
 - 直接处理 HTTP 请求。
 
 V1.0 可以没有 workers。  
-V1.2 开始加入 `summary_worker.py`。
+V1.2 开始加入 `summary_worker.py` 和 `derived_jobs.py`。  
+V1.3/V1.4 逐步加入 memory、diary、relationship worker。
 
 ### 5.9 memory
 
@@ -353,6 +357,7 @@ V1.2 开始加入 `summary_worker.py`。
 - 保存长期 memory card。
 - 审核 memory candidate。
 - 给 context 提供少量可用记忆。
+- 通过 `user_id + scope + owner_type + owner_id` 隔离 companion、idle、work memory。
 
 不负责：
 
@@ -360,7 +365,7 @@ V1.2 开始加入 `summary_worker.py`。
 - 自动覆盖 core persona。
 - 完整 GraphRAG。
 
-V1.3 再实现。
+V1.3 只做轻量 Memory Card；没有 source message id 的内容不能写入长期 memory。
 
 ### 5.10 tasks
 
@@ -370,7 +375,7 @@ V1.3 再实现。
 - 工具调用记录。
 - Planner / Worker / Reviewer 后续协作状态。
 
-V1.5 只预留上下文边界。  
+V1.5 实现最小 task state 和 work message API，不做完整自动工具执行。  
 V3.0 再做完整 Work Mode。
 
 ## 6. 调用关系

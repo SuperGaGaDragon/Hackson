@@ -34,6 +34,7 @@ def build_context_package(
     messages: list[ModelMessage],
     included_message_ids: list[str],
     included_summary_ids: list[str],
+    included_memory_ids: list[str] | None = None,
     included_agent_ids: list[str],
     debug_notes: list[str] | None = None,
 ) -> ContextPackage:
@@ -44,9 +45,9 @@ def build_context_package(
         messages=messages,
         included_message_ids=included_message_ids,
         included_summary_ids=included_summary_ids,
+        included_memory_ids=included_memory_ids or [],
         included_agent_ids=included_agent_ids,
         token_estimate=estimate_messages_tokens(messages),
         prompt_hash=prompt_hash(messages),
         debug_notes=debug_notes or [],
     )
-

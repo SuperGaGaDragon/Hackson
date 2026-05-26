@@ -10,6 +10,7 @@ Last Modified by: Codex
 - 架构思路
   - The main conversation path must stay fast.
   - Workers generate summaries, memory candidates, diary entries, and relationship summaries after messages are saved.
+  - The first production slice uses a small derived job record so interactions can enqueue work without knowing how each derived module works.
   - V1.0 can run without workers. Add them only when the main chain is stable.
 
 ## responsibilities
@@ -33,6 +34,7 @@ Last Modified by: Codex
 |-memory_worker.py async memory candidate generation
 |-diary_worker.py async diary generation
 |-relationship_worker.py async relationship summary updates
+|-derived_jobs.py derived job service and repository
 |-tests/ worker tests
 
 ## version plan
@@ -43,3 +45,4 @@ Last Modified by: Codex
 ## failure rule
 - Worker failure must not break user chat.
 - Derived outputs must be rebuildable from raw messages.
+- A failed derived job records error metadata and can be retried without duplicating source messages.

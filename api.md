@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 
 ## brief intro
@@ -31,9 +31,11 @@ cd ~/hackson_backend_test/backend
 
 - Verified raw user/conversation port: `127.0.0.1:8100`
 - Verified interaction/model port: `127.0.0.1:8101`
+- Verified review smoke port: `127.0.0.1:8124`
 - Port status after verification: stopped/free
 - Database used in raw user/conversation verification: MongoDB database `hackson_test`
 - Database used in interaction/model verification: MongoDB database `hackson_target_smoke`
+- Database used in review smoke verification: MongoDB database `hackson_review_smoke_latest`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
   - collections: `users`, `conversations`, `messages`, `conversation_counters`
@@ -50,6 +52,8 @@ cd ~/hackson_backend_test/backend
 | 8101 | FastAPI backend temporary test server | `127.0.0.1` | Running on target machine during latest frontend check | Target-machine interaction/context/model API verification without touching existing services |
 | 8120 | FastAPI backend temporary test server | `127.0.0.1` | Verified, stopped after check | Target-machine Agent catalog API verification without touching existing services |
 | 8122 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest diagnosis | Target-machine latest backend verification for Agent catalog and idle join without touching existing services |
+| 8123 | FastAPI backend temporary test server | `127.0.0.1` | Older review smoke, superseded by `8124` | Target-machine review smoke for task API and new backend modules without touching existing services |
+| 8124 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest backend review smoke | Latest target-machine review smoke for task API and new backend modules without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 | 18101 | SSH local tunnel to target backend | `127.0.0.1` | Running locally during latest frontend check | Local browser access to target-machine `127.0.0.1:8101` |
 | 18122 | SSH local tunnel to target backend | `127.0.0.1` | Verified, running during latest diagnosis | Local browser access to latest target backend `127.0.0.1:8122` |
@@ -74,11 +78,16 @@ cd ~/hackson_backend_test/backend
 | POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101` | `backend/interactions/` | Generate one idle Agent reply |
 | POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101`, `8122` | `backend/interactions/` | Create companion_1 from idle and reply |
 | POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101` | `backend/interactions/` | Save companion_2 user message and reply |
+| POST | `/api/tasks` | Bearer JWT | `8124` | `backend/tasks/` | Create Work Mode task and its `work` conversation |
+| GET | `/api/tasks` | Bearer JWT | `8124` | `backend/tasks/` | List current user's Work Mode tasks |
+| GET | `/api/tasks/{taskId}` | Bearer JWT | Local tests | `backend/tasks/` | Read one current-user-owned Work Mode task |
+| POST | `/api/tasks/{taskId}/messages` | Bearer JWT | Local tests | `backend/tasks/`, `backend/interactions/` | Send a minimal Work Mode message using task state |
 
 Notes:
 - Ports `8100` and `8101` were temporary target-machine verification ports and are not kept running.
 - The API paths are mounted by the same FastAPI app; use the active backend deployment base URL in production.
 - Detailed request and response shapes are listed below.
+- New derived modules are verified by local and target-machine backend tests: `summaries/`, `memory/`, `diary/`, `workers/`, and `tasks/`.
 
 ## verified frontend
 
@@ -134,6 +143,7 @@ Latest frontend E2E result:
 - Tick created one Agent message.
 - Join created a `companion_1` child with user and Agent messages.
 - Chat created/sent a `companion_2` message pair.
+- Chat send now shows the outgoing user message immediately, replaces it with the persisted user message after the API returns, then appends the Agent reply.
 - Me loaded current user settings.
 
 Latest frontend issue check:
@@ -145,6 +155,7 @@ Latest frontend issue check:
 - Browser E2E verified auto idle produced both fixed MVP Agent slots: Nora then Vale.
 - Timeline has `overflow: auto` and auto-scrolls to the latest message. If content is shorter than the panel, there is no scroll range.
 - Latest diagnosis: `5175` was returning `/api/agents` 404 because it was still proxying to older `8101`. Restarting `5175` against `18122 -> 8122` makes `/api/agents` return 200 and idle join return 201.
+- Latest `companion_2` diagnosis: local browser E2E verified pending order `You #0.5`, final order `You #1` then `Vale #2`, timeline pinned to bottom, no browser console errors, and no failed requests.
 
 ## verified APIs
 
@@ -824,6 +835,60 @@ Notes:
 - This is the product interaction endpoint for `companion_2`.
 - `POST /api/conversations/{conversationId}/messages` remains the raw historical append endpoint and should not be used by the frontend for model replies.
 
+### POST /api/tasks
+Purpose: create a Work Mode task and a linked `work` conversation.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Verified request body:
+
+```json
+{
+  "objective": "Prepare target smoke checklist"
+}
+```
+
+Verified response shape:
+
+```json
+{
+  "id": "<task_id>",
+  "userId": "<user_id>",
+  "conversationId": "<work_conversation_id>",
+  "objective": "Prepare target smoke checklist",
+  "status": "active",
+  "currentPhase": "intake",
+  "planSummary": null,
+  "progressSummary": null,
+  "openQuestions": [],
+  "blockers": [],
+  "metadata": {},
+  "createdAt": "<iso_datetime>",
+  "updatedAt": "<iso_datetime>"
+}
+```
+
+Verified target-machine smoke values on port `8124`:
+- `status`: `active`
+- linked `conversationId`: non-empty Mongo id
+- `GET /api/tasks` returned the created task.
+
+### POST /api/tasks/{taskId}/messages
+Purpose: send one minimal Work Mode message using the task state in `ContextMode.WORK`.
+
+Status:
+- Implemented and covered by backend integration-style tests.
+- Full target-machine model smoke depends on platform model credentials, because this endpoint calls `model_runtime`.
+
+Notes:
+- V1.5 does not run Codex CLI or autonomous tools.
+- Work messages stay in `mode=work`; companion and idle recipes do not include Work Mode state by default.
+
 ## developer notes
 - All protected user APIs require `Authorization: Bearer <accessToken>`.
 - The user module is under `backend/users/`.
@@ -831,6 +896,11 @@ Notes:
 - The product interaction orchestration module is under `backend/interactions/`.
 - The context builder module is under `backend/context/`.
 - The model runtime module is under `backend/model_runtime/`.
+- The summary module is under `backend/summaries/`.
+- The long-term memory module is under `backend/memory/`.
+- The derived jobs and workers module is under `backend/workers/`.
+- The Work Mode task module is under `backend/tasks/`.
+- The diary module is under `backend/diary/`.
 - Shared backend config, database, and security utilities are under `backend/core/`.
 - MongoDB is required for full API verification.
 - Do not stop existing target-machine services. Use a new free port for tests.

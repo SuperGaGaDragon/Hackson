@@ -16,6 +16,7 @@ from interactions.service import InteractionService
 from model_runtime.client import OpenAICompatibleClient
 from model_runtime.config_repository import ModelRuntimeConfigRepository
 from model_runtime.orchestrator import ModelRuntime
+from workers.derived_jobs import DerivedJobRepository, DerivedJobService
 from users.auth import get_current_user_id
 
 idle_router = APIRouter()
@@ -32,6 +33,7 @@ def get_interaction_service() -> InteractionService:
         conversation_service=conversation_service,
         context_builder=ContextBuilder(),
         model_runtime=model_runtime,
+        derived_jobs=DerivedJobService(DerivedJobRepository(get_database())),
     )
 
 

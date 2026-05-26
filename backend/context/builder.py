@@ -22,6 +22,7 @@ class ContextBuilder:
         messages = self._build_messages(input_data)
         included_messages = _included_message_ids(input_data)
         included_summaries = _included_summary_ids(input_data)
+        included_memory = _included_memory_ids(input_data)
         included_agents = [agent.id for agent in input_data.agents]
         return build_context_package(
             mode=input_data.mode,
@@ -30,6 +31,7 @@ class ContextBuilder:
             messages=messages,
             included_message_ids=included_messages,
             included_summary_ids=included_summaries,
+            included_memory_ids=included_memory,
             included_agent_ids=included_agents,
             debug_notes=_debug_notes(input_data),
         )
@@ -66,7 +68,20 @@ def _debug_notes(input_data: ContextBuildInput) -> list[str]:
         notes.append("transition_context=enabled")
     if input_data.summary is not None or input_data.idle_summary is not None:
         notes.append("summary=enabled")
+    if _included_memory_ids(input_data):
+        notes.append("memory=enabled")
     if input_data.token_budget is not None:
         notes.append(f"token_budget={input_data.token_budget}")
     return notes
 
+
+def _included_memory_ids(input_data: ContextBuildInput) -> list[str]:
+    if input_data.mode == ContextMode.IDLE:
+        allowed_scopes = {"idle"}
+    elif input_data.mode in {ContextMode.COMPANION_1, ContextMode.COMPANION_2}:
+        allowed_scopes = {"companion"}
+    elif input_data.mode == ContextMode.WORK:
+        allowed_scopes = {"work"}
+    else:
+        allowed_scopes = set()
+    return [memory.id for memory in input_data.memory_cards if memory.scope in allowed_scopes]

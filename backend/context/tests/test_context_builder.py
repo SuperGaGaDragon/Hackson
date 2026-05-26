@@ -14,6 +14,7 @@ from context.schemas import (
     ContextMode,
     ConversationMessage,
     ConversationSummary,
+    MemoryCardSnapshot,
     SenderType,
     UserProfileSnapshot,
 )
@@ -152,6 +153,62 @@ class ContextBuilderTest(TestCase):
         self.assertNotIn("这段 idle 历史不应该自动出现", prompt)
         self.assertNotIn("idle_hidden", package.included_message_ids)
 
+    def test_companion_2_context_includes_requested_memory_cards(self) -> None:
+        package = self.builder.build(
+            ContextBuildInput(
+                mode=ContextMode.COMPANION_2,
+                conversation_id="conv_companion",
+                target_agent_id="agent_b",
+                agents=[self.agent_a, self.agent_b],
+                user_message="你还记得我喜欢什么风格吗？",
+                memory_cards=[
+                    MemoryCardSnapshot(
+                        id="memory_1",
+                        scope="companion",
+                        owner_type="user",
+                        owner_id="user_1",
+                        memory_type="preference",
+                        summary="User prefers concise Chinese replies.",
+                        source_message_ids=["chat_1"],
+                        importance_score=0.8,
+                        confidence=0.9,
+                    )
+                ],
+            )
+        )
+
+        prompt = _prompt_text(package)
+        self.assertIn("Relevant memory", prompt)
+        self.assertIn("User prefers concise Chinese replies.", prompt)
+        self.assertIn("memory_1", package.included_memory_ids)
+
+    def test_idle_context_does_not_include_companion_memory_by_default(self) -> None:
+        package = self.builder.build(
+            ContextBuildInput(
+                mode=ContextMode.IDLE,
+                conversation_id="conv_idle",
+                target_agent_id="agent_a",
+                agents=[self.agent_a, self.agent_b],
+                memory_cards=[
+                    MemoryCardSnapshot(
+                        id="memory_hidden",
+                        scope="companion",
+                        owner_type="user",
+                        owner_id="user_1",
+                        memory_type="preference",
+                        summary="This companion preference should stay out of idle.",
+                        source_message_ids=["chat_1"],
+                        importance_score=0.8,
+                        confidence=0.9,
+                    )
+                ],
+            )
+        )
+
+        prompt = _prompt_text(package)
+        self.assertNotIn("This companion preference should stay out of idle.", prompt)
+        self.assertNotIn("memory_hidden", package.included_memory_ids)
+
     def test_builder_rejects_missing_target_agent(self) -> None:
         with self.assertRaisesRegex(ValueError, "target_agent_not_found"):
             self.builder.build(
@@ -166,4 +223,3 @@ class ContextBuilderTest(TestCase):
 
 def _prompt_text(package) -> str:
     return "\n\n".join(message.content for message in package.messages)
-

@@ -11,6 +11,7 @@ Last Modified by: Codex
   - V1.3 introduces memory slowly and only for high-value, evidence-backed facts.
   - Raw messages remain the source of truth.
   - Memory is a derived layer used by context, not a replacement for conversation history.
+  - Memory is isolated by `user_id`, `scope`, `owner_type`, and `owner_id` so Work Mode task memory cannot pollute Companion Mode.
 
 ## responsibilities
 - Store memory cards.
@@ -31,10 +32,13 @@ Last Modified by: Codex
 |-repository.py MongoDB memory card persistence
 |-governor.py memory candidate acceptance rules
 |-schemas.py memory card and candidate schemas
+|-service.py memory write/read business rules
 |-tests/ memory module tests
 
 ## minimum memory card fields
 - `id`
+- `user_id`
+- `scope`
 - `owner_type`
 - `owner_id`
 - `memory_type`
@@ -42,6 +46,8 @@ Last Modified by: Codex
 - `source_message_ids`
 - `importance_score`
 - `confidence`
+- `status`
+- `metadata`
 - `created_at`
 - `updated_at`
 
@@ -53,3 +59,11 @@ Last Modified by: Codex
 
 ## write rule
 - No source message id, no long-term memory write.
+- User fact and preference memory must come from user-authored evidence, not Agent guesses.
+- `work` scoped memory cannot be read by idle or companion recipes by default.
+
+## indexes
+- `user_id + scope + owner_type + owner_id + memory_type + updated_at`
+- `user_id + status + importance_score + updated_at`
+- `user_id + source_message_ids`
+- `user_id + dedupe_hash` unique where possible

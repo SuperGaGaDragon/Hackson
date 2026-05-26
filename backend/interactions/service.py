@@ -14,6 +14,7 @@ from context.schemas import ContextBuildInput, ContextMode, ConversationMessage,
 from agents.catalog import default_agent_snapshots, ensure_agent_id
 from interactions.schemas import IdleTickRequest, InteractionUserMessageRequest
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, RuntimeMessage
+from workers.derived_jobs import DerivedJobCreateRequest, DerivedJobService
 
 
 class ModelRuntimeProtocol(Protocol):
@@ -28,10 +29,12 @@ class InteractionService:
         conversation_service: ConversationService,
         context_builder: ContextBuilder,
         model_runtime: ModelRuntimeProtocol,
+        derived_jobs: DerivedJobService | None = None,
     ):
         self.conversation_service = conversation_service
         self.context_builder = context_builder
         self.model_runtime = model_runtime
+        self.derived_jobs = derived_jobs
 
     def run_idle_tick(self, user_id: str, conversation_id: str, payload: IdleTickRequest) -> dict:
         conversation = self.conversation_service.get_conversation(user_id, conversation_id)
@@ -57,6 +60,7 @@ class InteractionService:
             package,
             extra_metadata=payload.metadata,
         )
+        self._enqueue_derived_work(user_id, conversation_id, [agent_message["id"]], conversation["mode"])
         updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
         return self._response(updated_conversation, None, agent_message, package, model_response)
 
@@ -109,6 +113,12 @@ class InteractionService:
             package,
             extra_metadata={"parentIdleConversationId": idle_conversation_id},
         )
+        self._enqueue_derived_work(
+            user_id,
+            companion["id"],
+            [user_message["id"], agent_message["id"]],
+            companion["mode"],
+        )
         updated_companion = self.conversation_service.get_conversation(user_id, companion["id"])
         return self._response(updated_companion, user_message, agent_message, package, model_response)
 
@@ -152,6 +162,70 @@ class InteractionService:
             model_response,
             package,
             extra_metadata=None,
+        )
+        self._enqueue_derived_work(
+            user_id,
+            conversation_id,
+            [user_message["id"], agent_message["id"]],
+            conversation["mode"],
+        )
+        updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        return self._response(updated_conversation, user_message, agent_message, package, model_response)
+
+    def run_work_message(
+        self,
+        user_id: str,
+        conversation_id: str,
+        payload: InteractionUserMessageRequest,
+        task_state: dict,
+    ) -> dict:
+        conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        if conversation["mode"] != "work":
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="conversation_must_be_work",
+            )
+        user_message = self.conversation_service.append_message(
+            user_id,
+            conversation_id,
+            MessageAppendRequest(
+                sender_type="user",
+                sender_id=user_id,
+                role="user",
+                content=payload.content,
+                metadata=payload.metadata,
+            ),
+        )
+        recent = self._recent_context_messages(user_id, conversation_id)
+        target_agent_id = ensure_agent_id(payload.target_agent_id)
+        package = self.context_builder.build(
+            ContextBuildInput(
+                mode=ContextMode.WORK,
+                conversation_id=conversation_id,
+                target_agent_id=target_agent_id,
+                agents=default_agent_snapshots(),
+                user_message=payload.content,
+                recent_messages=recent,
+                task_state=task_state,
+                token_budget=6000,
+            )
+        )
+        model_response = self._generate(package)
+        agent_message = self._save_agent_message(
+            user_id,
+            conversation_id,
+            target_agent_id,
+            model_response,
+            package,
+            extra_metadata={"taskId": task_state.get("task_id")},
+        )
+        self._enqueue_derived_work(
+            user_id,
+            conversation_id,
+            [user_message["id"], agent_message["id"]],
+            conversation["mode"],
         )
         updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
         return self._response(updated_conversation, user_message, agent_message, package, model_response)
@@ -204,6 +278,29 @@ class InteractionService:
             ),
         )
 
+    def _enqueue_derived_work(
+        self,
+        user_id: str,
+        conversation_id: str,
+        source_message_ids: list[str],
+        mode: str,
+    ) -> None:
+        if self.derived_jobs is None:
+            return
+        for job_type in _derived_job_types_for_mode(mode):
+            try:
+                self.derived_jobs.enqueue(
+                    DerivedJobCreateRequest(
+                        job_type=job_type,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        source_message_ids=source_message_ids,
+                        metadata={"mode": mode},
+                    )
+                )
+            except Exception:
+                continue
+
     def _response(self, conversation, user_message, agent_message, package, model_response) -> dict:
         return {
             "conversation": conversation,
@@ -233,3 +330,13 @@ def _agent_slot(agent_id: str) -> str:
     if agent_id == "agent_2":
         return "agent_2"
     return "agent_1"
+
+
+def _derived_job_types_for_mode(mode: str) -> list[str]:
+    if mode == "idle":
+        return ["summary", "relationship", "diary"]
+    if mode in {"companion_1", "companion_2"}:
+        return ["summary", "memory_candidate"]
+    if mode == "work":
+        return ["summary"]
+    return []

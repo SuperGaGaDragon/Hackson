@@ -9,6 +9,7 @@ Last Modified by: Codex
   - Own future Work Mode task state and tool traces.
 - 架构思路
   - V1.5 only reserves the Work Mode boundary.
+  - The first production slice creates task state and lets a work conversation use that state in `context/`.
   - Full Planner / Worker / Reviewer collaboration belongs to v3.0.
   - Task memory must not pollute companion or idle memory.
 
@@ -36,8 +37,13 @@ Last Modified by: Codex
 |-tests/ task module tests
 
 ## version plan
-- v1.5: Add task state and tool trace schemas.
+- v1.5: Add task state, minimal Work Mode message flow, and tool trace schemas.
 - v3.0: Add Planner / Worker / Reviewer flow, tool execution queue, task summaries, failure retrospectives, and skill memory.
 
 ## isolation rule
 - Work Mode content must not enter idle, companion_1, or companion_2 default context.
+
+## minimum chain
+- `POST /api/tasks` creates a task and a `work` conversation.
+- `POST /api/tasks/{task_id}/messages` saves a user work message, builds `ContextMode.WORK`, calls the model runtime, and saves the Agent reply.
+- Tool traces are stored as task-scoped derived records and are not executed autonomously in v1.5.

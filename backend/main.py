@@ -11,6 +11,7 @@ from agents.routes import router as agents_router
 from conversations.routes import idle_router, router as conversations_router
 from core.database import close_mongo, connect_mongo
 from interactions.routes import companion_router, idle_router as interaction_idle_router
+from tasks.routes import router as tasks_router
 from users.routes import router as users_router
 
 
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(idle_router, prefix="/api/idle", tags=["idle"])
     app.include_router(interaction_idle_router, prefix="/api/idle", tags=["idle-interactions"])
     app.include_router(companion_router, prefix="/api/companion", tags=["companion-interactions"])
+    app.include_router(tasks_router, prefix="/api/tasks", tags=["tasks"])
 
     @app.on_event("startup")
     def _startup() -> None:

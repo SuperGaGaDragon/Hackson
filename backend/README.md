@@ -15,6 +15,8 @@ Lst Modified by: Codex
   - Keep `agents/` responsible for Agent identity, display profile, and persona source of truth.
   - Keep `interactions/` responsible for synchronous product flows after a user message or idle tick.
   - Keep `context/` responsible for what the model should see, and `model_runtime/` responsible for how the backend calls the model.
+  - Keep `summaries/` responsible for persisted context compression records.
+  - Keep `memory/` responsible for evidence-backed long-term memory cards.
   - Keep async derived work such as summary, memory, diary, and relationship updates under `workers/` when those features are introduced.
   - Use MongoDB as the persistence layer on the target machine.
   - V1 demo model endpoint is platform-managed and is not part of user data.
@@ -30,13 +32,15 @@ Lst Modified by: Codex
 |-interactions/ idle, companion_1, and companion_2 model interaction module
 |-context/ context builder, recipes, transition context, compaction, and context packages
 |-model_runtime/ platform-managed model configuration and model-call orchestration
+|-summaries/ persisted summary records for context compression
 |-workers/ async summary, memory, diary, and relationship workers
 |-memory/ long-term memory cards and memory governance
+|-diary/ user-visible Agent diary entries
 |-tasks/ future Work Mode task and tool-trace module
 
 ## implementation status
 - `core/`, `users/`, `agents/`, `conversations/`, `context/`, `model_runtime/`, and `interactions/` contain working V1 code.
-- `workers/`, `memory/`, and `tasks/` currently contain product-level module documentation and package markers. Add implementation files as each version reaches that module.
+- `workers/`, `memory/`, `summaries/`, `diary/`, and `tasks/` contain product-level module documentation and are implemented incrementally by tracer-bullet vertical slices.
 
 ## module boundaries
 - `interactions/` owns the product flow: save input message when needed, ask `context/` for a context package, ask `model_runtime/` for a model response, save the Agent reply, and return it to the frontend.
@@ -45,6 +49,7 @@ Lst Modified by: Codex
 - `context/` owns context construction only. It should not directly call model providers or own HTTP routes.
 - `model_runtime/` owns provider calls, timeout, retry, streaming, and platform-side model config. It should not know idle or companion business rules.
 - `workers/` owns async derived data. It must not block the main chat response path.
+- `summaries/`, `memory/`, `diary/`, and `tasks/` own persisted derived/product state. Context consumes their snapshots, not their storage implementations.
 
 ## 代办
 - Add deployment scripts after the target port and process manager are finalized.
