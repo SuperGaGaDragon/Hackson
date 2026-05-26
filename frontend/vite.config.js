@@ -13,6 +13,7 @@ const proxyTarget =
 export default defineConfig({
   plugins: [react()],
   server: {
+    allowedHosts: [".trycloudflare.com"],
     proxy: {
       "/api": {
         target: proxyTarget,

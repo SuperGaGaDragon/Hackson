@@ -5,7 +5,7 @@ Last Modified at: 2026-05-25
 Last Modified by: Codex
 */
 import { Send } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createConversation, getConversationMessages, listConversations } from "../../api/conversations";
 import { sendCompanionMessage } from "../../api/interactions";
 import { FALLBACK_AGENTS, normalizeAgents } from "../../domain/agents";
@@ -24,6 +24,7 @@ function ChatPage({ agents = FALLBACK_AGENTS }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const timelineRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -54,6 +55,13 @@ function ChatPage({ agents = FALLBACK_AGENTS }) {
     };
   }, []);
 
+  useEffect(() => {
+    timelineRef.current?.scrollTo({
+      top: timelineRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages.length, busy]);
+
   async function startNew() {
     if (busy) return;
     setBusy(true);
@@ -73,15 +81,38 @@ function ChatPage({ agents = FALLBACK_AGENTS }) {
   async function send() {
     const content = draft.trim();
     if (!conversation || !content || busy) return;
+    const pendingMessage = makePendingUserMessage(conversation, content, messages);
     setBusy(true);
     setError("");
+    setDraft("");
+    setConversation((current) => ({
+      ...current,
+      localTitle: nextLocalTitle(current || conversation, content),
+    }));
+    setConversations((current) =>
+      localizeConversationTitles(
+        current.map((item) =>
+          item.id === conversation.id
+            ? {
+                ...item,
+                localTitle: nextLocalTitle(item, content),
+              }
+            : item,
+        ),
+      ),
+    );
+    setMessages((current) => uniqueMessages([...current, pendingMessage]));
     try {
       const data = await sendCompanionMessage(conversation.id, {
         content,
         targetAgentId,
         metadata: {},
       });
-      setConversation((current) => ({ ...current, ...data.conversation }));
+      setConversation((current) => ({
+        ...current,
+        ...data.conversation,
+        localTitle: nextLocalTitle(current || conversation, content),
+      }));
       setConversations((current) =>
         localizeConversationTitles(
           current.map((item) =>
@@ -95,8 +126,13 @@ function ChatPage({ agents = FALLBACK_AGENTS }) {
           ),
         ),
       );
-      setMessages((current) => uniqueMessages([...current, data.userMessage, data.agentMessage]));
-      setDraft("");
+      setMessages((current) =>
+        uniqueMessages([
+          ...current.filter((message) => message.id !== pendingMessage.id),
+          data.userMessage,
+          data.agentMessage,
+        ]),
+      );
     } catch (err) {
       setError(err.message || "Send failed");
     } finally {
@@ -153,7 +189,7 @@ function ChatPage({ agents = FALLBACK_AGENTS }) {
           </div>
           <span className="chip">{conversation?.messageCount || messages.length}</span>
         </div>
-        <Timeline agents={agentProfiles} messages={messages} />
+        <Timeline agents={agentProfiles} messages={messages} timelineRef={timelineRef} />
         <div className="composer">
           <input
             aria-label="Message"
@@ -247,6 +283,25 @@ function makeLocalTitle(content) {
   const trimmed = content.replace(/\s+/g, " ").trim();
   if (trimmed.length <= 18) return trimmed || "Chat";
   return `${trimmed.slice(0, 18)}...`;
+}
+
+function makePendingUserMessage(conversation, content, messages) {
+  const maxSequence = Math.max(0, ...messages.map((message) => message.sequence || 0));
+  return {
+    id: `pending-${crypto.randomUUID()}`,
+    conversationId: conversation.id,
+    userId: conversation.userId,
+    mode: conversation.mode,
+    sequence: maxSequence + 0.5,
+    senderType: "user",
+    senderId: "me",
+    senderSlot: null,
+    role: "user",
+    content,
+    contentType: "text",
+    metadata: { pending: true },
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export default ChatPage;

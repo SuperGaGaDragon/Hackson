@@ -10,6 +10,7 @@ Lst Modified by: Codex
 - 架构思路
   - Create or reuse a local-session companion conversation.
   - Send messages through `/api/companion/{conversationId}/messages`, not raw append.
+  - Show the user's outgoing message immediately and keep the timeline pinned to the latest turn.
 
 ## folder structure
 |-README.md chat feature guide

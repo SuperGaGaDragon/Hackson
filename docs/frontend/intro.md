@@ -112,7 +112,9 @@ Behavior:
 - Let the user select a conversation.
 - Create a new `companion_2` conversation when needed.
 - Send through product interaction endpoint.
+- Show the user message immediately while the model reply is pending.
 - Append returned user and Agent messages.
+- New chat messages auto-scroll to the bottom.
 - Derive a short local title from the first user message so the sidebar is scannable.
 
 Backend note:
