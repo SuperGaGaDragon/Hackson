@@ -4,10 +4,12 @@ Created by: Codex
 Last Modified at: 2026-05-25
 Last Modified by: Codex
 */
+import { agentsToMap } from "../../domain/agents";
 import { toTimelineItem } from "../../domain/messages";
 
-function Timeline({ messages, timelineRef }) {
-  const items = messages.map(toTimelineItem);
+function Timeline({ agents, messages, timelineRef }) {
+  const agentBySlot = agentsToMap(agents);
+  const items = messages.map((message) => toTimelineItem(message, agentBySlot));
 
   return (
     <div className="timeline" aria-label="Timeline" ref={timelineRef}>

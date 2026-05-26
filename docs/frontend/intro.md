@@ -58,6 +58,7 @@ Purpose: watch and operate the live idle conversation.
 
 Uses:
 
+- `GET /api/agents`
 - `GET /api/idle/conversation`
 - `GET /api/conversations/{conversationId}/messages`
 - `POST /api/idle/{conversationId}/tick`
@@ -93,6 +94,7 @@ Purpose: user-led companion chat.
 
 Uses:
 
+- `GET /api/agents`
 - `POST /api/conversations`
 - `GET /api/conversations?mode=companion_2`
 - `GET /api/conversations/{conversationId}/messages`
@@ -167,6 +169,7 @@ Reason:
 ```text
 src/
   api/
+    agents.js
     client.js
     users.js
     conversations.js
@@ -190,10 +193,11 @@ Rules:
 
 - `api/` owns HTTP only.
 - `features/` owns product flows.
-- `domain/` owns mapping and constants.
+- `domain/` owns mapping and fallback display data.
 - `shared/` owns reusable UI.
 - Components do not know raw endpoint paths.
 - Normal product messaging never calls raw append.
+- Agent display names come from backend `/api/agents`; prompt persona also comes from the same backend catalog.
 
 ## 5. Data Rules
 

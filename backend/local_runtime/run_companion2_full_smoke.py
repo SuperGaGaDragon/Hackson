@@ -8,6 +8,7 @@ Last Modified by: Codex
 from conversations.repository import ConversationRepository
 from conversations.schemas import ConversationCreateRequest, MessageAppendRequest
 from conversations.service import ConversationService
+from agents.catalog import default_agent_snapshots
 from context.builder import ContextBuilder
 from context.schemas import (
     AgentPersonaSnapshot,
@@ -80,7 +81,7 @@ def main() -> None:
                         id="idle_should_not_appear",
                         sender_type=SenderType.AGENT,
                         sender_id="agent_1",
-                        sender_name="Aster",
+                        sender_name="Nora",
                         content="这段 idle 历史不应该进入 companion_2 默认上下文。",
                     )
                 ],
@@ -145,21 +146,7 @@ def _context_message(row: dict) -> ConversationMessage:
 
 
 def _agents() -> list[AgentPersonaSnapshot]:
-    return [
-        AgentPersonaSnapshot(
-            id="agent_1",
-            name="Aster",
-            core_persona="冷静、会追问概念的哲学型 Agent。",
-            speaking_style="中文，短句，清楚。",
-        ),
-        AgentPersonaSnapshot(
-            id="agent_2",
-            name="Beryl",
-            core_persona="务实、直接、擅长把想法变成计划的 Agent。",
-            speaking_style="中文，简洁，偏行动。",
-            episode_state="正在帮助用户收束 V1 demo。",
-        ),
-    ]
+    return default_agent_snapshots()
 
 
 if __name__ == "__main__":

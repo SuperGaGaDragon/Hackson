@@ -48,6 +48,7 @@ cd ~/hackson_backend_test/backend
 | --- | --- | --- | --- | --- |
 | 8100 | FastAPI backend temporary test server | `127.0.0.1` | Verified, not kept running | Target-machine raw user/conversation API verification without touching existing services |
 | 8101 | FastAPI backend temporary test server | `127.0.0.1` | Running on target machine during latest frontend check | Target-machine interaction/context/model API verification without touching existing services |
+| 8120 | FastAPI backend temporary test server | `127.0.0.1` | Verified, stopped after check | Target-machine Agent catalog API verification without touching existing services |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 | 18101 | SSH local tunnel to target backend | `127.0.0.1` | Running locally during latest frontend check | Local browser access to target-machine `127.0.0.1:8101` |
 | 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Running locally during latest frontend check | Local frontend connected to target backend through Vite proxy |
@@ -61,6 +62,7 @@ cd ~/hackson_backend_test/backend
 | GET | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Read current user |
 | PATCH | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Update current user settings |
 | POST | `/api/users/logout` | No server state | `8100` | `backend/users/` | Client-side JWT logout placeholder |
+| GET | `/api/agents` | No | `8120` | `backend/agents/` | List fixed V1 Agent display profiles |
 | POST | `/api/conversations` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Create conversation container |
 | GET | `/api/conversations` | Bearer JWT | `8100` | `backend/conversations/` | List current user's conversations |
 | GET | `/api/conversations/{conversationId}` | Bearer JWT | `8100` | `backend/conversations/` | Read one owned conversation |
@@ -295,6 +297,40 @@ Verified status:
 Notes:
 - V1 does not maintain server-side token revocation.
 - Frontend should discard the access token.
+
+### GET /api/agents
+Purpose: list backend-owned fixed V1 Agent display profiles.
+
+Request:
+
+```bash
+curl http://127.0.0.1:8120/api/agents
+```
+
+Verified response:
+
+```json
+[
+  {
+    "slot": "agent_1",
+    "name": "Nora",
+    "short": "A1",
+    "color": "teal",
+    "voice": "precise"
+  },
+  {
+    "slot": "agent_2",
+    "name": "Vale",
+    "short": "A2",
+    "color": "amber",
+    "voice": "sharp"
+  }
+]
+```
+
+Notes:
+- Prompt persona and frontend display profiles come from the same backend `agents` catalog.
+- This API does not expose core persona, speaking style, model endpoint, provider, or API keys.
 
 ### POST /api/conversations
 Purpose: create a conversation container for `idle`, `companion_1`, `companion_2`, or future `work`.
@@ -629,7 +665,7 @@ Verified target-machine smoke values:
 Notes:
 - This API does not create a user message.
 - `targetAgentId` defaults to `agent_1`.
-- `agent_1` and `agent_2` map to fixed MVP Agent snapshots until `backend/agents/` persistence exists.
+- `agent_1` and `agent_2` map to the fixed backend Agent catalog until `backend/agents/` persistence exists.
 
 ### POST /api/idle/{conversationId}/join
 Purpose: let the user join an idle conversation and create a `companion_1` child conversation.

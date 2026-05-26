@@ -11,8 +11,8 @@ Last Modified by: Codex
   - `conversations/` records what happened.
   - `interactions/` decides what happens next.
   - `context/` decides what the model should see.
-  - `model_runtime/` decides how to call the model.
-  - MVP uses fixed local Agent persona snapshots until `agents/` has persistence.
+- `model_runtime/` decides how to call the model.
+- MVP reads fixed Agent persona records from `backend/agents/` until that module has persistence.
 
 ## responsibilities
 - Run idle tick generation.
@@ -34,7 +34,6 @@ Last Modified by: Codex
 ## folder structure
 |-README.md interactions module guide
 |-__init__.py Python package marker
-|-agent_fixtures.py temporary MVP Agent persona snapshots
 |-routes.py FastAPI interaction routes
 |-schemas.py interaction request and response schemas
 |-service.py interaction orchestration logic
@@ -46,6 +45,5 @@ Last Modified by: Codex
 |-POST /api/companion/{conversation_id}/messages append a companion_2 user message and generate Agent reply
 
 ## 代办
-- Replace `agent_fixtures.py` with real `agents/` repository snapshots.
 - Add speaker selection policy instead of fixed target Agent defaults.
 - Add streaming support after the frontend is ready.

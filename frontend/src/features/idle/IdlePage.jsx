@@ -8,13 +8,14 @@ import { Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { getConversationMessages, getIdleConversation } from "../../api/conversations";
 import { joinIdle, tickIdle } from "../../api/interactions";
-import { AGENTS } from "../../domain/agents";
+import { FALLBACK_AGENTS, nextAgentSlot, normalizeAgents } from "../../domain/agents";
 import { makeSystemMessage, sortMessages, uniqueMessages } from "../../domain/messages";
 import AgentSlot from "../../shared/components/AgentSlot";
 import StatusLine from "../../shared/components/StatusLine";
 import Timeline from "../../shared/components/Timeline";
 
-function IdlePage() {
+function IdlePage({ agents = FALLBACK_AGENTS }) {
+  const agentProfiles = normalizeAgents(agents);
   const [conversation, setConversation] = useState(null);
   const [idleConversation, setIdleConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -81,7 +82,7 @@ function IdlePage() {
       });
       setConversation((current) => ({ ...current, ...data.conversation }));
       setMessages((current) => uniqueMessages([...current, data.agentMessage]));
-      setTargetAgentId(activeTarget === "agent_1" ? "agent_2" : "agent_1");
+      setTargetAgentId(nextAgentSlot(activeTarget, agentProfiles));
     } catch (err) {
       setError(err.message || "Tick failed");
     } finally {
@@ -117,14 +118,17 @@ function IdlePage() {
   return (
     <div className="idle-grid">
       <aside className="agent-rail">
-        {AGENTS.map((agent) => (
+        {agentProfiles.map((agent) => (
           <AgentSlot agent={agent} key={agent.slot} state={targetAgentId === agent.slot ? "Target" : "Ready"} />
         ))}
         <section className="mini-panel">
           <p className="eyebrow">Target</p>
           <select onChange={(event) => setTargetAgentId(event.target.value)} value={targetAgentId}>
-            <option value="agent_1">Nora</option>
-            <option value="agent_2">Vale</option>
+            {agentProfiles.map((agent) => (
+              <option key={agent.slot} value={agent.slot}>
+                {agent.name}
+              </option>
+            ))}
           </select>
         </section>
       </aside>
@@ -148,7 +152,7 @@ function IdlePage() {
             </button>
           </div>
         </div>
-        <Timeline messages={messages} timelineRef={timelineRef} />
+        <Timeline agents={agentProfiles} messages={messages} timelineRef={timelineRef} />
         <div className="composer">
           <input
             aria-label="Join"

@@ -8,13 +8,14 @@ import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createConversation, getConversationMessages, listConversations } from "../../api/conversations";
 import { sendCompanionMessage } from "../../api/interactions";
-import { AGENTS } from "../../domain/agents";
+import { FALLBACK_AGENTS, normalizeAgents } from "../../domain/agents";
 import { sortMessages, uniqueMessages } from "../../domain/messages";
 import AgentSlot from "../../shared/components/AgentSlot";
 import StatusLine from "../../shared/components/StatusLine";
 import Timeline from "../../shared/components/Timeline";
 
-function ChatPage() {
+function ChatPage({ agents = FALLBACK_AGENTS }) {
+  const agentProfiles = normalizeAgents(agents);
   const [conversations, setConversations] = useState([]);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -152,7 +153,7 @@ function ChatPage() {
           </div>
           <span className="chip">{conversation?.messageCount || messages.length}</span>
         </div>
-        <Timeline messages={messages} />
+        <Timeline agents={agentProfiles} messages={messages} />
         <div className="composer">
           <input
             aria-label="Message"
@@ -176,7 +177,7 @@ function ChatPage() {
             <h2>Agent</h2>
           </div>
         </div>
-        {AGENTS.map((agent) => (
+        {agentProfiles.map((agent) => (
           <button
             className={`agent-target ${targetAgentId === agent.slot ? "active" : ""}`}
             key={agent.slot}

@@ -113,6 +113,8 @@ class InteractionServiceTest(TestCase):
         prompt = _prompt_text(self.model_runtime.requests[-1])
         self.assertIn("Current mode: companion_2", prompt)
         self.assertIn("一句话说 V1 目标", prompt)
+        self.assertIn("name: Vale", prompt)
+        self.assertNotIn("name: Beryl", prompt)
 
 
 def _prompt_text(request: ModelGenerateRequest) -> str:

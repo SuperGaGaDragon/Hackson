@@ -10,13 +10,14 @@ Last Modified by: Codex
 - 架构思路
   - `agents/` stores what an Agent is.
   - It does not build prompts, call models, or save conversation messages.
-  - `context/` reads Agent persona from this module when constructing model context.
+  - `interactions/` reads Agent persona records from this module, then passes snapshots into `context/`.
+  - V1 keeps two backend-owned fixed Agent slots so frontend display names and prompt persona names cannot drift.
 
 ## responsibilities
-- Create and update user-owned Agents.
-- Store Agent name, avatar, core persona, speaking style, and episode state.
+- Store Agent name, color, short label, voice label, core persona, speaking style, and episode state.
 - Provide stable Agent records to conversations and context.
-- Keep core persona user-controlled in V1.
+- Provide frontend-safe display profiles without exposing hidden prompt-only fields.
+- Keep fixed V1 demo Agent identities under backend control.
 
 ## not responsible for
 - Model provider calls.
@@ -25,32 +26,32 @@ Last Modified by: Codex
 - Automatic long-term personality rewriting.
 - Diary or relationship generation.
 
-## planned files
+## folder structure
 |-README.md module guide
 |-__init__.py Python package marker
-|-model.py Agent document helpers
-|-repository.py MongoDB Agent persistence
+|-catalog.py fixed V1 Agent identity and persona catalog
 |-routes.py FastAPI Agent routes
-|-schemas.py request and response schemas
-|-service.py Agent business rules
-|-tests/ Agent module tests
+|-schemas.py Agent API response schemas
+|-tests/ Agent catalog and route tests
 
 ## v1 minimum fields
-- `id`
-- `owner_user_id`
+- `slot`
 - `name`
-- `avatar_url`
+- `short`
+- `color`
+- `voice`
 - `core_persona`
 - `speaking_style`
 - `episode_state`
-- `created_at`
-- `updated_at`
 
 ## version plan
-- v1.0: Create, read, update, and list the current user's two Agents.
-- v1.2: Provide persona snapshots for context packages.
+- v1.0: List the backend-owned two fixed demo Agents.
+- v1.2: Move fixed catalog records into MongoDB while keeping the same route contract.
 - v1.4: Expose diary and relationship-derived state without overwriting core persona.
 
 ## interface expectation
 - Other modules should ask this module for Agent records or persona snapshots.
 - Other modules should not directly mutate Agent persona fields except through this module.
+
+## 代办
+- Replace the fixed catalog with MongoDB persistence when Agent editing becomes part of V1.x.

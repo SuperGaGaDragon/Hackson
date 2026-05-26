@@ -8,6 +8,7 @@ Last Modified by: Codex
 from conversations.repository import ConversationRepository
 from conversations.schemas import ConversationCreateRequest, MessageAppendRequest
 from conversations.service import ConversationService
+from agents.catalog import default_agent_snapshots
 from context.builder import ContextBuilder
 from context.schemas import AgentPersonaSnapshot, ContextBuildInput, ContextMode, ConversationMessage, SenderType
 from core.database import close_mongo, connect_mongo, get_database
@@ -108,21 +109,7 @@ def _context_message(row: dict) -> ConversationMessage:
 
 
 def _agents() -> list[AgentPersonaSnapshot]:
-    return [
-        AgentPersonaSnapshot(
-            id="agent_1",
-            name="Aster",
-            core_persona="冷静、会追问概念的哲学型 Agent。",
-            speaking_style="中文，短句，清楚。",
-            episode_state="正在讨论 idle 生活是否需要目标。",
-        ),
-        AgentPersonaSnapshot(
-            id="agent_2",
-            name="Beryl",
-            core_persona="务实、直接、擅长把想法变成计划的 Agent。",
-            speaking_style="中文，简洁，偏行动。",
-        ),
-    ]
+    return default_agent_snapshots()
 
 
 if __name__ == "__main__":

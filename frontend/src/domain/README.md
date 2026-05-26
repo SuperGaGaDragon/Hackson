@@ -6,15 +6,16 @@ Lst Modified by: Codex
 
 ## brief intro
 - goal for this folder.
-  - Store frontend domain mapping helpers and fixed MVP display constants.
+  - Store frontend domain mapping helpers and backend Agent display normalization.
 - 架构思路
-  - Backend has fixed MVP Agent slots before Agent persistence exists.
+  - Backend owns fixed MVP Agent slots before Agent persistence exists.
+  - Frontend keeps only fallback display data for loading and degraded states.
   - Message display mapping belongs here so product features stay simple.
 
 ## folder structure
 |-README.md domain folder guide
-|-agents.js fixed Agent slot display data
+|-agents.js backend Agent display normalization and fallback data
 |-messages.js message sorting and display mapping
 
 ## 代办
-- Replace fixed Agent slot data when verified Agent APIs exist.
+- Remove fallback Agent labels after app boot can block on Agent API with a polished loading state.

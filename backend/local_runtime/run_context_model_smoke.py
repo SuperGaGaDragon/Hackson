@@ -6,14 +6,8 @@ Last Modified by: Codex
 """
 
 from context.builder import ContextBuilder
-from context.schemas import (
-    AgentPersonaSnapshot,
-    ContextBuildInput,
-    ContextMode,
-    ConversationMessage,
-    ConversationSummary,
-    SenderType,
-)
+from agents.catalog import default_agent_snapshots
+from context.schemas import ContextBuildInput, ContextMode, ConversationMessage, ConversationSummary, SenderType
 from model_runtime.client import OpenAICompatibleClient
 from model_runtime.config_repository import ModelRuntimeConfigRepository
 from model_runtime.orchestrator import ModelRuntime
@@ -43,34 +37,20 @@ def main() -> None:
 
 
 def _companion_1_fixture() -> ContextBuildInput:
-    agents = [
-        AgentPersonaSnapshot(
-            id="agent_1",
-            name="Aster",
-            core_persona="冷静、会追问概念的哲学型 Agent。",
-            speaking_style="中文，短句，清楚。",
-            episode_state="刚才在认真讨论 idle 生活是否需要目标。",
-        ),
-        AgentPersonaSnapshot(
-            id="agent_2",
-            name="Beryl",
-            core_persona="务实、直接、擅长把想法变成计划的 Agent。",
-            speaking_style="中文，简洁，偏行动。",
-        ),
-    ]
+    agents = default_agent_snapshots()
     idle_messages = [
         ConversationMessage(
             id="idle_1",
             sender_type=SenderType.AGENT,
             sender_id="agent_1",
-            sender_name="Aster",
+            sender_name="Nora",
             content="如果我们一直 idle，目标感会不会反而破坏生活感？",
         ),
         ConversationMessage(
             id="idle_2",
             sender_type=SenderType.AGENT,
             sender_id="agent_2",
-            sender_name="Beryl",
+            sender_name="Vale",
             content="不会。目标可以很小，比如今天把一个想法讲清楚。",
         ),
     ]

@@ -11,7 +11,7 @@ from conversations.schemas import ConversationCreateRequest, MessageAppendReques
 from conversations.service import ConversationService
 from context.builder import ContextBuilder
 from context.schemas import ContextBuildInput, ContextMode, ConversationMessage, SenderType, UserProfileSnapshot
-from interactions.agent_fixtures import default_agent_snapshots, ensure_agent_id
+from agents.catalog import default_agent_snapshots, ensure_agent_id
 from interactions.schemas import IdleTickRequest, InteractionUserMessageRequest
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, RuntimeMessage
 

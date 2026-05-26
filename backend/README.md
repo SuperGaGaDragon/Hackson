@@ -12,6 +12,7 @@ Lst Modified by: Codex
   - Keep business modules split by domain, starting with `users/`.
   - Keep shared runtime concerns in `core/`.
   - Keep `conversations/` as the historical fact source for conversations and messages.
+  - Keep `agents/` responsible for Agent identity, display profile, and persona source of truth.
   - Keep `interactions/` responsible for synchronous product flows after a user message or idle tick.
   - Keep `context/` responsible for what the model should see, and `model_runtime/` responsible for how the backend calls the model.
   - Keep async derived work such as summary, memory, diary, and relationship updates under `workers/` when those features are introduced.
@@ -34,11 +35,12 @@ Lst Modified by: Codex
 |-tasks/ future Work Mode task and tool-trace module
 
 ## implementation status
-- `core/`, `users/`, `conversations/`, `context/`, `model_runtime/`, and `interactions/` contain working V1 code.
-- `agents/`, `workers/`, `memory/`, and `tasks/` currently contain product-level module documentation and package markers. Add implementation files as each version reaches that module.
+- `core/`, `users/`, `agents/`, `conversations/`, `context/`, `model_runtime/`, and `interactions/` contain working V1 code.
+- `workers/`, `memory/`, and `tasks/` currently contain product-level module documentation and package markers. Add implementation files as each version reaches that module.
 
 ## module boundaries
 - `interactions/` owns the product flow: save input message when needed, ask `context/` for a context package, ask `model_runtime/` for a model response, save the Agent reply, and return it to the frontend.
+- `agents/` owns the two fixed V1 Agent identities. Frontend display profiles and backend prompt persona records must come from this module.
 - `conversations/` owns the historical fact source: conversation containers, message writes, message reads, sequence order, and ownership checks.
 - `context/` owns context construction only. It should not directly call model providers or own HTTP routes.
 - `model_runtime/` owns provider calls, timeout, retry, streaming, and platform-side model config. It should not know idle or companion business rules.
@@ -46,5 +48,5 @@ Lst Modified by: Codex
 
 ## 代办
 - Add deployment scripts after the target port and process manager are finalized.
-- Replace `interactions/agent_fixtures.py` after `agents/` persistence exists.
+- Replace the fixed `agents/catalog.py` records after Agent persistence exists.
 - Keep `docs/backend-architecture.md` updated when module boundaries change.

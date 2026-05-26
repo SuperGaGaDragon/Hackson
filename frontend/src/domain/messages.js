@@ -4,7 +4,7 @@ Created by: Codex
 Last Modified at: 2026-05-25
 Last Modified by: Codex
 */
-import { resolveAgent } from "./agents";
+import { FALLBACK_AGENT_BY_SLOT, resolveAgent } from "./agents";
 
 export function sortMessages(messages) {
   return [...messages].sort((a, b) => {
@@ -23,8 +23,8 @@ export function uniqueMessages(messages) {
   return sortMessages([...map.values()]);
 }
 
-export function toTimelineItem(message) {
-  const agent = resolveAgent(message.senderSlot);
+export function toTimelineItem(message, agentBySlot = FALLBACK_AGENT_BY_SLOT) {
+  const agent = resolveAgent(message.senderSlot, agentBySlot);
   const type = message.type || (message.senderType === "agent" ? "agent" : message.senderType);
 
   return {

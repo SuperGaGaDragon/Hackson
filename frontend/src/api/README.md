@@ -16,6 +16,7 @@ Lst Modified by: Codex
 ## folder structure
 |-README.md API folder guide
 |-client.js shared fetch wrapper and token helpers
+|-agents.js backend-owned Agent display profile APIs
 |-users.js user auth and settings APIs
 |-conversations.js conversation and message history APIs
 |-interactions.js idle and companion product interaction APIs

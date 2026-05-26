@@ -6,8 +6,10 @@ Last Modified by: Codex
 */
 import { Activity, MessageSquare, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
+import { listAgents } from "./api/agents";
 import { getToken } from "./api/client";
 import { getCurrentUser } from "./api/users";
+import { FALLBACK_AGENTS, normalizeAgents } from "./domain/agents";
 import AuthPage from "./features/auth/AuthPage";
 import ChatPage from "./features/chat/ChatPage";
 import IdlePage from "./features/idle/IdlePage";
@@ -23,6 +25,7 @@ const navItems = [
 function App() {
   const [view, setView] = useState("idle");
   const [user, setUser] = useState(null);
+  const [agents, setAgents] = useState(FALLBACK_AGENTS);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState("");
 
@@ -37,7 +40,14 @@ function App() {
 
       try {
         const currentUser = await getCurrentUser();
-        if (mounted) setUser(currentUser);
+        if (!mounted) return;
+        setUser(currentUser);
+        try {
+          setAgents(await loadAgentProfiles());
+        } catch (err) {
+          setAgents(FALLBACK_AGENTS);
+          setError(err.message || "Agents failed");
+        }
       } catch (err) {
         if (mounted) setError(err.message || "Auth failed");
       } finally {
@@ -60,7 +70,7 @@ function App() {
   }
 
   if (!user) {
-    return <AuthPage onAuthed={setUser} />;
+    return <AuthPage onAuthed={(nextUser) => handleAuthed(nextUser, setUser, setAgents, setError)} />;
   }
 
   return (
@@ -68,8 +78,8 @@ function App() {
       <Sidebar setView={setView} user={user} view={view} />
       <section className="workspace">
         <Topbar error={error} view={view} />
-        {view === "idle" && <IdlePage />}
-        {view === "chat" && <ChatPage />}
+        {view === "idle" && <IdlePage agents={agents} />}
+        {view === "chat" && <ChatPage agents={agents} />}
         {view === "me" && (
           <MePage
             onLogout={() => {
@@ -83,6 +93,20 @@ function App() {
       </section>
     </main>
   );
+}
+
+async function loadAgentProfiles() {
+  return normalizeAgents(await listAgents());
+}
+
+async function handleAuthed(nextUser, setUser, setAgents, setError) {
+  setUser(nextUser);
+  try {
+    setAgents(await loadAgentProfiles());
+  } catch (err) {
+    setAgents(FALLBACK_AGENTS);
+    setError(err.message || "Agents failed");
+  }
 }
 
 function Sidebar({ setView, user, view }) {

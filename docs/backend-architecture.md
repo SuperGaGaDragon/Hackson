@@ -58,6 +58,7 @@ backend/
     tests/
 
   agents/
+    catalog.py
     routes.py
     schemas.py
     service.py
@@ -77,7 +78,6 @@ backend/
     routes.py
     schemas.py
     service.py
-    agent_fixtures.py
     tests/
 
   context/
@@ -142,7 +142,7 @@ backend/
 - `context/` 已经负责 idle / companion_1 / companion_2 的上下文拼接。
 - `model_runtime/` 已经负责平台统一模型调用。
 - `interactions/` 已经负责 idle tick、用户插入 idle、companion_2 用户消息的同步主链路。
-- 下一步应该把 `interactions/agent_fixtures.py` 替换为真实 `agents/` 持久化快照，并补 streaming。
+- 下一步应该把固定 `agents/catalog.py` 替换为真实 `agents/` 持久化快照，并补 streaming。
 
 ## 5. 模块职责
 
@@ -251,7 +251,7 @@ V1 最小字段：
 - `routes.py`：FastAPI interaction routes。
 - `service.py`：同步产品主链路编排。
 - `schemas.py`：interaction 请求和响应类型。
-- `agent_fixtures.py`：MVP 临时 Agent 快照，后续由 `agents/` 替代。
+- `agents/catalog.py`：V1 固定 Agent 身份和 persona 源头，后续由 `agents/` 持久化替代。
 
 主链路：
 
