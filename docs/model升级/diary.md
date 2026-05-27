@@ -67,6 +67,21 @@ Lst Modified by: Codex
   - 本地测试通过：逐个运行 backend 所有 `*/tests` 目录；Work Mode `18`、model_runtime `23`、interactions `21` 均通过。
   - 目标机 public `8145` 测试通过：Work Mode `18`、model_runtime `23`、interactions `21`。
   - 目标机 public smoke 通过：`撰写一个8000字小说` Mission `6a17428e1c922129e72e8968` 完成，事件链到 `MISSION_COMPLETED`，生成 1 个 text Artifact，长度 `1055`，metadata 为 `provider=codex_cli`、`modelName=gpt-5.4`。
+- 实施 Work Mode V1 model-driven loop：
+  - 先落 `docs/work_mode/final_version.md` 文档群，废弃 legacy 文档作为执行源。
+  - Loop 1：实现严格 JSON Action tool protocol，拒绝普通文本、未知工具、多工具调用和 schema 错误。
+  - Loop 2：新增 Product / Artifact lineage / Work Window 持久化，Mission detail 返回 `products`、`workWindows`、`artifacts`。
+  - Loop 3：新增 Lead/Delegate context builder 和 JSON Action model client。
+  - Loop 4：新增 `WorkModeToolExecutor` 和 `MissionLoopRunner`，工具顺序由模型返回的 tool action 决定，后端不写死流程。
+  - Loop 5：实现 V1 工具：`mission_plan`、`work_product`、`inspect_product`、`delegate_agent`、`ask_user`、`finish_mission`、`block_mission`。
+  - Loop 6：后端 start route 接入 V1 runner；frontend Work UI 增加 Timeline、Work Windows、Product Panel，窗口默认折叠，Product 以持久化数据为事实源。
+  - Loop 7：新增 deterministic full smoke `scripts/work_mode_v1_full_smoke.py`，目标是完整 8000 CJK 验收，不依赖真实模型波动。
+  - Loop 8：目标机新隔离服务 `hackson-work-v1-8150.service`，新目录 `~/hackson_work_v1_8150`，新库 `hackson_work_v1_8150`，未触碰 public `8145`、Idle `8147`、Work V0.5 `8148`、legacy `8130`。
+  - 本地测试通过：Work Mode `46`、model_runtime `24`、interactions `21`、frontend build、deterministic full smoke `final_cjk=9936`。
+  - 目标机测试通过：Work Mode `46`、model_runtime `24`、frontend build、deterministic full smoke `events=12/windows=2/products=1/artifacts=4/final_cjk=9936`。
+  - 目标机真实 Codex HTTP smoke：真实模型能自动调用 `mission_plan` 和 `work_product`，持久化真实大纲 Product；长模型调用 timeout 后进入 `paused_retryable`，没有 fake artifact。
+  - 修复 `codex_cli` timeout 清理：超时后 kill 整个 process group，目标机验证没有 orphan `codex exec`。
+  - 修复 `paused_retryable` resume：公开 `POST /api/work/missions/{missionId}/start` 可对同一 Mission 创建新 run 并继续；目标机 resume smoke 最终 `MISSION_COMPLETED`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -74,14 +89,20 @@ Lst Modified by: Codex
 - 先用 fake runtime 和 fixture JSON 做单元测试，再接真实 Responses API。
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
 - Work V0.5 只保证单次有界产物；完整 8000 字长文需要后续 V1 supervisor loop 拆成多步生成、续写、合并、验收。
+- Work V1 核心闭环已经成立：模型自己选工具，后端只管 schema、权限、持久化、状态机、UI 合同。
+- 真实 Codex CLI 可跑通 V1 loop，但长文本质量和时延仍不适合直接在 HTTP background task 里无限等待；产品化需要 durable queue、resume UI 和更强的长文验收策略。
 
 ### 下一步
 - 继续观察 `codex_cli` 冷启动延迟；如需要，再做常驻 worker 或队列化。
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
-- Work V1 增加 durable queue 和多步 supervisor，让长篇任务可以分章节完成，而不是依赖单次模型调用。
+- Work V1 下一步先把 `8150` 的通过内容推广到 public `8145` 前，再做 public browser full smoke。
+- Work V1.1 增加 native tool calling adapter；V1.2 再加 streaming，不改变当前 ToolExecutor。
+- Work V1.3 再加并行 Work Window；V2 才引入 Codex/file/browser/computer tools。
 
 ### 风险
 - 如果一次性加入 streaming、web search、memory、citation，问题会混在一起，难以定位。
 - `idle` 自动生成如果开高 reasoning 或搜索，会带来成本和循环失败风险。
 - reasoning summary 可以产品化展示，但原始 chain-of-thought 不能展示或依赖。
 - `codex_cli` 是进程级调用，稳定但比直接 HTTP relay 更重；当前先完成最小闭环，后续再优化性能。
+- 真实 8000 字全量模型 smoke 成本高、时延长；当前已用 deterministic full smoke 固定产品验收，用真实模型 smoke 验证链路、暂停和恢复。
+- 当前 `8150` 是 isolated smoke，不是 public product；推广 public 前需要用户确认。

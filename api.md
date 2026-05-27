@@ -10,6 +10,7 @@ Last Modified by: Codex
 - Public-domain rows describe the currently retained product service.
 - The `8147` rows describe the isolated Idle Auto smoke service used for its fix.
 - The `8148` rows describe the isolated Work V0.5 artifact smoke service. It is not the public product service.
+- The `8150` rows describe the isolated Work V1 model-driven loop smoke service. It is not the public product service.
 
 ## current environment
 | Item | Value |
@@ -44,6 +45,13 @@ Last Modified by: Codex
 | Work V0.5 smoke backend bind | `127.0.0.1:8148` |
 | Work V0.5 fake model bind | `127.0.0.1:18148` |
 | Work V0.5 smoke database | `hackson_work_v05_8148` |
+| Work V1 smoke source path | `~/hackson_work_v1_8150` |
+| Work V1 smoke backend path | `~/hackson_work_v1_8150/backend` |
+| Work V1 smoke frontend build path | `~/hackson_work_v1_8150/frontend/dist` |
+| Work V1 smoke service | `hackson-work-v1-8150.service`, user-level systemd, active |
+| Work V1 smoke backend bind | `127.0.0.1:8150` |
+| Work V1 smoke database | `hackson_work_v1_8150` |
+| Work V1 smoke model provider | `codex_cli` through target-machine Codex CLI |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -57,6 +65,7 @@ Last Modified by: Codex
 | 8147 | Hackson Idle Auto smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-idle-auto-8147.service` | Isolated verification for Idle Auto topic, interjection, speaker, and rate-limit behavior |
 | 8148 | Hackson Work V0.5 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v05-8148.service` | Isolated verification for Work Mission artifact persistence and Product UI render |
 | 18148 | Work V0.5 fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-work-v05-fake-model-18148.service` | Test-only model relay for deterministic Work V0.5 success smoke; not a product API |
+| 8150 | Hackson Work V1 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-8150.service` | Isolated verification for Work V1 model-selected tool loop, Product/Artifact lineage, retryable pause, and resume |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
@@ -65,6 +74,7 @@ Last Modified by: Codex
 - On 2026-05-27, `8147` was reintroduced as `hackson-idle-auto-8147.service` for isolated Idle Auto verification without touching public `8145`.
 - On 2026-05-27, temporary Orchestrator V1 smoke ports `8148` and `18148` were used for isolated target-machine verification, then stopped.
 - On 2026-05-27, `8148` and `18148` were reintroduced as Work V0.5 isolated smoke services. They are active and intentionally separate from public `8145`.
+- On 2026-05-27, `8150` was introduced as the isolated Work V1 model-driven loop smoke service. It is active and intentionally separate from public `8145`, Idle Auto `8147`, Work V0.5 `8148`, and legacy `8130`.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
@@ -98,8 +108,8 @@ Model-backed rows were additionally verified on the target machine against `http
 | GET | `/api/work/projects` | Bearer JWT | `backend/work_mode/` | List current-user Work projects |
 | POST | `/api/work/missions` | Bearer JWT | `backend/work_mode/` | Create a Mission with `agent_1` or `agent_2` as lead |
 | GET | `/api/work/projects/{projectId}/missions` | Bearer JWT | `backend/work_mode/` | List Missions in one Project |
-| GET | `/api/work/missions/{missionId}` | Bearer JWT | `backend/work_mode/` | Read Mission detail, current event timeline, and persisted artifacts |
-| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start the V0.5 single model-run Mission worker |
+| GET | `/api/work/missions/{missionId}` | Bearer JWT | `backend/work_mode/` | Read Mission detail, current event timeline, persisted Products, Work Windows, and Artifacts |
+| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start or resume the V1 model-driven tool loop in current HEAD; public `8145` still runs its deployed version until promoted |
 | GET | `/api/work/missions/{missionId}/events` | Bearer JWT | `backend/work_mode/` | Poll Mission events after `afterSequence` |
 
 ## request notes
@@ -344,3 +354,14 @@ V0.5 Work Mission generation is intentionally bounded to one model pass. Long re
   - `/tmp/hackson_public_work_agents_desktop.png`
   - `/tmp/hackson_public_work_done_desktop.png`
   - `/tmp/hackson_public_work_mobile.png`
+- Work V1 isolated smoke verification on active `8150`:
+  - Target source: `~/hackson_work_v1_8150`.
+  - Target service: `hackson-work-v1-8150.service`, active on `127.0.0.1:8150`.
+  - Target database: `hackson_work_v1_8150`.
+  - Target tests passed: Work Mode `46`, model_runtime `24`.
+  - Target frontend build passed with Node `20.19.6`, assets `/assets/index-B-RFrSxG.js` and `/assets/index-hERmjtRu.css`.
+  - Deterministic full smoke passed on target: `work_mode_v1_full_smoke=ok`, `events=12`, `windows=2`, `products=1`, `artifacts=4`, `final_cjk=9936`.
+  - Real Codex-backed HTTP smoke verified `mission_plan` and `work_product` persisted on a real Mission, then a provider timeout produced `paused_retryable` instead of `failed`.
+  - Resume smoke verified the same paused Mission can be started again through `POST /api/work/missions/{missionId}/start` and complete; final event sequence included `MISSION_PAUSED_RETRYABLE`, second `MISSION_STARTED`, `MISSION_PLAN_UPDATED`, two `PRODUCT_UPDATED`, `PRODUCT_INSPECTED`, and `MISSION_COMPLETED`.
+  - Codex CLI timeout cleanup verified no orphan `codex exec` process remained after timeout.
+  - Existing public `8145`, Idle Auto `8147`, Work V0.5 `8148`, fake relay `18148`, and legacy `8130` services were not stopped.
