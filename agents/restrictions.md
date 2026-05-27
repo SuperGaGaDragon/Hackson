@@ -31,7 +31,7 @@ comments is necessary.
 
 4. We have a server at docs/数据库/machine.md Backend should be deployed at that machine. Be sure to test in that machine frequently. 
 
-5. 每次开始工作前先检查工作区是否干净。如果不干净提交干净再继续。
+5. 每次开始工作前先检查自己的工作区是否干净。如果不干净提交干净再继续。（不过，只提交是自己修改的内容，如若不是自己修改的就不用动）
 6. 目标机上禁止暂停任何现有服务。必须开新的端口。如果要暂停服务，必须找我核实。
 7. 后端用fastapi，前端用react+vite。
 8. 根目录必须放一个api.md 也是包含header，实时更新所有的api端口和目的。要求：a. 没看过代码的程序员看到这个文档可以无缝开始 b. 出现在文档上的必须是检测好的。
