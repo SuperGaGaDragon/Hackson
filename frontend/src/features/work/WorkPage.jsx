@@ -6,19 +6,16 @@ Last Modified by: Codex
 */
 import { useEffect, useMemo, useState } from "react";
 import {
-  addProjectEmployee,
-  createEmployee,
   createMission,
   createProject,
   getMission,
-  listEmployees,
   listMissionEvents,
-  listProjectEmployees,
   listProjectMissions,
   listProjects,
   startMission,
   stopMission,
 } from "../../api/workMode";
+import { normalizeAgents } from "../../domain/agents";
 import InspectorPanel from "./components/InspectorPanel";
 import MissionHeader from "./components/MissionHeader";
 import ProductPanel from "./components/ProductPanel";
@@ -31,19 +28,16 @@ import WorkspaceView from "./components/WorkspaceView";
 
 const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked"]);
 
-function WorkPage() {
+function WorkPage({ agents = [] }) {
+  const workAgents = useMemo(() => normalizeAgents(agents).slice(0, 2), [agents]);
+  const defaultLeadId = workAgents[0]?.slot || "agent_1";
   const [projects, setProjects] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [team, setTeam] = useState([]);
   const [missions, setMissions] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedMission, setSelectedMission] = useState(null);
   const [events, setEvents] = useState([]);
   const [projectName, setProjectName] = useState("");
-  const [employeeName, setEmployeeName] = useState("");
-  const [employeeRole, setEmployeeRole] = useState("");
-  const [teamEmployeeId, setTeamEmployeeId] = useState("");
-  const [missionLeadId, setMissionLeadId] = useState("employee_default_lead");
+  const [missionLeadId, setMissionLeadId] = useState(defaultLeadId);
   const [missionTitle, setMissionTitle] = useState("");
   const [missionGoal, setMissionGoal] = useState("");
   const [loading, setLoading] = useState(true);
@@ -60,14 +54,10 @@ function WorkPage() {
       setError("");
       try {
         const rows = await listProjects();
-        const employeeRows = await listEmployees();
         if (!mounted) return;
         setProjects(rows);
-        setEmployees(employeeRows);
         setSelectedProject(null);
-        setTeam([]);
-        setTeamEmployeeId(firstAvailableEmployeeId(employeeRows, []));
-        setMissionLeadId("employee_default_lead");
+        setMissionLeadId(defaultLeadId);
         setMissions([]);
         setSelectedMission(null);
         setEvents([]);
@@ -85,16 +75,22 @@ function WorkPage() {
   }, []);
 
   useEffect(() => {
+    if (!workAgents.some((agent) => agent.slot === missionLeadId)) {
+      setMissionLeadId(defaultLeadId);
+    }
+  }, [defaultLeadId, missionLeadId, workAgents]);
+
+  useEffect(() => {
     if (!selectedMission || terminalStatuses.has(selectedMission.status)) return undefined;
     if (!["running", "stopping"].includes(selectedMission.status)) return undefined;
     const timer = window.setInterval(async () => {
       try {
         const nextEvents = await listMissionEvents(selectedMission.id, afterSequence);
         if (nextEvents.length > 0) {
-          setEvents((current) => mergeEvents(current, nextEvents));
           const detail = await getMission(selectedMission.id);
           setSelectedMission(detail.mission);
           setMissions((current) => replaceMission(current, detail.mission));
+          setEvents((current) => mergeEvents(current, nextEvents));
         }
       } catch (err) {
         setError(err.message || "Poll failed");
@@ -132,16 +128,13 @@ function WorkPage() {
     }
   }
 
-  async function loadProject(project, employeeRows = employees) {
+  async function loadProject(project) {
     const missionRows = await listProjectMissions(project.id);
-    const teamRows = await listProjectEmployees(project.id);
     const firstMission = missionRows[0] || null;
     const detail = firstMission ? await getMission(firstMission.id) : null;
     const selected = detail?.mission || firstMission;
     setSelectedProject(project);
-    setTeam(teamRows);
-    setTeamEmployeeId(firstAvailableEmployeeId(employeeRows, teamRows));
-    setMissionLeadId(firstLeadId(teamRows));
+    setMissionLeadId(defaultLeadId);
     setMissions(replaceMission(missionRows, selected));
     setSelectedMission(selected);
     setEvents(detail?.events || []);
@@ -151,14 +144,10 @@ function WorkPage() {
     if (busy) return;
     setError("");
     setSelectedProject(null);
-    setTeam([]);
     setMissions([]);
     setSelectedMission(null);
     setEvents([]);
-    setTeamEmployeeId(firstAvailableEmployeeId(employees, []));
-    setMissionLeadId("employee_default_lead");
-    setEmployeeName("");
-    setEmployeeRole("");
+    setMissionLeadId(defaultLeadId);
     setMissionTitle("");
     setMissionGoal("");
   }
@@ -168,11 +157,12 @@ function WorkPage() {
     setBusy(true);
     setError("");
     try {
+      const leadId = workAgents.some((agent) => agent.slot === missionLeadId) ? missionLeadId : defaultLeadId;
       const mission = await createMission({
         projectId: selectedProject.id,
         title: missionTitle,
         goal: missionGoal,
-        leadEmployeeId: missionLeadId,
+        leadEmployeeId: leadId,
       });
       const detail = await getMission(mission.id);
       setMissions((current) => [detail.mission, ...current]);
@@ -182,44 +172,6 @@ function WorkPage() {
       setMissionGoal("");
     } catch (err) {
       setError(err.message || "Create failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function addEmployee() {
-    if (!employeeName.trim() || !employeeRole.trim() || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      const employee = await createEmployee({ name: employeeName, role: employeeRole });
-      const nextEmployees = [employee, ...employees];
-      setEmployees(nextEmployees);
-      setTeamEmployeeId(firstAvailableEmployeeId(nextEmployees, team));
-      setEmployeeName("");
-      setEmployeeRole("");
-    } catch (err) {
-      setError(err.message || "Create failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function addToTeam() {
-    if (!selectedProject || !teamEmployeeId || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      const member = await addProjectEmployee(selectedProject.id, {
-        employeeId: teamEmployeeId,
-        roleOnProject: "Member",
-      });
-      const nextTeam = mergeTeam(team, [member]);
-      setTeam(nextTeam);
-      setTeamEmployeeId(firstAvailableEmployeeId(employees, nextTeam));
-      setMissionLeadId(member.employeeId);
-    } catch (err) {
-      setError(err.message || "Add failed");
     } finally {
       setBusy(false);
     }
@@ -291,29 +243,20 @@ function WorkPage() {
   return (
     <div className="work-console-grid">
       <ProjectMissionRail
+        agents={workAgents}
         busy={busy || loading}
-        employeeName={employeeName}
-        employeeRole={employeeRole}
-        employees={employees}
         missionLeadId={missionLeadId}
         missionGoal={missionGoal}
         missionTitle={missionTitle}
         missions={missions}
-        onAddEmployee={addEmployee}
-        onAddToTeam={addToTeam}
         onBackToWorkspace={backToWorkspace}
         onCreateMission={addMission}
-        onEmployeeNameChange={setEmployeeName}
-        onEmployeeRoleChange={setEmployeeRole}
         onMissionLeadChange={setMissionLeadId}
         onMissionGoalChange={setMissionGoal}
         onMissionTitleChange={setMissionTitle}
         onSelectMission={selectMission}
-        onTeamEmployeeChange={setTeamEmployeeId}
         selectedMission={selectedMission}
         selectedProject={selectedProject}
-        team={team}
-        teamEmployeeId={teamEmployeeId}
       />
       <section className="mission-console">
         <MissionHeader busy={busy || loading} mission={selectedMission} onStart={start} onStop={stop} />
@@ -328,9 +271,9 @@ function WorkPage() {
         <InspectorPanel
           busy={busy || loading}
           error={error}
+          agentCount={workAgents.length}
           mission={selectedMission}
           project={selectedProject}
-          teamCount={team.length}
         />
         <WarningCard events={events} />
       </div>
@@ -349,23 +292,6 @@ function mergeEvents(current, nextEvents) {
 function replaceMission(missions, mission) {
   if (!mission) return missions;
   return missions.map((item) => (item.id === mission.id ? mission : item));
-}
-
-function mergeTeam(current, nextRows) {
-  const map = new Map(current.map((item) => [item.id, item]));
-  for (const row of nextRows) {
-    map.set(row.id, row);
-  }
-  return Array.from(map.values());
-}
-
-function firstLeadId(team) {
-  return team[0]?.employeeId || "employee_default_lead";
-}
-
-function firstAvailableEmployeeId(employees, team) {
-  const used = new Set(team.map((member) => member.employeeId));
-  return employees.find((employee) => !used.has(employee.id))?.id || "";
 }
 
 export default WorkPage;

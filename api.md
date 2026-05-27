@@ -26,6 +26,8 @@ Last Modified by: Codex
 - Work Mode V0.1 Employee smoke venv: `~/hackson_work_mode_v01_employees/backend/.venv`
 - Work Mode Workspace name-only smoke directory on target machine: `~/hackson_work_mode_workspace_nameonly_8144/backend`
 - Work Mode Workspace name-only smoke venv: `~/hackson_work_mode_workspace_nameonly_8144/backend/.venv`
+- Work Mode Two Agent smoke directory on target machine: `~/hackson_work_mode_two_agents_8146/backend`
+- Work Mode Two Agent smoke venv: `~/hackson_work_mode_two_agents_8146/backend/.venv`
 - Public domain deployment directory on target machine: `~/hackson_domain_8145`
 - Public domain deployment backend venv: `~/hackson_domain_8145/backend/.venv`
 - Public domain deployment URL: `https://hackson.catachess.com/`
@@ -66,6 +68,7 @@ cd ~/hackson_backend_test/backend
 - Verified Work Mode V0 stable smoke port: `127.0.0.1:8142`
 - Verified Work Mode V0.1 Employee smoke port: `127.0.0.1:8143`
 - Verified Work Mode Workspace name-only smoke port: `127.0.0.1:8144`
+- Verified Work Mode Two Agent smoke port: `127.0.0.1:8146`
 - Verified public domain deployment port: `127.0.0.1:8145`
 - Verified production port: `100.70.248.39:8130`
 - Port status after verification: target smoke ports are running; local tunnels/dev servers are temporary unless listed as running.
@@ -80,6 +83,7 @@ cd ~/hackson_backend_test/backend
 - Database used in Work Mode V0 stable smoke verification: MongoDB database `hackson_work_mode_v0_stable`
 - Database used in Work Mode V0.1 Employee smoke verification: MongoDB database `hackson_work_mode_v01_employees`
 - Database used in Work Mode Workspace name-only smoke verification: MongoDB database `hackson_work_mode_workspace_nameonly_8144`
+- Database used in Work Mode Two Agent smoke verification: MongoDB database `hackson_work_mode_two_agents_8146`
 - Database used in public domain deployment verification: MongoDB database `hackson_domain_8145`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
@@ -154,6 +158,13 @@ cd ~/hackson_backend_test/backend
   - API smoke registered `nameonly_1779860201`, created `Name Only Project` through `POST /api/work/projects` with body `{"name":"Name Only Project"}`, listed it through `GET /api/work/projects`, and confirmed MongoDB stored `repo_path` as an empty internal value.
   - Frontend target-backed path `5186 -> 18144 -> 8144` registered a new user, verified the Workspace New Project form has no repo/path input, created `Name UI 1779860276330` with name only, opened Project detail, returned to Workspace on mobile, and had `0` failed API responses.
   - Screenshots: `/tmp/hackson_work_nameonly_workspace_desktop.png`, `/tmp/hackson_work_nameonly_project_desktop.png`, `/tmp/hackson_work_nameonly_workspace_mobile.png`.
+- Work Mode Two Agent verification:
+  - Target backend path `~/hackson_work_mode_two_agents_8146/backend` served FastAPI on `127.0.0.1:8146` without touching production `8130`, public domain `8145`, or existing Work smoke ports.
+  - Local and target `work_mode/tests` passed with `14` tests.
+  - API smoke registered `twoagent_1779861983`, updated the user's two `agentProfiles`, created a Project by name only, created a Mission with `leadEmployeeId: "agent_1"` without calling Employee or Team APIs, and started the Mission.
+  - Verified Mission and MongoDB values: `leadEmployeeId=agent_1`, `leadEmployeeName=Plotter`, `leadEmployeeRole=outline lead`, `payload.employee.id=agent_1`.
+  - Frontend target-backed path `5189 -> 18146 -> 8146` registered a new user, updated the two Agents to `Plotter` and `Drafter`, created a Project, verified no Employee or Team controls were visible, created a Mission, clicked Start, reached completion, and had `0` failed API responses.
+  - Screenshots: `/tmp/hackson_work_agents_project_desktop.png`, `/tmp/hackson_work_agents_started_desktop.png`, `/tmp/hackson_work_agents_mobile.png`.
 - Public domain deployment verification:
   - Target backend path `~/hackson_domain_8145/backend` serves FastAPI on `127.0.0.1:8145` with React assets from `~/hackson_domain_8145/frontend/dist`.
   - Services are enabled and active: `hackson-domain-8145.service` and `hackson-cloudflared.service`.
@@ -183,6 +194,7 @@ cd ~/hackson_backend_test/backend
 | 8143 | FastAPI backend temporary Work Mode V0.1 Employee smoke server | `127.0.0.1` | Verified and running | Target-machine Employee Library and Project Team smoke using MongoDB database `hackson_work_mode_v01_employees` |
 | 8144 | FastAPI backend temporary Work Mode Workspace name-only smoke server | `127.0.0.1` | Verified and running | Target-machine name-only Project creation smoke using MongoDB database `hackson_work_mode_workspace_nameonly_8144` |
 | 8145 | Hackson public domain FastAPI backend and frontend | `127.0.0.1` | Verified, enabled, and running as `hackson-domain-8145.service` | Public domain deployment for `https://hackson.catachess.com/`, serving `/api/*` and React `dist/` from one origin |
+| 8146 | FastAPI backend temporary Work Mode Two Agent smoke server | `127.0.0.1` | Verified and running | Target-machine two user Agent Mission lead smoke using MongoDB database `hackson_work_mode_two_agents_8146` |
 | 8130 | Hackson production FastAPI backend and frontend | `0.0.0.0` | Verified, enabled, and running as `hackson-production.service` | Production app serving `/api/*` and React `dist/` from one origin |
 | 8130 | FastAPI backend temporary local context-fix server | `127.0.0.1` on local Mac | Verified and running in `screen` session `hackson_backend_8130` | Local-only latest idle context verification with in-memory `mongomock`; not production |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
@@ -198,6 +210,7 @@ cd ~/hackson_backend_test/backend
 | 18142 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode V0 stable frontend integration, not kept running locally | Local browser access to target Work Mode V0 backend `127.0.0.1:8142` |
 | 18143 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode V0.1 Employee frontend integration, not kept running locally | Local browser access to target Work Mode Employee backend `127.0.0.1:8143` |
 | 18144 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode Workspace name-only frontend integration, not kept running locally | Local browser access to target Work Mode name-only backend `127.0.0.1:8144` |
+| 18146 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode Two Agent frontend integration, not kept running locally | Local browser access to target Work Mode two Agent backend `127.0.0.1:8146` |
 | 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified after restart against `18122`; running as PID recorded in `/tmp/hackson_frontend_5175.pid` | Local frontend connected to latest target backend through Vite proxy |
 | 5177 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified against `18125 -> 8125`, not kept running locally | Local frontend E2E for companion_1 continuation and Work Mode |
 | 5178 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running | Local frontend product database auth smoke through default proxy `18126 -> 8126` |
@@ -209,17 +222,18 @@ cd ~/hackson_backend_test/backend
 | 5182 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode V0 stable frontend integration, not kept running locally | Local Work Mode V0 completed/stopped UI verification through `18142 -> 8142` |
 | 5184 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode V0.1 Employee frontend integration, not kept running locally | Local Work Mode Employee UI verification through `18143 -> 8143` |
 | 5186 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode Workspace name-only frontend integration, not kept running locally | Local Work Mode Workspace name-only UI verification through `18144 -> 8144` |
+| 5189 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode Two Agent frontend integration, not kept running locally | Local Work Mode two Agent UI verification through `18146 -> 8146` |
 
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/health` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8145`, `https://hackson.catachess.com` | `backend/main.py` | Backend health check |
+| GET | `/health` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8145`, `8146`, `https://hackson.catachess.com` | `backend/main.py` | Backend health check |
 | GET | `/` | No | `8130`, `8145`, `https://hackson.catachess.com` | `backend/main.py` | React frontend HTML |
 | GET | `/assets/{asset}` | No | `8130`, `8145`, `https://hackson.catachess.com` | `backend/main.py` | React frontend assets |
-| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8145`, `https://hackson.catachess.com` | `backend/users/` | Register user and return JWT |
+| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8145`, `8146`, `https://hackson.catachess.com` | `backend/users/` | Register user and return JWT |
 | POST | `/api/users/login` | No | `8100`, `8141`, `8142`, `8143` | `backend/users/` | Login by email or username |
-| GET | `/api/users/me` | Bearer JWT | `8100`, `8126`, `8130`, `8131`, `8132`, `8133` | `backend/users/` | Read current user, including human profile and two Agent profiles |
-| PATCH | `/api/users/me` | Bearer JWT | `8100`, `8131`, `8132`, `8133` | `backend/users/` | Update current user settings, including human profile and two Agent profiles |
+| GET | `/api/users/me` | Bearer JWT | `8100`, `8126`, `8130`, `8131`, `8132`, `8133`, `8146` | `backend/users/` | Read current user, including human profile and two Agent profiles |
+| PATCH | `/api/users/me` | Bearer JWT | `8100`, `8131`, `8132`, `8133`, `8146` | `backend/users/` | Update current user settings, including human profile and two Agent profiles |
 | POST | `/api/users/logout` | No server state | `8100` | `backend/users/` | Client-side JWT logout placeholder |
 | GET | `/api/agents` | No | `8120`, `8122`, `8130`, `8131` | `backend/agents/` | List fixed V1 Agent display profiles |
 | POST | `/api/conversations` | Bearer JWT | `8100`, `8101`, `8132`, `8133` | `backend/conversations/` | Create conversation container, including clean idle topics |
@@ -235,18 +249,18 @@ cd ~/hackson_backend_test/backend
 | GET | `/api/tasks` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/` | List current user's Work Mode tasks |
 | GET | `/api/tasks/{taskId}` | Bearer JWT | Local tests | `backend/tasks/` | Read one current-user-owned Work Mode task |
 | POST | `/api/tasks/{taskId}/messages` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/`, `backend/interactions/` | Send a minimal Work Mode message using task state |
-| POST | `/api/work/projects` | Bearer JWT | `8141`, `8142`, `8143`, `8144`, `8145`, `https://hackson.catachess.com` | `backend/work_mode/` | Create a Work Mode Project by name; `repoPath` is optional internal metadata |
-| GET | `/api/work/projects` | Bearer JWT | `8141`, `8142`, `8143`, `8144` | `backend/work_mode/` | List current user's Work Mode Projects |
+| POST | `/api/work/projects` | Bearer JWT | `8141`, `8142`, `8143`, `8144`, `8145`, `8146`, `https://hackson.catachess.com` | `backend/work_mode/` | Create a Work Mode Project by name; `repoPath` is optional internal metadata |
+| GET | `/api/work/projects` | Bearer JWT | `8141`, `8142`, `8143`, `8144`, `8146` | `backend/work_mode/` | List current user's Work Mode Projects |
 | POST | `/api/work/employees` | Bearer JWT | `8143` | `backend/work_mode/` | Create a Work Mode Employee profile |
 | GET | `/api/work/employees` | Bearer JWT | `8143` | `backend/work_mode/` | List current user's Work Mode Employees |
 | POST | `/api/work/projects/{projectId}/employees` | Bearer JWT | `8143` | `backend/work_mode/` | Add an Employee to a Project team |
 | GET | `/api/work/projects/{projectId}/employees` | Bearer JWT | `8143` | `backend/work_mode/` | List Project team Employees |
-| POST | `/api/work/missions` | Bearer JWT | `8141`, `8142`, `8143` | `backend/work_mode/` | Create a Mission with a default or selected Lead Employee |
-| GET | `/api/work/projects/{projectId}/missions` | Bearer JWT | `8141`, `8142`, `8143` | `backend/work_mode/` | List Missions in one Project |
-| GET | `/api/work/missions/{missionId}` | Bearer JWT | `8141`, `8142`, `8143` | `backend/work_mode/` | Read Mission detail and recent events |
-| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `8141`, `8142`, `8143` | `backend/work_mode/` | Start the V0 deterministic Mission worker |
+| POST | `/api/work/missions` | Bearer JWT | `8141`, `8142`, `8143`, `8146` | `backend/work_mode/` | Create a Mission with a default Lead, legacy Employee, or current user Agent slot `agent_1` / `agent_2` |
+| GET | `/api/work/projects/{projectId}/missions` | Bearer JWT | `8141`, `8142`, `8143`, `8146` | `backend/work_mode/` | List Missions in one Project |
+| GET | `/api/work/missions/{missionId}` | Bearer JWT | `8141`, `8142`, `8143`, `8146` | `backend/work_mode/` | Read Mission detail and recent events |
+| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `8141`, `8142`, `8143`, `8146` | `backend/work_mode/` | Start the V0 deterministic Mission worker |
 | POST | `/api/work/missions/{missionId}/stop` | Bearer JWT | `8142` | `backend/work_mode/` | Request stop for a running Mission and emit stop events |
-| GET | `/api/work/missions/{missionId}/events` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | Poll Mission events after a sequence number |
+| GET | `/api/work/missions/{missionId}/events` | Bearer JWT | `8141`, `8142`, `8146` | `backend/work_mode/` | Poll Mission events after a sequence number |
 
 Notes:
 - Ports `8100` and `8101` were temporary target-machine verification ports and are not kept running.
@@ -295,6 +309,7 @@ Verified checks:
 - Persona/topic UI verification uses SSH tunnel `18131` to target backend `8131`, then Vite port `5180`
 - Agent/Idle history UI verification uses SSH tunnel `18132` to target backend `8132`, then Vite port `5183`
 - Idle Say/topic/speaker UI verification uses SSH tunnel `18133` to target backend `8133`, then Vite port `5185`
+- Work Mode Two Agent UI verification uses SSH tunnel `18146` to target backend `8146`, then Vite port `5189`
 - Production UI E2E uses `http://100.70.248.39:8130/` directly with no Vite proxy.
 - latest `5175` API smoke: `/api/agents` returned `200 OK`; `/api/idle/{conversationId}/join` returned `201 Created`
 
@@ -360,6 +375,7 @@ Latest frontend issue check:
 - Agent/Idle history UI E2E on `5183 -> 18132 -> 8132`: Me rendered two user-owned Agent editors `Mira` and `Rook`; Idle rendered History/New; New opened a topic modal; Tick produced one visible `Mira #1` Agent message; no UI status errors were present. Screenshot: `/tmp/hackson_agent_idle_ui.png`.
 - Idle Say/topic/speaker UI E2E on `5185 -> 18133 -> 8133`: New created a clean idle topic; Say appended `You #1` in the same idle conversation; the page stayed in `IDLE`; Auto remained enabled and active; Auto generated `Mira #2`; the Topic panel retained `只讨论 30 秒产品演示开场，不要回到技术实现`; no UI status errors were present. Screenshot: `/tmp/hackson_idle_say_ui.png`.
 - Work Mode Workspace name-only UI E2E on `5186 -> 18144 -> 8144`: Register, Workspace, name-only Project create, Project detail, Back to Workspace, and mobile Workspace passed with `0` failed API responses. Screenshots: `/tmp/hackson_work_nameonly_workspace_desktop.png`, `/tmp/hackson_work_nameonly_project_desktop.png`, `/tmp/hackson_work_nameonly_workspace_mobile.png`.
+- Work Mode Two Agent UI E2E on `5189 -> 18146 -> 8146`: Register, user Agent profile update to `Plotter` and `Drafter`, Project create, two Agent lead selection, Mission create, Start, completion, and mobile screenshot passed with `0` failed API responses. Screenshots: `/tmp/hackson_work_agents_project_desktop.png`, `/tmp/hackson_work_agents_started_desktop.png`, `/tmp/hackson_work_agents_mobile.png`.
 
 ## verified APIs
 
@@ -1232,6 +1248,55 @@ Verified target-machine smoke values on port `8125`:
 Notes:
 - V1.5 does not run Codex CLI or autonomous tools.
 - Work messages stay in `mode=work`; companion and idle recipes do not include Work Mode state by default.
+
+### POST /api/work/missions
+Purpose: create a Work Mode Mission. Current Work UI selects one of the two user-owned Agents from `Me` by sending `leadEmployeeId` as `agent_1` or `agent_2`.
+
+Headers:
+
+```text
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Verified request body on port `8146`:
+
+```json
+{
+  "projectId": "<project_id>",
+  "title": "Novel Outline",
+  "goal": "Plan an 8000 word novel.",
+  "leadEmployeeId": "agent_1"
+}
+```
+
+Verified response fields on port `8146`:
+
+```json
+{
+  "leadEmployeeId": "agent_1",
+  "leadEmployeeName": "Plotter",
+  "leadEmployeeRole": "outline lead",
+  "status": "draft"
+}
+```
+
+Verified event payload:
+
+```json
+{
+  "employee": {
+    "id": "agent_1",
+    "name": "Plotter",
+    "role": "outline lead"
+  }
+}
+```
+
+Notes:
+- The response keeps `leadEmployee*` names for compatibility with existing Work Mode event cards.
+- In the current product UI, that value represents a user-owned Agent, not a Work-only Employee.
+- Legacy Employee and Project Team APIs remain verified on port `8143`, but the current Work UI does not call them.
 
 ## developer notes
 - All protected user APIs require `Authorization: Bearer <accessToken>`.

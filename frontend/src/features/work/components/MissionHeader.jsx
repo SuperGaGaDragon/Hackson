@@ -9,12 +9,13 @@ import { Play, Square } from "lucide-react";
 function MissionHeader({ busy, mission, onStart, onStop }) {
   const canStart = mission && !["running", "stopping"].includes(mission.status);
   const canStop = mission?.status === "running";
+  const title = mission?.title || "Create mission";
 
   return (
     <div className="panel-head mission-head">
       <div>
         <p className="eyebrow">Mission</p>
-        <h2>{mission?.title || "No mission"}</h2>
+        <h2>{title}</h2>
         {mission?.goal && <p className="mission-goal">{mission.goal}</p>}
       </div>
       <div className="panel-actions">

@@ -10,6 +10,8 @@ Lst Modified by: Codex
 - 架构思路
   - Keep Mission Runtime separate from the older minimal `tasks/` Work chat module.
   - Store Projects, Missions, Runs, Steps, and Events in dedicated MongoDB collections.
+  - Current Mission leads come from the authenticated user's two editable Agent profiles, `agent_1` and `agent_2`.
+  - Legacy Employee collections and routes remain for compatibility, but the current product UI does not require Work-only Employee or Team setup.
   - V0 worker is deterministic and only emits structured events; it does not run shell commands or Codex CLI.
   - Routes expose `/api/work/*` while existing `/api/tasks` remains available until the Mission Runtime is verified.
 

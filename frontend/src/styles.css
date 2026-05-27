@@ -1023,11 +1023,65 @@ input:disabled {
   margin-top: 6px;
 }
 
+.agent-choice-list,
 .team-list {
   display: grid;
   gap: 6px;
-  max-height: 120px;
   overflow: auto;
+}
+
+.agent-choice-list {
+  max-height: 172px;
+}
+
+.team-list {
+  max-height: 120px;
+}
+
+.agent-choice {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  padding: 8px;
+  background: #0c1115;
+  color: var(--text);
+  text-align: left;
+}
+
+.agent-choice.teal {
+  border-left: 3px solid var(--teal);
+}
+
+.agent-choice.amber {
+  border-left: 3px solid var(--amber);
+}
+
+.agent-choice.active {
+  border-color: rgba(57, 208, 196, 0.58);
+  background: #102320;
+}
+
+.agent-choice .avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 11px;
+}
+
+.agent-choice strong,
+.agent-choice small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-choice small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .team-row {

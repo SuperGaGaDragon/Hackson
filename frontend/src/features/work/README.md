@@ -9,8 +9,9 @@ Lst Modified by: Codex
   - Store the Work Mode Workspace and Project Mission pages backed by verified `/api/work` APIs.
 - 架构思路
   - Work opens to a Workspace project list and New Project form.
-  - Project detail owns Employees, Team, Missions, console, and Inspector.
-  - Use `/api/work` Project, Employee, Team, Mission, and Event APIs verified on the target machine.
+  - Project detail owns the two user-edited Agents from `Me`, Missions, console, and Inspector.
+  - Use `/api/work` Project, Mission, and Event APIs verified on the target machine.
+  - Do not expose Work-only Employee or Team creation in the current product UI.
   - Do not expose autonomous tool execution before backend safety gates exist.
 
 ## folder structure

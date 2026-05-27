@@ -236,6 +236,45 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(events[0]["payload"]["employee"]["name"], "Mira")
         self.assertEqual(events[0]["payload"]["employee"]["role"], "Product Designer")
 
+    def test_user_agent_can_lead_mission_without_project_team(self) -> None:
+        project = self.service.create_project(
+            "user_1",
+            ProjectCreateRequest(name="Novel"),
+        )
+
+        mission = self.service.create_mission(
+            "user_1",
+            MissionCreateRequest(
+                projectId=project["id"],
+                title="Outline",
+                goal="Plan an 8000 word novel.",
+                leadEmployeeId="agent_1",
+            ),
+            [
+                {
+                    "slot": "agent_1",
+                    "name": "Plotter",
+                    "voice": "precise outline lead",
+                    "personality": "Plans carefully.",
+                    "story": "Knows serialized fiction.",
+                },
+                {
+                    "slot": "agent_2",
+                    "name": "Drafter",
+                    "voice": "fast prose writer",
+                    "personality": "Drafts quickly.",
+                    "story": "",
+                },
+            ],
+        )
+        events = self.service.list_events("user_1", mission["id"])
+
+        self.assertEqual(mission["leadEmployeeId"], "agent_1")
+        self.assertEqual(mission["leadEmployeeName"], "Plotter")
+        self.assertEqual(mission["leadEmployeeRole"], "precise outline lead")
+        self.assertEqual(events[0]["payload"]["employee"]["id"], "agent_1")
+        self.assertEqual(events[0]["payload"]["employee"]["name"], "Plotter")
+
     def test_employee_must_join_project_before_leading_mission(self) -> None:
         project = self.service.create_project(
             "user_1",

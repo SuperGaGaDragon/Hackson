@@ -8,19 +8,19 @@ Last Modified by: Codex
 
 ## 1. Product North Star
 
-Work Mode is an Agent Mission Runtime with project-scoped AI Employees.
+Work Mode is an Agent Mission Runtime that uses the two user-owned Agents edited in `Me`.
 
-The user creates Projects. Each Project can contain multiple Missions and a roster of AI Employees. The user can edit an Employee's personality, working style, and experience notes. Each Mission chooses one Lead Employee and can invite other Employees to brainstorm, review, or execute supporting work.
+The user creates Projects. Each Project can contain multiple Missions. Each Mission chooses one Lead Agent from the two account Agent profiles (`agent_1`, `agent_2`). The user edits those Agents once in `Me`, then reuses them inside every Project.
 
 A Mission runs a supervised loop that uses fixed UI events to show progress and controlled worker execution to change code, run commands, collect diffs, run tests, request approval, and produce a final result.
 
 The model does not draw UI. The model emits structured events and tool decisions. The frontend renders those events with fixed React surfaces. The backend owns the runtime loop, safety gates, persistence, and worker execution.
 
-The Lead Employee is the mission driver. The Lead Employee can use three tool classes:
+The Lead Agent is the mission driver. The Lead Agent can use three tool classes:
 
 - UI tools: emit React-rendered mission events.
 - Execution tools: invoke shell, Codex CLI, tests, and file-system work through backend safety gates.
-- Employee tools: ask other Employees to brainstorm, critique, summarize, or review.
+- Agent tools: ask the other user Agent to brainstorm, critique, summarize, or review.
 
 ## 2. Version Principles
 
@@ -30,16 +30,18 @@ The Lead Employee is the mission driver. The Lead Employee can use three tool cl
 - Each version must separate Work Mode memory and logs from Idle and Companion defaults.
 - Each version must treat Codex and shell execution as controlled worker actions, not direct model freedom.
 - Each version must record events before showing them in UI.
-- Each version that uses Employees must persist which Employee made or influenced an event.
-- Employee personality and experience are user-editable product data, but Mission execution still runs under backend safety gates.
+- Each version that uses Agents must persist which Agent made or influenced an event.
+- Agent personality and experience are user-editable product data, but Mission execution still runs under backend safety gates.
+- The current product UI must not ask the user to create a separate Employee or Project Team before starting a Mission.
 
 ## 3. Version Summary
 
 | Version | Name | Product result | Runtime result | Release gate |
 | --- | --- | --- | --- | --- |
 | V0 | Mission Event Console | User can create a Project and Mission, start/stop it, and watch live structured events. | No autonomous code edits required. Worker can run a safe stub or read-only command. | Event stream works end to end on target machine. |
-| V0.1 | Employee Library | User can create Employees, add them to a Project team, and choose a Lead Employee for a Mission. | Mission state stores the selected Lead Employee and events show that Employee. | Target smoke proves one user-created Employee can lead a Mission. |
-| V0.1.1 | Workspace UI Cleanup | Work opens to a simple Workspace: existing Projects and New Project. | Employee, Team, Mission, and console controls are only visible inside a selected Project. | Target-backed browser smoke proves Projects persist on target MongoDB and Project detail opens cleanly. |
+| V0.1 | Legacy Employee Library | Legacy API can create Employees, add them to a Project team, and choose a Lead Employee for a Mission. | Mission state stores the selected Lead Employee and events show that Employee. | Historical target smoke proved one user-created Employee can lead a Mission. Current UI no longer uses this flow. |
+| V0.1.1 | Workspace UI Cleanup | Work opens to a simple Workspace: existing Projects and New Project. | Mission and console controls are only visible inside a selected Project. | Target-backed browser smoke proves Projects persist on target MongoDB and Project detail opens cleanly. |
+| V0.1.2 | Two Agent Mission Lead | Project detail shows the two user-edited Agents and lets the user choose one as Mission lead. | Mission creation accepts `agent_1` or `agent_2` directly from the authenticated user's Agent profiles. | Target smoke proves `leadEmployeeId: agent_1` works without Employee or Team setup, and browser screenshot shows no Employee create form. |
 | V0.5 | Single Codex Run | User can run one controlled Codex step for a Mission and see logs, summary, and artifacts. | One worker process invokes Codex or a configured command once. | Logs and result artifacts are persisted and visible. |
 | V1 | Supervised Mission Loop | Mission repeats controlled iterations until done, stopped, blocked, or limit reached. | Hard-coded supervisor loop controls max iterations, runtime, no-progress, and approval gates. | A coding Mission can run multiple iterations and stop deterministically. |
 | V1.25 | Project Employee Roster | User can add Employees to a Project, edit personality and experience, and choose a Lead Employee for a Mission. | Mission state stores roster selection and lead employee. | A Mission displays which Employee is leading and which Employees are available. |
@@ -125,6 +127,8 @@ Optional in V0:
 
 ### Product Goal
 
+Status: legacy API history. V0.1.2 replaced this as the current product UI because the account already owns exactly two editable Agents from `Me`.
+
 Convert Work Mode language from generic Agents to a project team.
 
 The user can:
@@ -168,13 +172,15 @@ The Work entry screen must show only:
 - Existing Projects.
 - New Project.
 
-The user must open a Project before seeing:
+Historical V0.1.1 context: the user had to open a Project before seeing:
 
 - Employees.
 - Project Team.
 - Missions.
 - Mission console.
 - Inspector.
+
+Current V0.1.2 UI replaces Employees and Project Team with the two user-owned Agents.
 
 ### Runtime Scope
 
@@ -191,9 +197,46 @@ Target-backed smoke must verify:
 - Existing Projects render on the Workspace screen.
 - New Project creates a real Project with name only and opens Project detail.
 - `POST /api/work/projects` accepts `{ "name": "novel" }` without `repoPath`.
-- Project detail shows Team, Employees, Missions, and Mission console.
+- Historical V0.1.1 Project detail showed Team, Employees, Missions, and Mission console.
+- Current V0.1.2 Project detail shows Agents, Missions, and Mission console.
 - Workspace screen does not show Mission or Employee controls before a Project is opened.
 - Workspace screen does not expose `repoPath`.
+
+## 5.2 V0.1.2 Two Agent Mission Lead
+
+### Product Goal
+
+Remove the confusing Employee and Project Team setup from the current Work UI.
+
+The current user has exactly two editable Agents from `Me`. A Project does not create new employees. A Mission selects one of those two Agents as the Lead Agent, then the user clicks Start after the Mission exists.
+
+### User Flow
+
+1. Open Work.
+2. Create or select a Project.
+3. Project detail shows the two Agents from `Me`.
+4. Choose one Agent as Lead.
+5. Fill Mission and Goal.
+6. Click Create.
+7. Click Start.
+
+### Runtime Scope
+
+- Keep legacy Employee APIs for backward compatibility.
+- `POST /api/work/missions` must accept `leadEmployeeId` values `agent_1` and `agent_2`.
+- Mission records must store the selected Agent slot, user-edited Agent name, and user-edited Agent voice.
+- Mission events must include the selected Agent in `payload.employee` for compatibility with existing event cards.
+
+### Release Gate
+
+Target-machine smoke must verify:
+
+- Backend is on a new target-machine port.
+- MongoDB uses a new smoke database.
+- `POST /api/work/missions` accepts `leadEmployeeId: "agent_1"` without any Employee or Team API call.
+- Mission response and first event show the user-edited Agent name.
+- Project detail does not show Employee creation, Project Team add, or `Name` / `Role` Employee inputs.
+- Browser screenshot proves the user can understand the sequence: choose Agent, create Mission, then Start.
 
 ## 6. V0.5 Single Codex Run
 

@@ -48,6 +48,8 @@ Last Modified by: Codex
 | Work Mode V0 stable local frontend check | `127.0.0.1:5182 -> 18142 -> 8142`, verified but not kept running |
 | Work Mode V0.1 Employee backend | `127.0.0.1:8143`, verified and running on target machine |
 | Work Mode V0.1 Employee local frontend check | `127.0.0.1:5184 -> 18143 -> 8143`, verified but not kept running |
+| Work Mode Two Agent backend | `127.0.0.1:8146`, verified and running on target machine |
+| Work Mode Two Agent local frontend check | `127.0.0.1:5189 -> 18146 -> 8146`, verified but not kept running |
 | Local context-fix backend | `127.0.0.1:8130`, verified and running with in-memory `mongomock` |
 | Local context-fix frontend dev port | `127.0.0.1:5179`, verified and running |
 | Default frontend local dev port | `127.0.0.1:5173` |
@@ -55,6 +57,7 @@ Last Modified by: Codex
 | Latest smoke MongoDB database | `hackson_current_8125` |
 | Work Mode V0 stable MongoDB database | `hackson_work_mode_v0_stable` |
 | Work Mode V0.1 Employee MongoDB database | `hackson_work_mode_v01_employees` |
+| Work Mode Two Agent MongoDB database | `hackson_work_mode_two_agents_8146` |
 | Hackson public domain MongoDB database | `hackson_domain_8145` |
 | Older smoke MongoDB databases | `hackson_test`, `hackson_target_smoke`, `hackson_review_smoke_latest` |
 

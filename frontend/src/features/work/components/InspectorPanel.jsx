@@ -6,7 +6,7 @@ Last Modified by: Codex
 */
 import StatusLine from "../../../shared/components/StatusLine";
 
-function InspectorPanel({ busy, error, mission, project, teamCount = 0 }) {
+function InspectorPanel({ agentCount = 0, busy, error, mission, project }) {
   return (
     <aside className="context-rail inspector-rail">
       <div className="panel-head compact">
@@ -24,8 +24,8 @@ function InspectorPanel({ busy, error, mission, project, teamCount = 0 }) {
         <p>{mission?.leadEmployeeName || "Lead"}</p>
       </div>
       <div className="context-item">
-        <span>Team</span>
-        <p>{teamCount}</p>
+        <span>Agents</span>
+        <p>{agentCount}</p>
       </div>
       <div className="context-item">
         <span>Step</span>

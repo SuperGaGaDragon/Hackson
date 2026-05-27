@@ -11,11 +11,38 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from users.auth import get_current_user_id
-from work_mode.routes import get_work_mode_service, get_work_mode_worker_launcher, router
+from work_mode.routes import get_user_service, get_work_mode_service, get_work_mode_worker_launcher, router
 from work_mode.service import WorkModeService
 from work_mode.tests.test_work_mode_service import FakeWorkModeRepository
 
 TEST_USER_ID = "work_route_user"
+
+
+class FakeUserService:
+    def get_user(self, user_id: str) -> dict:
+        return {
+            "id": user_id,
+            "agentProfiles": [
+                {
+                    "slot": "agent_1",
+                    "name": "Planner",
+                    "short": "A1",
+                    "color": "teal",
+                    "voice": "careful planner",
+                    "personality": "Plans missions before execution.",
+                    "story": "",
+                },
+                {
+                    "slot": "agent_2",
+                    "name": "Writer",
+                    "short": "A2",
+                    "color": "amber",
+                    "voice": "direct writer",
+                    "personality": "Writes concise drafts.",
+                    "story": "",
+                },
+            ],
+        }
 
 
 class WorkModeRoutesTest(TestCase):
@@ -25,6 +52,7 @@ class WorkModeRoutesTest(TestCase):
         app.include_router(router, prefix="/api/work")
         app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
         app.dependency_overrides[get_work_mode_service] = lambda: self.service
+        app.dependency_overrides[get_user_service] = lambda: FakeUserService()
         app.dependency_overrides[get_work_mode_worker_launcher] = lambda: lambda user_id, mission_id, run_id: None
         self.client = TestClient(app)
 
@@ -126,3 +154,25 @@ class WorkModeRoutesTest(TestCase):
         self.assertEqual(mission["leadEmployeeName"], "Mira")
         detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
         self.assertEqual(detail["events"][0]["payload"]["employee"]["name"], "Mira")
+
+    def test_mission_route_accepts_user_agent_lead_without_team_setup(self) -> None:
+        project = self.client.post("/api/work/projects", json={"name": "Novel"}).json()
+
+        mission_response = self.client.post(
+            "/api/work/missions",
+            json={
+                "projectId": project["id"],
+                "title": "Outline",
+                "goal": "Plan the novel.",
+                "leadEmployeeId": "agent_1",
+            },
+        )
+
+        self.assertEqual(mission_response.status_code, 201)
+        mission = mission_response.json()
+        self.assertEqual(mission["leadEmployeeId"], "agent_1")
+        self.assertEqual(mission["leadEmployeeName"], "Planner")
+        self.assertEqual(mission["leadEmployeeRole"], "careful planner")
+        detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
+        self.assertEqual(detail["events"][0]["payload"]["employee"]["id"], "agent_1")
+        self.assertEqual(detail["events"][0]["payload"]["employee"]["name"], "Planner")

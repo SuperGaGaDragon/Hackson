@@ -11,6 +11,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 
 from core.database import get_database
 from users.auth import get_current_user_id
+from users.repository import UserRepository
+from users.service import UserService
 from work_mode.repository import WorkModeRepository
 from work_mode.schemas import (
     EmployeeCreateRequest,
@@ -34,6 +36,10 @@ router = APIRouter()
 
 def get_work_mode_service() -> WorkModeService:
     return WorkModeService(WorkModeRepository(get_database()))
+
+
+def get_user_service() -> UserService:
+    return UserService(UserRepository(get_database()))
 
 
 def get_work_mode_worker_launcher() -> Callable[[str, str, str], None]:
@@ -105,8 +111,10 @@ def create_mission(
     payload: MissionCreateRequest,
     current_user_id: str = Depends(get_current_user_id),
     service: WorkModeService = Depends(get_work_mode_service),
+    user_service: UserService = Depends(get_user_service),
 ) -> dict:
-    return service.create_mission(current_user_id, payload)
+    current_user = user_service.get_user(current_user_id)
+    return service.create_mission(current_user_id, payload, current_user.get("agentProfiles", []))
 
 
 @router.get("/projects/{project_id}/missions", response_model=list[MissionResponse])

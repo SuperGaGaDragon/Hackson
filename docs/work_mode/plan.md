@@ -83,7 +83,7 @@ Use these product terms consistently:
 1. User opens Work.
 2. User creates a Project with name only.
 3. User creates a Mission under that Project with a goal.
-4. System assigns a default Lead Employee label for V0.
+4. System selects a Lead Agent from the two user-owned Agent profiles.
 5. User opens Mission detail.
 6. User clicks Start.
 7. Backend creates a Run.
@@ -132,9 +132,9 @@ Bottom:
 Do not implement these in V0:
 
 - Full Codex autonomous loop.
-- Editable Employee creation.
-- Multi-Employee brainstorm.
-- Employee-to-Employee tool calls.
+- Separate Work-only Employee creation.
+- Multi-Agent brainstorm.
+- Agent-to-Agent tool calls.
 - Multi-agent Worker/Reviewer.
 - Git push.
 - Deploy.
@@ -194,7 +194,7 @@ WorkerLauncher:
 MissionWorker:
 
 - Emits deterministic V0 events.
-- Emits a default Lead Employee label in event payloads.
+- Emits the selected Lead Agent in event payloads.
 - Does not call arbitrary shell in the first slice.
 - Later can call Codex runner through a controlled adapter.
 
@@ -296,6 +296,7 @@ Required request models:
   - `title`: 1 to 160 chars
   - `goal`: 1 to 8000 chars
   - `lead_employee_id`: alias `leadEmployeeId`, default `employee_default_lead`
+  - current UI sends user Agent slots `agent_1` or `agent_2`
   - `supporting_employee_ids`: alias `supportingEmployeeIds`, default `[]`
   - `autonomy_level`: alias `autonomyLevel`, default `"supervised"`
   - `max_iterations`: alias `maxIterations`, default `1`, min `1`, max `20`
@@ -326,11 +327,12 @@ MongoDB collections:
 - `work_steps`
 - `work_events`
 
-V0 Employee rule:
+V0 lead rule:
 
-- Do not create a full Employee module yet.
-- Store `lead_employee_id`, `lead_employee_name`, and `supporting_employee_ids` as Mission fields or metadata with default values.
-- Default Lead Employee:
+- Current Mission leads are the two user-owned Agents edited in `Me`.
+- Store `lead_employee_id`, `lead_employee_name`, `lead_employee_role`, and `supporting_employee_ids` as Mission fields or metadata.
+- Accept `agent_1` and `agent_2` as direct Mission leads for the authenticated user.
+- Keep the legacy default Lead for old Missions and API compatibility:
   - id: `employee_default_lead`
   - name: `Lead`
   - role: `Mission lead`
@@ -548,8 +550,9 @@ Required state:
 - `loading`
 - `busy`
 - `error`
+- `agents`
+- `missionLeadId`
 - `newProjectName`
-- `newProjectRepoPath`
 - `newMissionTitle`
 - `newMissionGoal`
 
@@ -557,7 +560,7 @@ Workspace-first rule:
 
 - Initial Work load must not auto-open the first Project.
 - Initial Work load shows the Workspace screen with Project list and New Project only.
-- Selecting a Project loads Team, Missions, selected Mission, and events.
+- Selecting a Project loads Missions, selected Mission, and events.
 - Creating a Project may open that Project detail after successful persistence.
 - Returning to Workspace clears the selected Project and selected Mission from the visible UI.
 
@@ -626,7 +629,7 @@ Project detail grid:
 
 ```text
 left rail      center mission console       right inspector
-team          header                       status
+agents        header                       status
 missions      timeline                     warnings
 create        summary/product              approvals
               bottom raw logs
@@ -642,7 +645,7 @@ new project form
 
 Do not build a marketing landing page.
 
-Do not show Employee, Team, Mission, console, Inspector, or raw logs on the Workspace screen.
+Do not show Agents, Mission, console, Inspector, or raw logs on the Workspace screen.
 
 ## 8. Event Payload Contract
 
@@ -726,8 +729,8 @@ V0 payload examples:
 V0:
 
 - No arbitrary user command execution.
-- No user-created Employee execution.
-- No Employee-to-Employee tool calls.
+- No unsupervised user Agent execution.
+- No Agent-to-Agent tool calls.
 - No production write operations beyond database records for the logged-in user.
 - No Git mutation.
 - No file mutation by worker.
@@ -742,10 +745,9 @@ V0.5 and later:
 
 V1.25 and later:
 
-- Add editable Employee profile storage.
-- Add Project Employee roster.
-- Add Lead Employee selection UI.
-- Add Employee provenance to every model-generated event.
+- Add supporting Agent brainstorm.
+- Add Agent provenance to every model-generated event.
+- Add Project-level Agent memory only after the V0 lead flow is stable.
 
 Never allow:
 
@@ -966,7 +968,7 @@ Scope for the current batch:
 
 - Keep the worker deterministic.
 - Do not add model planning.
-- Do not add editable Employees.
+- Do not add separate Work-only Employees.
 - Verify the existing Mission state machine.
 
 Required stable behaviors:
@@ -1004,7 +1006,8 @@ Frontend manual:
 - Mobile screenshot.
 - Create Project.
 - Create Mission.
-- Confirm default Lead Employee is visible.
+- Confirm exactly two user Agents are visible.
+- Confirm Mission can select one Agent as Lead.
 - Start Mission.
 - See timeline update.
 - See product panel.
@@ -1021,6 +1024,8 @@ Target smoke:
 ## 13. V0.1 Employee Library Implementation Plan
 
 ### 13.1 Goal
+
+Status: superseded for the current product UI by Section 15, but retained as legacy API history.
 
 Implement the smallest product-grade Employee loop from `brainstorm2.md`:
 
@@ -1146,7 +1151,7 @@ Workspace
   -> New Project
 ```
 
-After the user opens a Project, the Project page can show:
+Historical V0.1.1 Project detail could show:
 
 ```text
 Project
@@ -1157,10 +1162,13 @@ Project
   -> Inspector
 ```
 
+Current V0.1.2 Project detail replaces Employees and Team with the two user-owned Agents from `Me`.
+
 ### 14.2 Product Rules
 
 - Do not auto-select the first Project on Work load.
 - Do not show Employee controls on the Workspace screen.
+- Do not show legacy Employee or Team controls in the current V0.1.2 Project detail.
 - Do not show Mission controls on the Workspace screen.
 - Do not show raw logs or Inspector on the Workspace screen.
 - Project cards must be directly clickable.
@@ -1185,11 +1193,11 @@ Add:
 ### 14.4 Implementation Steps
 
 1. Add `WorkspaceView.jsx`.
-2. Change initial load in `WorkPage.jsx` to load Projects and Employees only.
-3. Add `openProject(project)` helper that loads Project team, Missions, selected Mission, and events.
-4. Add `backToWorkspace()` helper that clears selected Project, selected Mission, Team, Missions, and events from the visible UI.
+2. Change initial load in `WorkPage.jsx` to load Projects only.
+3. Add `openProject(project)` helper that loads Missions, selected Mission, and events.
+4. Add `backToWorkspace()` helper that clears selected Project, selected Mission, Missions, and events from the visible UI.
 5. Move Project create controls from `ProjectMissionRail` into `WorkspaceView`.
-6. Keep Employee, Team, Mission, and Mission list inside `ProjectMissionRail`.
+6. Keep Agent selection, Mission create, and Mission list inside `ProjectMissionRail`.
 7. Add a Back button and selected Project header to `ProjectMissionRail`.
 8. Add responsive Workspace styles.
 9. Hide `repoPath` from Workspace and Project detail UI.
@@ -1203,17 +1211,103 @@ Local:
 
 Target-backed browser:
 
-- Use SSH tunnel `18143 -> 8143`.
-- Use Vite dev server with proxy to `18143`.
+- Use the latest verified Work Mode target tunnel.
+- Use Vite dev server with proxy to the tunnel.
 - Login with a target-machine user that already has Projects.
 - Verify Workspace shows existing Projects and New Project only.
-- Open a Project and verify Project detail shows Team, Employees, Missions, Console, Inspector.
+- Open a Project and verify Project detail shows the two Agents, Missions, Console, Inspector.
 - Create a Project with name only and verify it appears through the target-backed API.
 - Capture desktop and mobile screenshots.
 
 No `api.md` route changes are required unless a new API is added or a verified port record changes.
 
-## 15. Done Definition
+## 15. V0.1.2 Two Agent Mission Lead Plan
+
+### 15.1 Goal
+
+Fix the current product confusion.
+
+The user has exactly two editable Agents from `Me`. Work Project detail must not ask the user to create Employees or build a Team. A Project opens to two Agent choices, a Mission form, and the Mission console.
+
+The user flow must be:
+
+```text
+Work
+  -> New Project or open Project
+  -> choose agent_1 or agent_2 as Lead
+  -> fill Mission and Goal
+  -> Create
+  -> Start
+```
+
+### 15.2 Backend Rules
+
+- `POST /api/work/missions` accepts `leadEmployeeId: "agent_1"` and `leadEmployeeId: "agent_2"`.
+- The route resolves Agent profiles from the authenticated user.
+- Mission storage keeps the Agent slot in `lead_employee_id`.
+- Mission storage keeps the user-edited Agent name in `lead_employee_name`.
+- Mission storage keeps the user-edited Agent voice in `lead_employee_role` for the existing response shape.
+- Event payload keeps the compatibility key `employee`, but the value represents the selected user Agent.
+- Legacy Employee routes stay available for old tests and old data, but the current frontend does not call them.
+
+### 15.3 Frontend Rules
+
+Update:
+
+- `frontend/src/features/work/WorkPage.jsx`
+- `frontend/src/features/work/components/ProjectMissionRail.jsx`
+- `frontend/src/features/work/components/InspectorPanel.jsx`
+- `frontend/src/features/work/components/MissionHeader.jsx`
+- `frontend/src/features/work/components/README.md`
+- `frontend/src/features/work/README.md`
+- `frontend/src/styles.css`
+
+Rules:
+
+- `WorkPage` receives `agents` from `App.jsx`.
+- Normalize and render exactly two user-owned Agents.
+- Do not call `listEmployees`, `createEmployee`, `addProjectEmployee`, or `listProjectEmployees` from the current Work UI.
+- Project detail left rail shows `Agents` and `Missions`.
+- Mission form uses Agent options for `Lead`.
+- The create button says `Create`, not `Add`.
+- Inspector label says `Agents`, not `Team`.
+- When no Mission exists, center header says `Create mission` and Start stays disabled.
+
+### 15.4 Regression Tests
+
+Backend:
+
+- Service test: `agent_1` can lead a Mission without Employee or Team setup.
+- Route test: route resolves edited user Agent profiles and stores the edited Agent name.
+- Existing legacy Employee tests continue passing.
+
+Frontend:
+
+- Build passes.
+- Target-backed browser screenshot shows no Employee create form.
+- Target-backed browser screenshot shows exactly two Agents from the current user profile.
+- Creating a Mission enables Start.
+
+### 15.5 Target Smoke
+
+Use a new target-machine port and a new MongoDB database.
+
+Smoke sequence:
+
+1. Register or log in a target-machine test user.
+2. Update `agentProfiles` with two distinct names.
+3. Create Project with name only.
+4. Create Mission with `leadEmployeeId: "agent_1"`.
+5. Assert Mission response has `leadEmployeeId: "agent_1"`.
+6. Assert Mission response and first event have the edited Agent name.
+7. Start Mission.
+8. Poll events until terminal or until `MISSION_STARTED` is visible.
+9. Open frontend against the same target backend.
+10. Capture desktop and mobile screenshots.
+
+Only after this passes, update `api.md`.
+
+## 16. Done Definition
 
 V0 is done only when:
 
@@ -1229,7 +1323,7 @@ V0 is done only when:
 - Target-machine smoke passes on a new port.
 - `api.md` is updated with only verified API details.
 
-## 14. First Engineering Slice
+## 17. First Engineering Slice
 
 Start with this exact slice:
 

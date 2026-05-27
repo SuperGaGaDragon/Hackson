@@ -9,6 +9,7 @@ from typing import Any, Protocol
 
 from fastapi import HTTPException, status
 
+from agents.catalog import normalize_user_agent_profiles
 from conversations.model import now_utc
 from work_mode.model import (
     public_employee,
@@ -34,6 +35,7 @@ DEFAULT_LEAD_EMPLOYEE = {
     "role": "Mission lead",
 }
 DEFAULT_PROJECT_REPO_PATH = ""
+USER_AGENT_LEAD_IDS = {"agent_1", "agent_2"}
 
 
 class WorkModeRepositoryProtocol(Protocol):
@@ -138,9 +140,19 @@ class WorkModeService:
             if str(row["employee_id"]) in employees
         ]
 
-    def create_mission(self, user_id: str, payload: MissionCreateRequest) -> dict[str, Any]:
+    def create_mission(
+        self,
+        user_id: str,
+        payload: MissionCreateRequest,
+        agent_profiles: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         project = self._require_project(user_id, payload.project_id)
-        lead_employee = self._mission_lead_employee(user_id, str(project["_id"]), payload.lead_employee_id)
+        lead_employee = self._mission_lead_employee(
+            user_id,
+            str(project["_id"]),
+            payload.lead_employee_id,
+            agent_profiles,
+        )
         timestamp = now_utc()
         document = {
             "user_id": user_id,
@@ -412,9 +424,17 @@ class WorkModeService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="employee_not_found")
         return employee
 
-    def _mission_lead_employee(self, user_id: str, project_id: str, employee_id: str) -> dict[str, str]:
+    def _mission_lead_employee(
+        self,
+        user_id: str,
+        project_id: str,
+        employee_id: str,
+        agent_profiles: list[dict[str, Any]] | None = None,
+    ) -> dict[str, str]:
         if employee_id == DEFAULT_LEAD_EMPLOYEE["id"]:
             return DEFAULT_LEAD_EMPLOYEE
+        if employee_id in USER_AGENT_LEAD_IDS:
+            return _agent_lead_payload(employee_id, agent_profiles)
         employee = self._require_employee(user_id, employee_id)
         membership = self.repository.find_project_employee(project_id, str(employee["_id"]), user_id)
         if membership is None:
@@ -445,4 +465,16 @@ def _employee_payload(mission: dict[str, Any]) -> dict[str, str]:
         "id": mission.get("lead_employee_id", DEFAULT_LEAD_EMPLOYEE["id"]),
         "name": mission.get("lead_employee_name", DEFAULT_LEAD_EMPLOYEE["name"]),
         "role": mission.get("lead_employee_role", DEFAULT_LEAD_EMPLOYEE["role"]),
+    }
+
+
+def _agent_lead_payload(agent_id: str, agent_profiles: list[dict[str, Any]] | None) -> dict[str, str]:
+    agents = normalize_user_agent_profiles(agent_profiles)
+    agent = next((profile for profile in agents if profile["slot"] == agent_id), None)
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="agent_not_available")
+    return {
+        "id": agent["slot"],
+        "name": agent["name"],
+        "role": agent["voice"],
     }
