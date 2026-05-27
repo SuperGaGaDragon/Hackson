@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Lst Modified by: Codex
 
 ## brief intro
@@ -14,7 +14,8 @@ Lst Modified by: Codex
 
 ## folder structure
 |-README.md work component guide
-|-ProjectMissionRail.jsx project and mission list plus creation controls
+|-WorkspaceView.jsx workspace project list and new project form
+|-ProjectMissionRail.jsx project detail rail with employees, team, and missions
 |-MissionHeader.jsx selected mission title, status, and controls
 |-ProgressTimeline.jsx mission event timeline
 |-SummaryCard.jsx summary event card

@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 :root {
@@ -822,6 +822,111 @@ input:disabled {
   gap: 8px;
 }
 
+.work-workspace-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  min-height: max(720px, calc(100vh - 79px));
+  padding: 16px;
+}
+
+.workspace-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: rgba(16, 20, 24, 0.9);
+}
+
+.workspace-headline span,
+.rail-project-path {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workspace-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  min-height: 0;
+}
+
+.workspace-projects,
+.workspace-new-project {
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(16, 20, 24, 0.9);
+}
+
+.workspace-projects {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+}
+
+.workspace-new-project {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 320px;
+}
+
+.workspace-project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-content: start;
+  gap: 10px;
+  overflow: auto;
+}
+
+.workspace-project-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 104px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #10161a;
+  color: var(--text);
+  text-align: left;
+}
+
+.workspace-project-card strong,
+.workspace-project-card small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-project-card span {
+  border: 1px solid #303941;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.workspace-project-card small {
+  grid-column: 1 / -1;
+  align-self: end;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workspace-project-card:hover,
+.workspace-project-card:focus-visible {
+  border-color: rgba(57, 208, 196, 0.58);
+  outline: none;
+}
+
 .work-console-grid {
   display: grid;
   grid-template-columns: 280px minmax(420px, 1fr) 300px;
@@ -842,6 +947,11 @@ input:disabled {
 
 .work-rail {
   gap: 10px;
+}
+
+.rail-project-path {
+  margin: -4px 0 2px;
+  overflow-wrap: anywhere;
 }
 
 .work-side {
@@ -1108,6 +1218,14 @@ input:disabled {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .workspace-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-new-project {
+    max-height: none;
+  }
+
   .work-side {
     grid-template-rows: auto auto;
   }
@@ -1188,6 +1306,20 @@ input:disabled {
   .work-console-grid {
     min-height: auto;
     padding: 10px;
+  }
+
+  .work-workspace-view {
+    min-height: auto;
+    padding: 10px;
+  }
+
+  .workspace-headline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .workspace-project-grid {
+    grid-template-columns: 1fr;
   }
 
   .mission-content {

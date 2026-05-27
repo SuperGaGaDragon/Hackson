@@ -39,6 +39,7 @@ The Lead Employee is the mission driver. The Lead Employee can use three tool cl
 | --- | --- | --- | --- | --- |
 | V0 | Mission Event Console | User can create a Project and Mission, start/stop it, and watch live structured events. | No autonomous code edits required. Worker can run a safe stub or read-only command. | Event stream works end to end on target machine. |
 | V0.1 | Employee Library | User can create Employees, add them to a Project team, and choose a Lead Employee for a Mission. | Mission state stores the selected Lead Employee and events show that Employee. | Target smoke proves one user-created Employee can lead a Mission. |
+| V0.1.1 | Workspace UI Cleanup | Work opens to a simple Workspace: existing Projects and New Project. | Employee, Team, Mission, and console controls are only visible inside a selected Project. | Target-backed browser smoke proves Projects persist on target MongoDB and Project detail opens cleanly. |
 | V0.5 | Single Codex Run | User can run one controlled Codex step for a Mission and see logs, summary, and artifacts. | One worker process invokes Codex or a configured command once. | Logs and result artifacts are persisted and visible. |
 | V1 | Supervised Mission Loop | Mission repeats controlled iterations until done, stopped, blocked, or limit reached. | Hard-coded supervisor loop controls max iterations, runtime, no-progress, and approval gates. | A coding Mission can run multiple iterations and stop deterministically. |
 | V1.25 | Project Employee Roster | User can add Employees to a Project, edit personality and experience, and choose a Lead Employee for a Mission. | Mission state stores roster selection and lead employee. | A Mission displays which Employee is leading and which Employees are available. |
@@ -155,6 +156,42 @@ Target-machine smoke must verify:
 - `GET /api/work/projects/{projectId}/employees`
 - `POST /api/work/missions` with `leadEmployeeId`
 - Mission event payload includes the selected Employee.
+
+## 5.1 V0.1.1 Workspace UI Cleanup
+
+### Product Goal
+
+Make Work Mode feel like a product workspace instead of a dense control panel.
+
+The Work entry screen must show only:
+
+- Existing Projects.
+- New Project.
+
+The user must open a Project before seeing:
+
+- Employees.
+- Project Team.
+- Missions.
+- Mission console.
+- Inspector.
+
+### Runtime Scope
+
+This is a frontend-only layout cleanup on top of verified V0.1 APIs.
+
+No backend route, schema, or worker behavior changes are required.
+
+### Release Gate
+
+Target-backed smoke must verify:
+
+- Backend is the target-machine port `8143`.
+- MongoDB database is `hackson_work_mode_v01_employees`.
+- Existing Projects render on the Workspace screen.
+- New Project creates a real Project and opens Project detail.
+- Project detail shows Team, Employees, Missions, and Mission console.
+- Workspace screen does not show Mission or Employee controls before a Project is opened.
 
 ## 6. V0.5 Single Codex Run
 

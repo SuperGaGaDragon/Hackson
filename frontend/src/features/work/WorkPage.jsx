@@ -27,6 +27,7 @@ import ProjectMissionRail from "./components/ProjectMissionRail";
 import RawLogPanel from "./components/RawLogPanel";
 import SummaryCard from "./components/SummaryCard";
 import WarningCard from "./components/WarningCard";
+import WorkspaceView from "./components/WorkspaceView";
 
 const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked"]);
 
@@ -61,22 +62,16 @@ function WorkPage() {
       try {
         const rows = await listProjects();
         const employeeRows = await listEmployees();
-        const firstProject = rows[0] || null;
-        const missionRows = firstProject ? await listProjectMissions(firstProject.id) : [];
-        const teamRows = firstProject ? await listProjectEmployees(firstProject.id) : [];
-        const firstMission = missionRows[0] || null;
-        const detail = firstMission ? await getMission(firstMission.id) : null;
         if (!mounted) return;
         setProjects(rows);
         setEmployees(employeeRows);
-        setSelectedProject(firstProject);
-        setTeam(teamRows);
-        setTeamEmployeeId(firstAvailableEmployeeId(employeeRows, teamRows));
-        setMissionLeadId(firstLeadId(teamRows));
-        const selected = detail?.mission || firstMission;
-        setMissions(replaceMission(missionRows, selected));
-        setSelectedMission(selected);
-        setEvents(detail?.events || []);
+        setSelectedProject(null);
+        setTeam([]);
+        setTeamEmployeeId(firstAvailableEmployeeId(employeeRows, []));
+        setMissionLeadId("employee_default_lead");
+        setMissions([]);
+        setSelectedMission(null);
+        setEvents([]);
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -116,15 +111,9 @@ function WorkPage() {
     try {
       const project = await createProject({ name: projectName, repoPath: projectRepoPath });
       setProjects((current) => [project, ...current]);
-      setSelectedProject(project);
-      setMissions([]);
-      setTeam([]);
-      setTeamEmployeeId(firstAvailableEmployeeId(employees, []));
-      setMissionLeadId("employee_default_lead");
-      setSelectedMission(null);
-      setEvents([]);
       setProjectName("");
       setProjectRepoPath("");
+      await loadProject(project);
     } catch (err) {
       setError(err.message || "Create failed");
     } finally {
@@ -137,23 +126,43 @@ function WorkPage() {
     setBusy(true);
     setError("");
     try {
-      const missionRows = await listProjectMissions(project.id);
-      const teamRows = await listProjectEmployees(project.id);
-      const firstMission = missionRows[0] || null;
-      const detail = firstMission ? await getMission(firstMission.id) : null;
-      const selected = detail?.mission || firstMission;
-      setSelectedProject(project);
-      setTeam(teamRows);
-      setTeamEmployeeId(firstAvailableEmployeeId(employees, teamRows));
-      setMissionLeadId(firstLeadId(teamRows));
-      setMissions(replaceMission(missionRows, selected));
-      setSelectedMission(selected);
-      setEvents(detail?.events || []);
+      await loadProject(project);
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function loadProject(project, employeeRows = employees) {
+    const missionRows = await listProjectMissions(project.id);
+    const teamRows = await listProjectEmployees(project.id);
+    const firstMission = missionRows[0] || null;
+    const detail = firstMission ? await getMission(firstMission.id) : null;
+    const selected = detail?.mission || firstMission;
+    setSelectedProject(project);
+    setTeam(teamRows);
+    setTeamEmployeeId(firstAvailableEmployeeId(employeeRows, teamRows));
+    setMissionLeadId(firstLeadId(teamRows));
+    setMissions(replaceMission(missionRows, selected));
+    setSelectedMission(selected);
+    setEvents(detail?.events || []);
+  }
+
+  function backToWorkspace() {
+    if (busy) return;
+    setError("");
+    setSelectedProject(null);
+    setTeam([]);
+    setMissions([]);
+    setSelectedMission(null);
+    setEvents([]);
+    setTeamEmployeeId(firstAvailableEmployeeId(employees, []));
+    setMissionLeadId("employee_default_lead");
+    setEmployeeName("");
+    setEmployeeRole("");
+    setMissionTitle("");
+    setMissionGoal("");
   }
 
   async function addMission() {
@@ -266,6 +275,23 @@ function WorkPage() {
     }
   }
 
+  if (!selectedProject) {
+    return (
+      <WorkspaceView
+        busy={busy || loading}
+        error={error}
+        loading={loading}
+        onCreateProject={addProject}
+        onProjectNameChange={setProjectName}
+        onProjectRepoPathChange={setProjectRepoPath}
+        onSelectProject={selectProject}
+        projectName={projectName}
+        projectRepoPath={projectRepoPath}
+        projects={projects}
+      />
+    );
+  }
+
   return (
     <div className="work-console-grid">
       <ProjectMissionRail
@@ -279,21 +305,15 @@ function WorkPage() {
         missions={missions}
         onAddEmployee={addEmployee}
         onAddToTeam={addToTeam}
+        onBackToWorkspace={backToWorkspace}
         onCreateMission={addMission}
-        onCreateProject={addProject}
         onEmployeeNameChange={setEmployeeName}
         onEmployeeRoleChange={setEmployeeRole}
         onMissionLeadChange={setMissionLeadId}
         onMissionGoalChange={setMissionGoal}
         onMissionTitleChange={setMissionTitle}
-        onProjectNameChange={setProjectName}
-        onProjectRepoPathChange={setProjectRepoPath}
         onSelectMission={selectMission}
-        onSelectProject={selectProject}
         onTeamEmployeeChange={setTeamEmployeeId}
-        projectName={projectName}
-        projectRepoPath={projectRepoPath}
-        projects={projects}
         selectedMission={selectedMission}
         selectedProject={selectedProject}
         team={team}

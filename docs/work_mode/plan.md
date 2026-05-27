@@ -546,6 +546,14 @@ Required state:
 - `newMissionTitle`
 - `newMissionGoal`
 
+Workspace-first rule:
+
+- Initial Work load must not auto-open the first Project.
+- Initial Work load shows the Workspace screen with Project list and New Project only.
+- Selecting a Project loads Team, Missions, selected Mission, and events.
+- Creating a Project may open that Project detail after successful persistence.
+- Returning to Workspace clears the selected Project and selected Mission from the visible UI.
+
 ### 7.4 Polling
 
 V0 polling rule:
@@ -607,17 +615,27 @@ Avoid:
 
 Use the current app shell.
 
-Work page grid:
+Project detail grid:
 
 ```text
 left rail      center mission console       right inspector
-projects      header                       status
+team          header                       status
 missions      timeline                     warnings
 create        summary/product              approvals
               bottom raw logs
 ```
 
-Do not build a landing page.
+Workspace screen:
+
+```text
+workspace
+projects grid
+new project form
+```
+
+Do not build a marketing landing page.
+
+Do not show Employee, Team, Mission, console, Inspector, or raw logs on the Workspace screen.
 
 ## 8. Event Payload Contract
 
@@ -1107,7 +1125,84 @@ Later:
 - Either migrate old tasks into Missions.
 - Or keep old tasks as archived v1.5 data.
 
-## 13. Done Definition
+## 14. V0.1.1 Workspace UI Cleanup Plan
+
+### 14.1 Goal
+
+Fix the current Work UI density problem.
+
+The first Work screen must be a simple Workspace:
+
+```text
+Workspace
+  -> Existing Projects
+  -> New Project
+```
+
+After the user opens a Project, the Project page can show:
+
+```text
+Project
+  -> Employees
+  -> Team
+  -> Missions
+  -> Mission Console
+  -> Inspector
+```
+
+### 14.2 Product Rules
+
+- Do not auto-select the first Project on Work load.
+- Do not show Employee controls on the Workspace screen.
+- Do not show Mission controls on the Workspace screen.
+- Do not show raw logs or Inspector on the Workspace screen.
+- Project cards must be directly clickable.
+- New Project must persist through the target-machine API before opening Project detail.
+- Project detail must have a clear Back to Workspace action.
+
+### 14.3 Frontend Files
+
+Update:
+
+- `frontend/src/features/work/WorkPage.jsx`
+- `frontend/src/features/work/components/ProjectMissionRail.jsx`
+- `frontend/src/features/work/components/README.md`
+- `frontend/src/styles.css`
+
+Add:
+
+- `frontend/src/features/work/components/WorkspaceView.jsx`
+
+### 14.4 Implementation Steps
+
+1. Add `WorkspaceView.jsx`.
+2. Change initial load in `WorkPage.jsx` to load Projects and Employees only.
+3. Add `openProject(project)` helper that loads Project team, Missions, selected Mission, and events.
+4. Add `backToWorkspace()` helper that clears selected Project, selected Mission, Team, Missions, and events from the visible UI.
+5. Move Project create controls from `ProjectMissionRail` into `WorkspaceView`.
+6. Keep Employee, Team, Mission, and Mission list inside `ProjectMissionRail`.
+7. Add a Back button and selected Project header to `ProjectMissionRail`.
+8. Add responsive Workspace styles.
+
+### 14.5 Verification
+
+Local:
+
+- `npm run build`
+
+Target-backed browser:
+
+- Use SSH tunnel `18143 -> 8143`.
+- Use Vite dev server with proxy to `18143`.
+- Login with a target-machine user that already has Projects.
+- Verify Workspace shows existing Projects and New Project only.
+- Open a Project and verify Project detail shows Team, Employees, Missions, Console, Inspector.
+- Create a Project and verify it appears through the target-backed API.
+- Capture desktop and mobile screenshots.
+
+No `api.md` route changes are required unless a new API is added or a verified port record changes.
+
+## 15. Done Definition
 
 V0 is done only when:
 

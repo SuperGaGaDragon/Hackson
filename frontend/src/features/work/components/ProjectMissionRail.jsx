@@ -4,7 +4,7 @@ Created by: Codex
 Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
-import { FolderKanban, Plus } from "lucide-react";
+import { ArrowLeft, Plus, UsersRound } from "lucide-react";
 
 function ProjectMissionRail({
   busy,
@@ -17,21 +17,15 @@ function ProjectMissionRail({
   missions,
   onAddEmployee,
   onAddToTeam,
+  onBackToWorkspace,
   onCreateMission,
-  onCreateProject,
   onEmployeeNameChange,
   onEmployeeRoleChange,
   onMissionLeadChange,
   onMissionGoalChange,
   onMissionTitleChange,
-  onProjectNameChange,
-  onProjectRepoPathChange,
   onSelectMission,
-  onSelectProject,
   onTeamEmployeeChange,
-  projectName,
-  projectRepoPath,
-  projects,
   selectedMission,
   selectedProject,
   team,
@@ -42,49 +36,20 @@ function ProjectMissionRail({
     <aside className="history-rail work-rail">
       <div className="panel-head compact">
         <div>
-          <p className="eyebrow">Work</p>
-          <h2>Projects</h2>
+          <p className="eyebrow">Project</p>
+          <h2>{selectedProject?.name || "Project"}</h2>
         </div>
-        <FolderKanban size={18} />
-      </div>
-      <div className="work-create">
-        <input
-          aria-label="Project name"
-          disabled={busy}
-          onChange={(event) => onProjectNameChange(event.target.value)}
-          placeholder="Project"
-          value={projectName}
-        />
-        <input
-          aria-label="Repo path"
-          disabled={busy}
-          onChange={(event) => onProjectRepoPathChange(event.target.value)}
-          placeholder="Repo path"
-          value={projectRepoPath}
-        />
-        <button disabled={busy || !projectName.trim() || !projectRepoPath.trim()} onClick={onCreateProject} type="button">
-          <Plus size={16} />
-          <span>Add</span>
+        <button className="icon-button" disabled={busy} onClick={onBackToWorkspace} title="Workspace" type="button">
+          <ArrowLeft size={16} />
         </button>
       </div>
-      <div className="history-list compact-list">
-        {projects.map((project) => (
-          <button
-            className={`history-item ${project.id === selectedProject?.id ? "active" : ""}`}
-            key={project.id}
-            onClick={() => onSelectProject(project)}
-            type="button"
-          >
-            <strong>{project.name}</strong>
-            <span>{project.status}</span>
-          </button>
-        ))}
-      </div>
+      {selectedProject?.repoPath && <p className="rail-project-path">{selectedProject.repoPath}</p>}
       <div className="panel-head compact rail-section">
         <div>
           <p className="eyebrow">Crew</p>
           <h2>Employees</h2>
         </div>
+        <UsersRound size={18} />
       </div>
       <div className="work-create">
         <input

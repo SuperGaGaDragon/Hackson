@@ -1,20 +1,21 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Lst Modified by: Codex
 
 ## brief intro
 - goal for this folder.
-  - Store the Work Mode task page backed by verified `/api/tasks` APIs.
+  - Store the Work Mode Workspace and Project Mission pages backed by verified `/api/work` APIs.
 - 架构思路
-  - Keep the first Work UI small: task list, objective input, selected task transcript, Agent target, and one composer.
-  - Use `POST /api/tasks` for task creation and `POST /api/tasks/{taskId}/messages` for model-backed work replies.
-  - Do not expose autonomous tool execution because v1.5 backend does not implement it.
+  - Work opens to a Workspace project list and New Project form.
+  - Project detail owns Employees, Team, Missions, console, and Inspector.
+  - Use `/api/work` Project, Employee, Team, Mission, and Event APIs verified on the target machine.
+  - Do not expose autonomous tool execution before backend safety gates exist.
 
 ## folder structure
 |-README.md work feature guide
-|-WorkPage.jsx Work Mode task page
+|-WorkPage.jsx Work Mode Workspace and Project detail page
 
 ## 代办
 - Add tool trace display after backend exposes a verified read API.
