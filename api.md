@@ -259,6 +259,14 @@ GET /api/work/missions/{missionId}/events?afterSequence=<last-sequence>
   - Fake OpenAI-compatible relay on temporary `18148` verified Responses-mode success path for register, idle tick, idle say, idle join, companion_1 follow-up, and companion_2 message.
   - Verified assistant message metadata contains `orchestration_policy`, `reasoning_effort`, `tool_policy`, `provider`, `provider_response_id`, and `reasoning_summary`.
   - Temporary `8148` and `18148` processes were stopped after verification; public `8145`, Idle Auto `8147`, and legacy `8130` were not touched.
+- Orchestrator V1 public deployment on `8145`:
+  - Local backend full module unittest passed and local frontend build passed before deployment.
+  - Target public directory tests passed: orchestration `5`, model_runtime `17`, interactions `21`.
+  - Target frontend build passed with Node `20.19.6`; public assets remain `/assets/index-O85af_uy.js` and `/assets/index-BNnrJWzs.css`.
+  - `hackson-domain-8145.service` was restarted and returned `{"status":"ok"}` on `127.0.0.1:8145/health`.
+  - Public domain `https://hackson.catachess.com/health` returned `{"status":"ok"}` and `GET /` returned the React HTML.
+  - Public API smoke verified register and conversation creation. Model-backed idle and companion routes returned stable `429 {"detail":"model_rate_limited"}` from the current upstream provider limit, not a backend crash.
+  - Public backend code now routes model-backed idle and companion generation through `backend/orchestration/` and stores orchestration metadata when the provider succeeds.
 - Public browser smoke verified Register/Login, Agent editing, Workspace Project creation, Project detail, Mission creation, Start, completion timeline, desktop screenshot, and mobile screenshot with `0` failed API responses.
 - Screenshots:
   - `/tmp/hackson_public_work_agents_desktop.png`

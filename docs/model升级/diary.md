@@ -43,6 +43,14 @@ Lst Modified by: Codex
   - 验证 Responses mode 下 assistant message metadata 包含 `orchestration_policy`、`reasoning_effort`、`tool_policy`、`provider`、`provider_response_id`、`reasoning_summary`。
   - 上游真实 provider smoke 遇到稳定 `429 {"detail":"model_rate_limited"}`，后端未崩溃。
   - 临时 `8148` 和 `18148` 进程已清理，未触碰 `8145`、`8147`、`8130`。
+- Public `8145` 已推广：
+  - 同步 HEAD 到 `~/hackson_domain_8145`，保留目标机 `.env` 和 `.venv`。
+  - 目标机 public 目录测试通过：orchestration `5`、model_runtime `17`、interactions `21`。
+  - 目标机 frontend 用 Node `20.19.6` 构建通过。
+  - 已重启 `hackson-domain-8145.service`。
+  - `127.0.0.1:8145/health` 和 `https://hackson.catachess.com/health` 返回 `{"status":"ok"}`。
+  - Public API smoke 验证 register、conversation creation；模型 backed routes 当前受上游 provider rate limit，稳定返回 `429 {"detail":"model_rate_limited"}`。
+  - Public 代码已包含 `backend/orchestration/` 和 `InteractionService -> HacksonOrchestrator` 路径。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -51,8 +59,8 @@ Lst Modified by: Codex
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
 
 ### 下一步
-- 决定是否推广到 public `8145`。
-- 推广前建议先保留 `HACKSON_MODEL_API_MODE=chat_completions`，确认线上行为稳定后再切 `responses`。
+- 等上游 provider rate limit 恢复后，补一次 public 成功路径 smoke，确认线上 metadata 写入。
+- 生产建议继续保留 `HACKSON_MODEL_API_MODE=chat_completions`，确认线上行为稳定后再切 `responses`。
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
 
 ### 风险
