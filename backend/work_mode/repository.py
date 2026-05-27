@@ -24,6 +24,8 @@ class WorkModeRepository:
         self.runs: Collection = database["work_runs"]
         self.steps: Collection = database["work_steps"]
         self.artifacts: Collection = database["work_artifacts"]
+        self.products: Collection = database["work_products"]
+        self.work_windows: Collection = database["work_windows"]
         self.events: Collection = database["work_events"]
         self.event_counters: Collection = database["work_event_counters"]
 
@@ -49,6 +51,9 @@ class WorkModeRepository:
         self.steps.create_index([("user_id", ASCENDING), ("mission_id", ASCENDING), ("sequence", ASCENDING)])
         self.artifacts.create_index([("user_id", ASCENDING), ("mission_id", ASCENDING), ("created_at", DESCENDING)])
         self.artifacts.create_index([("user_id", ASCENDING), ("run_id", ASCENDING), ("created_at", DESCENDING)])
+        self.products.create_index([("user_id", ASCENDING), ("mission_id", ASCENDING), ("updated_at", DESCENDING)])
+        self.work_windows.create_index([("user_id", ASCENDING), ("mission_id", ASCENDING), ("created_at", ASCENDING)])
+        self.work_windows.create_index([("user_id", ASCENDING), ("run_id", ASCENDING), ("created_at", ASCENDING)])
         self.events.create_index(
             [("user_id", ASCENDING), ("mission_id", ASCENDING), ("sequence", ASCENDING)],
             unique=True,
@@ -221,6 +226,78 @@ class WorkModeRepository:
         return list(
             self.artifacts.find({"user_id": user_id, "mission_id": query_id})
             .sort("created_at", DESCENDING)
+            .limit(limit)
+        )
+
+    def create_product(self, document: dict[str, Any]) -> dict[str, Any]:
+        document = dict(document)
+        document["mission_id"] = _object_id(document["mission_id"])
+        result = self.products.insert_one(document)
+        created = self.products.find_one({"_id": result.inserted_id})
+        assert created is not None
+        return created
+
+    def find_product(self, product_id: str, user_id: str) -> dict[str, Any] | None:
+        query_id = _object_id_or_none(product_id)
+        if query_id is None:
+            return None
+        return self.products.find_one({"_id": query_id, "user_id": user_id})
+
+    def update_product(self, product_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None:
+        query_id = _object_id_or_none(product_id)
+        if query_id is None:
+            return None
+        values = dict(values)
+        if values.get("latest_artifact_id") is not None:
+            values["latest_artifact_id"] = _object_id(values["latest_artifact_id"])
+        if "artifact_ids" in values:
+            values["artifact_ids"] = [_object_id(value) for value in values["artifact_ids"]]
+        return self.products.find_one_and_update(
+            {"_id": query_id, "user_id": user_id},
+            {"$set": values},
+            return_document=ReturnDocument.AFTER,
+        )
+
+    def list_products(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
+        query_id = _object_id_or_none(mission_id)
+        if query_id is None:
+            return []
+        return list(
+            self.products.find({"user_id": user_id, "mission_id": query_id})
+            .sort("updated_at", DESCENDING)
+            .limit(limit)
+        )
+
+    def create_work_window(self, document: dict[str, Any]) -> dict[str, Any]:
+        document = dict(document)
+        document["mission_id"] = _object_id(document["mission_id"])
+        if document.get("run_id") is not None:
+            document["run_id"] = _object_id(document["run_id"])
+        result = self.work_windows.insert_one(document)
+        created = self.work_windows.find_one({"_id": result.inserted_id})
+        assert created is not None
+        return created
+
+    def update_work_window(self, window_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None:
+        query_id = _object_id_or_none(window_id)
+        if query_id is None:
+            return None
+        values = dict(values)
+        if values.get("result_artifact_id") is not None:
+            values["result_artifact_id"] = _object_id(values["result_artifact_id"])
+        return self.work_windows.find_one_and_update(
+            {"_id": query_id, "user_id": user_id},
+            {"$set": values},
+            return_document=ReturnDocument.AFTER,
+        )
+
+    def list_work_windows(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
+        query_id = _object_id_or_none(mission_id)
+        if query_id is None:
+            return []
+        return list(
+            self.work_windows.find({"user_id": user_id, "mission_id": query_id})
+            .sort("created_at", ASCENDING)
             .limit(limit)
         )
 

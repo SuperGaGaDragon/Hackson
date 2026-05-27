@@ -126,6 +126,43 @@ def public_artifact(document: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def public_product(document: dict[str, Any]) -> dict[str, Any]:
+    """Convert a persisted Product document to the public API shape."""
+    return {
+        "id": _public_id(document["_id"]),
+        "userId": document["user_id"],
+        "missionId": _public_id(document["mission_id"]),
+        "title": document["title"],
+        "summary": document.get("summary", ""),
+        "status": document.get("status", "active"),
+        "artifactIds": [_public_id(value) for value in document.get("artifact_ids", [])],
+        "latestArtifactId": _public_id(document.get("latest_artifact_id")) if document.get("latest_artifact_id") else None,
+        "createdBy": document.get("created_by", {}),
+        "metadata": document.get("metadata", {}),
+        "createdAt": document["created_at"],
+        "updatedAt": document["updated_at"],
+    }
+
+
+def public_work_window(document: dict[str, Any]) -> dict[str, Any]:
+    """Convert a persisted Work Window document to the public API shape."""
+    return {
+        "id": _public_id(document["_id"]),
+        "userId": document["user_id"],
+        "missionId": _public_id(document["mission_id"]),
+        "runId": _public_id(document["run_id"]) if document.get("run_id") else None,
+        "agentSlot": document["agent_slot"],
+        "title": document["title"],
+        "brief": document["brief"],
+        "status": document["status"],
+        "resultArtifactId": _public_id(document.get("result_artifact_id")) if document.get("result_artifact_id") else None,
+        "summary": document.get("summary", ""),
+        "metadata": document.get("metadata", {}),
+        "createdAt": document["created_at"],
+        "updatedAt": document["updated_at"],
+    }
+
+
 def public_event(document: dict[str, Any]) -> dict[str, Any]:
     """Convert a persisted Event document to the public API shape."""
     return {

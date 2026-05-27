@@ -17,6 +17,8 @@ RunStatus = Literal["running", "stopped", "failed", "completed"]
 StepStatus = Literal["pending", "running", "failed", "completed", "skipped"]
 AutonomyLevel = Literal["supervised"]
 ArtifactKind = Literal["text", "log", "diff", "report", "mission_result"]
+ProductStatus = Literal["active", "final_candidate", "final", "archived"]
+WorkWindowStatus = Literal["queued", "running", "completed", "blocked", "failed", "cancelled"]
 EventType = Literal[
     "MISSION_CREATED",
     "MISSION_STARTED",
@@ -274,6 +276,41 @@ class ArtifactResponse(BaseModel):
     created_at: datetime = Field(alias="createdAt")
 
 
+class ProductResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    user_id: str = Field(alias="userId")
+    mission_id: str = Field(alias="missionId")
+    title: str
+    summary: str
+    status: ProductStatus
+    artifact_ids: list[str] = Field(alias="artifactIds")
+    latest_artifact_id: str | None = Field(default=None, alias="latestArtifactId")
+    created_by: dict[str, str] = Field(alias="createdBy")
+    metadata: dict[str, Any]
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
+class WorkWindowResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    user_id: str = Field(alias="userId")
+    mission_id: str = Field(alias="missionId")
+    run_id: str | None = Field(default=None, alias="runId")
+    agent_slot: str = Field(alias="agentSlot")
+    title: str
+    brief: str
+    status: WorkWindowStatus
+    result_artifact_id: str | None = Field(default=None, alias="resultArtifactId")
+    summary: str
+    metadata: dict[str, Any]
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
 class MissionDetailResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -283,3 +320,5 @@ class MissionDetailResponse(BaseModel):
     latest_run: RunResponse | None = Field(default=None, alias="latestRun")
     events: list[EventResponse]
     artifacts: list[ArtifactResponse]
+    products: list[ProductResponse] = Field(default_factory=list)
+    work_windows: list[WorkWindowResponse] = Field(default_factory=list, alias="workWindows")

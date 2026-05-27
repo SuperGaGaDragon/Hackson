@@ -15,6 +15,8 @@ Lst Modified by: Codex
   - V0 worker emitted deterministic structured events only.
   - V0.5 worker invokes the configured model runtime once, persists a bounded text Artifact, and emits a fixed `PRODUCT_UPDATED` event that points at that Artifact.
   - The worker delegates model execution to `model_runtime/`, including the configured target-machine Codex CLI provider when enabled.
+  - V1.0 introduces a model-driven text Mission loop where the Lead Agent must choose exactly one validated tool per turn.
+  - V1.0 tools are backend database actions only; shell, file, browser, and Codex CLI computer-control tools remain out of scope.
   - Routes expose `/api/work/*` while existing `/api/tasks` remains available until the Mission Runtime is verified.
 
 ## folder structure
@@ -22,6 +24,7 @@ Lst Modified by: Codex
 |-__init__.py Python package marker
 |-model.py public response conversion helpers
 |-schemas.py Pydantic request and response schemas
+|-tool_protocol.py V1.0 model-visible tool action schemas and validation helpers
 |-repository.py MongoDB persistence adapter
 |-service.py Mission Runtime business rules and state transitions
 |-worker.py V0.5 single-run model worker implementation
@@ -52,6 +55,13 @@ Lst Modified by: Codex
 - No multi-step supervisor loop yet.
 - No guaranteed full long-form generation in one run; that belongs in the later supervisor loop.
 
+## V1.0 target contract
+- The model must return one tool action per Lead Agent turn.
+- Plain assistant text is invalid.
+- Natural language belongs inside tool arguments only.
+- Backend validation owns tool schema, Product references, Artifact references, and Mission state compatibility.
+- First tool protocol implementation uses provider-agnostic JSON Action; provider-native tool calling is a later adapter over the same backend schema.
+
 ## 代办
-- Replace FastAPI in-process background tasks with a durable worker queue in V1.
-- Add approvals after artifact generation is verified on the public service.
+- Implement V1.0 Product, Artifact lineage, Work Window, context, and loop layers from `docs/work_mode/final_version.md`.
+- Replace FastAPI in-process background tasks with a durable worker queue after V1.0 is proven.

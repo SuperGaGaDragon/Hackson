@@ -35,6 +35,8 @@ class FakeWorkModeRepository:
         self.runs: dict[str, dict[str, Any]] = {}
         self.steps: dict[str, dict[str, Any]] = {}
         self.artifacts: dict[str, dict[str, Any]] = {}
+        self.products: dict[str, dict[str, Any]] = {}
+        self.work_windows: dict[str, dict[str, Any]] = {}
         self.events: list[dict[str, Any]] = []
         self.event_sequences: dict[str, int] = {}
         self.next_id = 1
@@ -165,6 +167,50 @@ class FakeWorkModeRepository:
         return [
             row
             for row in self.artifacts.values()
+            if row["user_id"] == user_id and row["mission_id"] == mission_id
+        ][:limit]
+
+    def create_product(self, document: dict[str, Any]) -> dict[str, Any]:
+        row = dict(document)
+        row["_id"] = self._id("product")
+        self.products[row["_id"]] = row
+        return row
+
+    def find_product(self, product_id: str, user_id: str) -> dict[str, Any] | None:
+        row = self.products.get(product_id)
+        return row if row is not None and row["user_id"] == user_id else None
+
+    def update_product(self, product_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None:
+        row = self.find_product(product_id, user_id)
+        if row is None:
+            return None
+        row.update(values)
+        return row
+
+    def list_products(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
+        return [
+            row
+            for row in self.products.values()
+            if row["user_id"] == user_id and row["mission_id"] == mission_id
+        ][:limit]
+
+    def create_work_window(self, document: dict[str, Any]) -> dict[str, Any]:
+        row = dict(document)
+        row["_id"] = self._id("window")
+        self.work_windows[row["_id"]] = row
+        return row
+
+    def update_work_window(self, window_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None:
+        row = self.work_windows.get(window_id)
+        if row is None or row["user_id"] != user_id:
+            return None
+        row.update(values)
+        return row
+
+    def list_work_windows(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
+        return [
+            row
+            for row in self.work_windows.values()
             if row["user_id"] == user_id and row["mission_id"] == mission_id
         ][:limit]
 
@@ -361,6 +407,89 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(product_events[-1]["payload"]["artifactId"], completed["artifacts"][0]["id"])
         self.assertNotIn("content", product_events[-1]["payload"])
         self.assertIn("Chapter 1", product_events[-1]["payload"]["summary"])
+
+    def test_service_creates_product_and_artifact_lineage_in_mission_detail(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="8000字小说",
+            summary="长篇小说产品。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="outline",
+            title="故事大纲",
+            content="一名年轻人追查旧车票背后的秘密。",
+            summary="完成故事大纲。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(completed["products"][0]["id"], product["id"])
+        self.assertEqual(completed["products"][0]["latestArtifactId"], artifact["id"])
+        self.assertEqual(completed["products"][0]["artifactIds"], [artifact["id"]])
+        self.assertEqual(completed["artifacts"][0]["metadata"]["productId"], product["id"])
+        self.assertEqual(completed["artifacts"][0]["metadata"]["sourceArtifactIds"], [])
+
+    def test_service_tracks_visible_work_window_result(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="8000字小说",
+            summary="长篇小说产品。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+
+        window = self.service.create_work_window(
+            "user_1",
+            mission["id"],
+            run_id,
+            agent_slot="agent_2",
+            title="第一章草稿",
+            brief="写第一章。",
+            metadata={"expectedOutput": "chapter"},
+        )
+        artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="chapter",
+            title="第一章",
+            content="雨夜车站。",
+            summary="完成第一章。",
+            created_by={"id": "agent_2", "name": "Writer", "role": "delegate"},
+            source_artifact_ids=[],
+            work_window_id=window["id"],
+        )
+        completed_window = self.service.complete_work_window(
+            "user_1",
+            window["id"],
+            result_artifact_id=artifact["id"],
+            summary="第一章草稿完成。",
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(completed_window["status"], "completed")
+        self.assertEqual(completed["workWindows"][0]["id"], window["id"])
+        self.assertEqual(completed["workWindows"][0]["resultArtifactId"], artifact["id"])
+        self.assertEqual(completed["workWindows"][0]["agentSlot"], "agent_2")
+        self.assertEqual(completed["artifacts"][0]["metadata"]["workWindowId"], window["id"])
 
     def test_worker_marks_active_step_failed_when_runner_fails(self) -> None:
         mission = self._mission()

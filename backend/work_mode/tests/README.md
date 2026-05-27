@@ -11,12 +11,14 @@ Lst Modified by: Codex
   - Use in-memory fakes for service and worker unit tests.
   - Use FastAPI dependency overrides for route tests.
   - V0.5 tests must prove Mission start persists artifacts through public Mission detail, not only internal repositories.
+  - V1.0 tests must start at the public tool protocol boundary before adding Product, Window, context, or loop behavior.
   - MongoDB target-machine smoke belongs in `api.md` only after verification.
 
 ## folder structure
 |-README.md work_mode tests guide
 |-test_work_mode_service.py WorkModeService and V0 worker unit tests
 |-test_work_mode_routes.py `/api/work` route tests
+|-test_work_mode_tool_protocol.py V1.0 tool action parser and validator tests
 
 ## 代办
 - Add MongoDB repository integration tests after V0 target smoke is stable.

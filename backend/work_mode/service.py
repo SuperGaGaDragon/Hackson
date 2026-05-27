@@ -16,10 +16,12 @@ from work_mode.model import (
     public_employee,
     public_event,
     public_mission,
+    public_product,
     public_project,
     public_project_employee,
     public_run,
     public_step,
+    public_work_window,
 )
 from work_mode.schemas import (
     EmployeeCreateRequest,
@@ -62,6 +64,13 @@ class WorkModeRepositoryProtocol(Protocol):
     def update_step(self, step_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
     def create_artifact(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
+    def create_product(self, document: dict[str, Any]) -> dict[str, Any]: ...
+    def find_product(self, product_id: str, user_id: str) -> dict[str, Any] | None: ...
+    def update_product(self, product_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
+    def list_products(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
+    def create_work_window(self, document: dict[str, Any]) -> dict[str, Any]: ...
+    def update_work_window(self, window_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
+    def list_work_windows(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
     def next_event_sequence(self, mission_id: str) -> int: ...
     def create_event(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def list_events(self, user_id: str, mission_id: str, after_sequence: int | None, limit: int) -> list[dict[str, Any]]: ...
@@ -200,6 +209,8 @@ class WorkModeService:
         latest_run = active_run or self.repository.find_latest_run(str(mission["_id"]), user_id)
         events = self.repository.list_events(user_id, str(mission["_id"]), after_sequence=None, limit=100)
         artifacts = self.repository.list_artifacts(user_id, str(mission["_id"]), limit=20)
+        products = self.repository.list_products(user_id, str(mission["_id"]), limit=50)
+        work_windows = self.repository.list_work_windows(user_id, str(mission["_id"]), limit=100)
         return {
             "project": public_project(project),
             "mission": public_mission(mission),
@@ -207,6 +218,8 @@ class WorkModeService:
             "latestRun": public_run(latest_run) if latest_run is not None else None,
             "events": [public_event(event) for event in events],
             "artifacts": [public_artifact(artifact) for artifact in artifacts],
+            "products": [public_product(product) for product in products],
+            "workWindows": [public_work_window(window) for window in work_windows],
         }
 
     def start_mission(self, user_id: str, mission_id: str, payload: MissionStartRequest) -> dict[str, Any]:
@@ -347,6 +360,130 @@ class WorkModeService:
             "created_at": now_utc(),
         }
         return public_artifact(self.repository.create_artifact(document))
+
+    def create_product(
+        self,
+        user_id: str,
+        mission_id: str,
+        title: str,
+        summary: str,
+        created_by: dict[str, str],
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        timestamp = now_utc()
+        document = {
+            "user_id": user_id,
+            "mission_id": mission["_id"],
+            "title": title,
+            "summary": summary,
+            "status": "active",
+            "artifact_ids": [],
+            "latest_artifact_id": None,
+            "created_by": created_by,
+            "metadata": metadata or {},
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        return public_product(self.repository.create_product(document))
+
+    def create_product_artifact(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        product_id: str,
+        kind: str,
+        title: str,
+        content: str,
+        summary: str,
+        created_by: dict[str, str],
+        source_artifact_ids: list[str],
+        work_window_id: str | None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        product = self.repository.find_product(product_id, user_id)
+        if product is None or str(product["mission_id"]) != str(mission["_id"]):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="product_not_found")
+        artifact_metadata = {
+            **(metadata or {}),
+            "productId": product_id,
+            "sourceArtifactIds": source_artifact_ids,
+            "workWindowId": work_window_id,
+        }
+        artifact = self.create_artifact(
+            user_id,
+            mission_id,
+            run_id,
+            kind,
+            title,
+            content,
+            artifact_metadata,
+        )
+        artifact_ids = [str(value) for value in product.get("artifact_ids", [])]
+        artifact_ids.append(artifact["id"])
+        self.repository.update_product(
+            product_id,
+            user_id,
+            {
+                "artifact_ids": artifact_ids,
+                "latest_artifact_id": artifact["id"],
+                "summary": summary,
+                "updated_at": now_utc(),
+            },
+        )
+        return artifact
+
+    def create_work_window(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        agent_slot: str,
+        title: str,
+        brief: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        timestamp = now_utc()
+        document = {
+            "user_id": user_id,
+            "mission_id": mission["_id"],
+            "run_id": run_id,
+            "agent_slot": agent_slot,
+            "title": title,
+            "brief": brief,
+            "status": "running",
+            "result_artifact_id": None,
+            "summary": "",
+            "metadata": metadata or {},
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        return public_work_window(self.repository.create_work_window(document))
+
+    def complete_work_window(
+        self,
+        user_id: str,
+        window_id: str,
+        result_artifact_id: str,
+        summary: str,
+    ) -> dict[str, Any]:
+        timestamp = now_utc()
+        window = self.repository.update_work_window(
+            window_id,
+            user_id,
+            {
+                "status": "completed",
+                "result_artifact_id": result_artifact_id,
+                "summary": summary,
+                "updated_at": timestamp,
+            },
+        )
+        if window is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="work_window_not_found")
+        return public_work_window(window)
 
     def mark_mission_completed(self, user_id: str, mission_id: str, run_id: str, step_id: str | None) -> None:
         timestamp = now_utc()

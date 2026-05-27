@@ -111,6 +111,8 @@ class WorkModeRoutesTest(TestCase):
         detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
 
         self.assertEqual(detail["artifacts"], [])
+        self.assertEqual(detail["products"], [])
+        self.assertEqual(detail["workWindows"], [])
 
     def test_stop_route_requires_running_mission(self) -> None:
         project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
