@@ -14,7 +14,7 @@ Lst Modified by: Codex
   - Legacy Employee collections and routes remain for compatibility, but the current product UI does not require Work-only Employee or Team setup.
   - V0 worker emitted deterministic structured events only.
   - V0.5 worker invokes the configured model runtime once, persists a text Artifact, and emits a fixed `PRODUCT_UPDATED` event that points at that Artifact.
-  - The worker does not run shell commands, mutate Git, deploy, or call Codex CLI.
+  - The worker delegates model execution to `model_runtime/`, including the configured target-machine Codex CLI provider when enabled.
   - Routes expose `/api/work/*` while existing `/api/tasks` remains available until the Mission Runtime is verified.
 
 ## folder structure
@@ -43,7 +43,7 @@ Lst Modified by: Codex
 - If the model provider returns a stable failure such as rate limit, the Mission is marked `failed` and no fake Artifact is created.
 
 ## V0.5 limitations
-- No Codex CLI execution.
+- No direct Work Mode shell execution; model calls go through `model_runtime/`.
 - No arbitrary shell commands.
 - No Git mutation.
 - No production deploy actions.

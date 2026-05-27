@@ -11,6 +11,8 @@ from unittest import TestCase
 
 from fastapi import HTTPException
 
+from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, ModelRuntimeConfig
+from model_runtime.orchestrator import ModelRuntime
 from work_mode.schemas import (
     EmployeeCreateRequest,
     MissionCreateRequest,
@@ -20,7 +22,7 @@ from work_mode.schemas import (
     ProjectEmployeeAddRequest,
 )
 from work_mode.service import WorkModeService
-from work_mode.worker import MissionWorker, _event_delay_seconds
+from work_mode.worker import MissionWorker, ModelMissionRunner, _event_delay_seconds
 
 
 class FakeWorkModeRepository:
@@ -405,6 +407,29 @@ class WorkModeServiceTest(TestCase):
             else:
                 os.environ["HACKSON_WORK_MODE_V0_EVENT_DELAY_SECONDS"] = original
 
+    def test_model_mission_runner_supports_codex_cli_provider(self) -> None:
+        runner = ModelMissionRunner(
+            ModelRuntime(
+                config_repository=StaticCodexConfigRepository(),
+                client=RecordingModelClient("openai_compatible"),
+                codex_cli_client=RecordingModelClient("codex_cli"),
+            )
+        )
+        mission = self._mission()
+        project = self.service.get_mission_detail("user_1", mission["id"])["project"]
+
+        result = runner.run(
+            {
+                "project": project,
+                "mission": mission,
+                "runId": "run_1",
+                "employee": {"id": "agent_1", "name": "Writer", "role": "writes"},
+            }
+        )
+
+        self.assertEqual(result["content"], "codex work artifact")
+        self.assertEqual(result["metadata"]["provider"], "codex_cli")
+
     def _mission(self) -> dict[str, Any]:
         project = self.service.create_project(
             "user_1",
@@ -427,3 +452,24 @@ class FakeMissionRunner:
             "content": self.content,
             "metadata": {"runner": "fake"},
         }
+
+
+class StaticCodexConfigRepository:
+    def get_enabled_config(self) -> ModelRuntimeConfig:
+        return ModelRuntimeConfig(
+            provider="codex_cli",
+            base_url="codex-cli",
+            model_name="gpt-5.4",
+            api_key="codex-cli-auth",
+            codex_command="/usr/local/bin/codex",
+        )
+
+
+class RecordingModelClient:
+    def __init__(self, provider: str) -> None:
+        self.provider = provider
+        self.last_request: ModelGenerateRequest | None = None
+
+    def generate(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> ModelGenerateResponse:
+        self.last_request = request
+        return ModelGenerateResponse(text="codex work artifact", model_name=config.model_name, provider=config.provider)

@@ -10,7 +10,7 @@ import time
 from typing import Any, Protocol
 
 from core.database import get_database
-from model_runtime.client import OpenAICompatibleClient
+from model_runtime.client import CodexCliClient, OpenAICompatibleClient, OpenAIResponsesClient
 from model_runtime.config_repository import ModelRuntimeConfigRepository
 from model_runtime.orchestrator import ModelRuntime
 from model_runtime.schemas import ModelGenerateRequest, RuntimeMessage
@@ -152,6 +152,8 @@ class ModelMissionRunner:
         self.model_runtime = model_runtime or ModelRuntime(
             config_repository=ModelRuntimeConfigRepository(),
             client=OpenAICompatibleClient(),
+            responses_client=OpenAIResponsesClient(),
+            codex_cli_client=CodexCliClient(),
         )
 
     def run(self, context: dict[str, Any]) -> dict[str, Any]:
