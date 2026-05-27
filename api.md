@@ -238,9 +238,14 @@ GET /api/work/missions/{missionId}/events?afterSequence=<last-sequence>
   - `backend/work_mode/tests`: 14 tests.
 - Local frontend build passed before deployment.
 - Target backend tests passed under `~/hackson_domain_8145/backend`.
-- Target frontend build passed with Node `20.19.6`; latest public asset verified as `/assets/index-DGOMmalo.js`.
+- Target frontend build passed with Node `20.19.6`; the public asset at that deployment was `/assets/index-DGOMmalo.js`.
 - `hackson-domain-8145.service` was restarted and returned `{"status":"ok"}` on `127.0.0.1:8145/health`.
 - Public API smoke verified auth, Agent profile update, Project creation, Mission creation, Mission start, and Mission events.
+- Public Work Console static-only update on 2026-05-27:
+  - Public `frontend/dist` was backed up on the target, then replaced without restarting `hackson-domain-8145.service`.
+  - Latest public assets verified as `/assets/index-O85af_uy.js` and `/assets/index-BNnrJWzs.css`.
+  - Browser smoke verified a completed Work Mission renders Progress, Summary, and Product as separate vertical cards; Summary overlaps `0` Progress rows; completed `Start` is disabled; failed resource count is `0`.
+  - Screenshot: `/tmp/hackson_work_public_final.png`.
 - Model-backed Idle/Companion routes can currently return `429 {"detail":"model_rate_limited"}` when the upstream model provider is rate-limited; this is a stable API response, not a backend crash.
 - Idle Auto smoke verification on `8147`:
   - Target scoped tests passed: `40 passed, 4 warnings`.

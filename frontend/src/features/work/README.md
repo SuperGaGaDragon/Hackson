@@ -11,6 +11,8 @@ Lst Modified by: Codex
   - Work opens to a Workspace project list and New Project form.
   - Project detail owns the two user-edited Agents from `Me`, Missions, console, and Inspector.
   - Use `/api/work` Project, Mission, and Event APIs verified on the target machine.
+  - Mission detail renders a single vertical console stream so Progress, Summary, Product, and Raw Log never overlap.
+  - Terminal mission actions must be truthful; a completed mission cannot present an enabled `Start` action.
   - Do not expose Work-only Employee or Team creation in the current product UI.
   - Do not expose autonomous tool execution before backend safety gates exist.
 

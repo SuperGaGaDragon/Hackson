@@ -104,11 +104,13 @@ Last Modified by: Codex
 - Public backend binds to `127.0.0.1:8145`.
 - Public MongoDB database is `hackson_domain_8145`.
 - Latest verified public frontend asset:
-  - `/assets/index-DGOMmalo.js`
+  - `/assets/index-O85af_uy.js`
+  - `/assets/index-BNnrJWzs.css`
 - Latest public API smoke verified:
   - `GET /health`
   - `GET /`
-  - `GET /assets/index-DGOMmalo.js`
+  - `GET /assets/index-O85af_uy.js`
+  - `GET /assets/index-BNnrJWzs.css`
   - `POST /api/users/register`
   - `POST /api/users/login`
   - `GET /api/users/me`
@@ -136,6 +138,9 @@ Last Modified by: Codex
   - Project detail showed Agents and Missions without Employee or Team setup.
   - Mission creation, Start, polling, and completion timeline succeeded.
   - Desktop and mobile screenshots passed with `0` failed API responses.
+- Work Console static-only update on 2026-05-27 replaced public `frontend/dist` without restarting `hackson-domain-8145.service`.
+- Work Console browser smoke verified completed Missions render Progress, Summary, and Product as separate vertical cards; Summary overlaps `0` Progress rows; completed `Start` is disabled.
+- Work Console screenshot: `/tmp/hackson_work_public_final.png`.
 - Model-backed Idle/Companion smoke can return upstream `429` during provider throttling; the public API now exposes this as `{"detail":"model_rate_limited"}` instead of an unhandled `500`.
 - Idle Auto smoke service `hackson-idle-auto-8147.service` is active on `127.0.0.1:8147` for isolated verification of topic start, user interjection, server-owned speaker selection, and rate-limit behavior.
 - Idle Auto smoke UI path `5187 -> 18147 -> 8147` verified rate-limit behavior: frontend shows `Model busy`, Auto turns off, no extra tick request is scheduled, and failed tick leaves no messages.

@@ -1,13 +1,13 @@
 /*
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 import { Play, Square } from "lucide-react";
 
 function MissionHeader({ busy, mission, onStart, onStop }) {
-  const canStart = mission && !["running", "stopping"].includes(mission.status);
+  const canStart = mission && !["running", "stopping", "completed"].includes(mission.status);
   const canStop = mission?.status === "running";
   const title = mission?.title || "Create mission";
 

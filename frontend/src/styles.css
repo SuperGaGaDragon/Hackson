@@ -1107,9 +1107,8 @@ input:disabled {
 }
 
 .mission-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
-  grid-auto-rows: minmax(160px, auto);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   min-height: 0;
   padding: 12px;
@@ -1119,16 +1118,11 @@ input:disabled {
 .work-card,
 .raw-log-panel {
   min-width: 0;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #10161a;
   padding: 12px;
-}
-
-.timeline-card,
-.product-panel,
-.raw-log-panel {
-  grid-column: 1 / -1;
 }
 
 .card-head {
@@ -1360,10 +1354,6 @@ input:disabled {
   }
 
   .workspace-project-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .mission-content {
     grid-template-columns: 1fr;
   }
 
