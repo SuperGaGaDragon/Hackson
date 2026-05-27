@@ -355,6 +355,26 @@ Verified response shape:
     "languagePreference": "zh",
     "personality": "",
     "story": "",
+    "agentProfiles": [
+      {
+        "slot": "agent_1",
+        "name": "Nora",
+        "short": "A1",
+        "color": "teal",
+        "voice": "precise",
+        "personality": "冷静、会追问概念的哲学型 Agent。",
+        "story": "正在帮助 Hackson 跑通 V1 demo。"
+      },
+      {
+        "slot": "agent_2",
+        "name": "Vale",
+        "short": "A2",
+        "color": "amber",
+        "voice": "sharp",
+        "personality": "务实、直接、擅长把想法变成计划的 Agent。",
+        "story": "正在把产品计划落成可运行链路。"
+      }
+    ],
     "createdAt": "<iso_datetime>",
     "updatedAt": "<iso_datetime>"
   }
@@ -393,6 +413,26 @@ Verified response shape:
     "languagePreference": "zh",
     "personality": "",
     "story": "",
+    "agentProfiles": [
+      {
+        "slot": "agent_1",
+        "name": "Nora",
+        "short": "A1",
+        "color": "teal",
+        "voice": "precise",
+        "personality": "冷静、会追问概念的哲学型 Agent。",
+        "story": "正在帮助 Hackson 跑通 V1 demo。"
+      },
+      {
+        "slot": "agent_2",
+        "name": "Vale",
+        "short": "A2",
+        "color": "amber",
+        "voice": "sharp",
+        "personality": "务实、直接、擅长把想法变成计划的 Agent。",
+        "story": "正在把产品计划落成可运行链路。"
+      }
+    ],
     "createdAt": "<iso_datetime>",
     "updatedAt": "<iso_datetime>"
   }
@@ -420,6 +460,26 @@ Verified response shape:
   "languagePreference": "zh",
   "personality": "说话直接，先给结论，再给理由。",
   "story": "我是一个正在打磨 Hackson demo 的用户。",
+  "agentProfiles": [
+    {
+      "slot": "agent_1",
+      "name": "Mira",
+      "short": "A1",
+      "color": "teal",
+      "voice": "careful skeptic",
+      "personality": "A careful skeptic who spots product risk.",
+      "story": "Mira remembers failed demos."
+    },
+    {
+      "slot": "agent_2",
+      "name": "Rook",
+      "short": "A2",
+      "color": "amber",
+      "voice": "direct builder",
+      "personality": "A direct builder who turns ambiguity into next steps.",
+      "story": "Rook ships small slices."
+    }
+  ],
   "createdAt": "<iso_datetime>",
   "updatedAt": "<iso_datetime>"
 }
@@ -443,7 +503,23 @@ Request body:
   "idle_on": false,
   "language_preference": "en",
   "personality": "说话直接，先给结论，再给理由。",
-  "story": "我是一个正在打磨 Hackson demo 的用户。"
+  "story": "我是一个正在打磨 Hackson demo 的用户。",
+  "agentProfiles": [
+    {
+      "slot": "agent_1",
+      "name": "Mira",
+      "voice": "careful skeptic",
+      "personality": "A careful skeptic who spots product risk.",
+      "story": "Mira remembers failed demos."
+    },
+    {
+      "slot": "agent_2",
+      "name": "Rook",
+      "voice": "direct builder",
+      "personality": "A direct builder who turns ambiguity into next steps.",
+      "story": "Rook ships small slices."
+    }
+  ]
 }
 ```
 
@@ -459,6 +535,26 @@ Verified response shape:
   "languagePreference": "en",
   "personality": "说话直接，先给结论，再给理由。",
   "story": "我是一个正在打磨 Hackson demo 的用户。",
+  "agentProfiles": [
+    {
+      "slot": "agent_1",
+      "name": "Mira",
+      "short": "A1",
+      "color": "teal",
+      "voice": "careful skeptic",
+      "personality": "A careful skeptic who spots product risk.",
+      "story": "Mira remembers failed demos."
+    },
+    {
+      "slot": "agent_2",
+      "name": "Rook",
+      "short": "A2",
+      "color": "amber",
+      "voice": "direct builder",
+      "personality": "A direct builder who turns ambiguity into next steps.",
+      "story": "Rook ships small slices."
+    }
+  ],
   "createdAt": "<iso_datetime>",
   "updatedAt": "<iso_datetime>"
 }
@@ -467,6 +563,8 @@ Verified response shape:
 Notes:
 - `personality` maximum length is 1200 characters.
 - `story` maximum length is 4000 characters.
+- `agentProfiles` must contain the two fixed slots `agent_1` and `agent_2`.
+- Agent `name` max is 32 characters, `voice` max is 80, Agent `personality` max is 1200, and Agent `story` max is 4000.
 
 ### POST /api/users/logout
 Purpose: V1 client-side JWT logout placeholder.
