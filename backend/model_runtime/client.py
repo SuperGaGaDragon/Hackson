@@ -10,14 +10,16 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+import httpx
+
 from model_runtime.errors import ModelRuntimeError
-from model_runtime.schemas import ModelGenerateRequest, ModelRuntimeConfig
+from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, ModelRuntimeConfig
 
 
 class OpenAICompatibleClient:
     """Minimal OpenAI-compatible chat completions client."""
 
-    def generate(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> str:
+    def generate(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> ModelGenerateResponse:
         url = _chat_completions_url(config.base_url)
         payload = {
             "model": config.model_name,
@@ -26,7 +28,12 @@ class OpenAICompatibleClient:
             "temperature": request.temperature if request.temperature is not None else config.temperature,
         }
         response = self._post_json(url, config.api_key, payload, config.timeout_seconds)
-        return _extract_text(response)
+        return ModelGenerateResponse(
+            text=_extract_text(response),
+            model_name=response.get("model") or config.model_name,
+            provider=config.provider,
+            provider_response_id=response.get("id"),
+        )
 
     def _post_json(
         self,
@@ -71,3 +78,122 @@ def _extract_text(response: dict[str, Any]) -> str:
     if not isinstance(content, str) or not content.strip():
         raise ModelRuntimeError("model_response_missing_text")
     return content
+
+
+class OpenAIResponsesClient:
+    """Minimal non-streaming Responses API client."""
+
+    def generate(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> ModelGenerateResponse:
+        url = _responses_url(config.base_url)
+        payload: dict[str, Any] = {
+            "model": config.model_name,
+            "input": [message.model_dump() for message in request.messages],
+            "max_output_tokens": request.max_output_tokens or config.max_output_tokens,
+            "temperature": request.temperature if request.temperature is not None else config.temperature,
+        }
+        if request.reasoning_effort:
+            payload["reasoning"] = {"effort": request.reasoning_effort, "summary": "auto"}
+        if request.tool_policy == "auto_search":
+            payload["tools"] = [{"type": "web_search"}]
+            payload["tool_choice"] = "auto"
+
+        response = self._post_json(url, config.api_key, payload, config.timeout_seconds)
+        return ModelGenerateResponse(
+            text=_extract_response_text(response),
+            model_name=response.get("model") or config.model_name,
+            provider=config.provider,
+            provider_response_id=response.get("id"),
+            reasoning_summary=_extract_reasoning_summary(response),
+            tool_events=_extract_tool_events(response),
+            raw_metadata={"api_mode": "responses"},
+        )
+
+    def _post_json(
+        self,
+        url: str,
+        api_key: str,
+        payload: dict[str, Any],
+        timeout_seconds: float,
+    ) -> dict[str, Any]:
+        try:
+            response = httpx.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=timeout_seconds,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise ModelRuntimeError(
+                f"model_http_error:{exc.response.status_code}",
+                http_status=exc.response.status_code,
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise ModelRuntimeError("model_network_error") from exc
+        return response.json()
+
+
+def _responses_url(base_url: str) -> str:
+    base_url = base_url.rstrip("/")
+    if base_url.endswith("/responses"):
+        return base_url
+    return f"{base_url}/responses"
+
+
+def _extract_response_text(response: dict[str, Any]) -> str:
+    output_text = response.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+
+    output = response.get("output") or []
+    parts: list[str] = []
+    for item in output:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") != "message":
+            continue
+        for content in item.get("content") or []:
+            if not isinstance(content, dict):
+                continue
+            if content.get("type") in {"output_text", "text"} and isinstance(content.get("text"), str):
+                parts.append(content["text"])
+    text = "".join(parts).strip()
+    if not text:
+        raise ModelRuntimeError("model_response_missing_text")
+    return text
+
+
+def _extract_reasoning_summary(response: dict[str, Any]) -> str | None:
+    output = response.get("output") or []
+    summaries: list[str] = []
+    for item in output:
+        if not isinstance(item, dict) or item.get("type") != "reasoning":
+            continue
+        for summary in item.get("summary") or []:
+            if isinstance(summary, dict) and isinstance(summary.get("text"), str):
+                summaries.append(summary["text"])
+            elif isinstance(summary, str):
+                summaries.append(summary)
+    text = "\n".join(part.strip() for part in summaries if part.strip()).strip()
+    return text or None
+
+
+def _extract_tool_events(response: dict[str, Any]) -> list[dict[str, Any]]:
+    output = response.get("output") or []
+    events: list[dict[str, Any]] = []
+    for item in output:
+        if not isinstance(item, dict):
+            continue
+        item_type = item.get("type")
+        if item_type and item_type != "message":
+            events.append(
+                {
+                    "type": item_type,
+                    "id": item.get("id"),
+                    "status": item.get("status"),
+                }
+            )
+    return events

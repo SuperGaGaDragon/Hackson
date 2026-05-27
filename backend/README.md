@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Lst Modified by: Codex
 
 ## brief intro
@@ -15,6 +15,7 @@ Lst Modified by: Codex
   - Keep `agents/` responsible for Agent identity, display profile, and persona source of truth.
   - Keep `interactions/` responsible for synchronous product flows after a user message or idle tick.
   - Keep `context/` responsible for what the model should see, and `model_runtime/` responsible for how the backend calls the model.
+  - Keep `orchestration/` responsible for Hackson product-level mode policy before model runtime calls.
   - Keep `summaries/` responsible for persisted context compression records.
   - Keep `memory/` responsible for evidence-backed long-term memory cards.
   - Keep async derived work such as summary, memory, diary, and relationship updates under `workers/` when those features are introduced.
@@ -32,6 +33,7 @@ Lst Modified by: Codex
 |-conversations/ conversation and message history module
 |-interactions/ idle, companion_1, and companion_2 model interaction module
 |-context/ context builder, recipes, transition context, compaction, and context packages
+|-orchestration/ Hackson mode policy and model-call product orchestration
 |-model_runtime/ platform-managed model configuration and model-call orchestration
 |-summaries/ persisted summary records for context compression
 |-workers/ async summary, memory, diary, and relationship workers
@@ -41,12 +43,13 @@ Lst Modified by: Codex
 |-tests/ cross-module backend app tests
 
 ## implementation status
-- `core/`, `users/`, `agents/`, `conversations/`, `context/`, `model_runtime/`, and `interactions/` contain working V1 code.
+- `core/`, `users/`, `agents/`, `conversations/`, `context/`, `orchestration/`, `model_runtime/`, and `interactions/` contain working V1 code.
 - `workers/`, `memory/`, `summaries/`, `diary/`, and `tasks/` contain product-level module documentation and are implemented incrementally by tracer-bullet vertical slices.
 - `main.py` mounts production frontend assets only when explicitly configured by deployment env.
 
 ## module boundaries
-- `interactions/` owns the product flow: save input message when needed, ask `context/` for a context package, ask `model_runtime/` for a model response, save the Agent reply, and return it to the frontend.
+- `interactions/` owns the product flow: save input message when needed, ask `context/` for a context package, ask `orchestration/` for a model response, save the Agent reply, and return it to the frontend.
+- `orchestration/` owns mode policy, reasoning effort, output budget, and safe model-call metadata for Hackson modes.
 - `agents/` owns the two fixed V1 Agent identities. Frontend display profiles and backend prompt persona records must come from this module.
 - `conversations/` owns the historical fact source: conversation containers, message writes, message reads, sequence order, and ownership checks.
 - `context/` owns context construction only. It should not directly call model providers or own HTTP routes.

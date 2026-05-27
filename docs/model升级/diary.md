@@ -18,6 +18,22 @@ Lst Modified by: Codex
   - V1.2：工具和 memory 升级。
   - V2：更完整的 ChatGPT-like 产品层。
 - 写入 `plan.md`，明确产品目标、非目标、模块边界、文件计划、测试矩阵、目标机 smoke、回滚策略。
+- 写入 `eval.md`，固定 idle、companion_1、companion_2 的质量样本和评分口径。
+- 新增 `backend/orchestration/`，实现 V1 mode policy 和 Hackson Orchestrator service。
+- 扩展 `model_runtime`：
+  - 保留默认 chat-completions fallback。
+  - 增加 `HACKSON_MODEL_API_MODE=responses` 配置路径。
+  - 增加非 streaming Responses client。
+  - 标准化 provider response id、reasoning summary、tool events metadata。
+- 将 `interactions` 接入 Hackson Orchestrator，`idle`、`companion_1`、`companion_2` 的生成路径统一经过 mode policy。
+- Assistant message metadata 现在记录 `orchestration_policy`、`reasoning_effort`、`tool_policy`、`provider` 等审计字段。
+- 本地测试通过：
+  - `backend/orchestration/tests`: 5 passed.
+  - `backend/model_runtime/tests`: 17 passed.
+  - `backend/context/tests`: 9 passed.
+  - `backend/interactions/tests`: 21 passed.
+  - backend 全模块逐目录 unittest: all passed.
+  - `npm --prefix frontend run build`: passed.
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -26,10 +42,10 @@ Lst Modified by: Codex
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
 
 ### 下一步
-- 补 `eval.md`，准备固定质量样本，避免只靠主观感觉判断模型升级效果。
-- 新增 `backend/orchestration/`，先实现纯 policy 和 fake runtime 测试。
-- 扩展 `model_runtime` 的可选 schema 字段，保持旧 chat-completions fallback 不破。
-- 加 Responses API 非 streaming 路径，测试通过后再接入 `interactions`。
+- 目标机开新端口和新数据库做 smoke。
+- 验证 register/login、idle tick、idle say、join companion_1、companion_1 follow-up、companion_2 message。
+- 验证保存的 assistant message metadata 包含 orchestration 字段。
+- 目标机 smoke 通过后再更新 `api.md`。
 
 ### 风险
 - 如果一次性加入 streaming、web search、memory、citation，问题会混在一起，难以定位。

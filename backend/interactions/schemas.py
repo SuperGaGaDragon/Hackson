@@ -37,6 +37,8 @@ class ContextDebugResponse(BaseModel):
     prompt_hash: str = Field(alias="promptHash")
     token_estimate: int = Field(alias="tokenEstimate")
     model_name: str = Field(alias="modelName")
+    orchestration_policy: str | None = Field(default=None, alias="orchestrationPolicy")
+    reasoning_effort: str | None = Field(default=None, alias="reasoningEffort")
 
 
 class InteractionResponse(BaseModel):

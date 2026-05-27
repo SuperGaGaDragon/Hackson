@@ -11,7 +11,8 @@ Last Modified by: Codex
   - `conversations/` records what happened.
   - `interactions/` decides what happens next.
   - `context/` decides what the model should see.
-- `model_runtime/` decides how to call the model.
+  - `orchestration/` decides Hackson mode policy before the model call.
+  - `model_runtime/` decides how to call the provider.
 - MVP reads fixed Agent persona records from `backend/agents/` until that module has persistence.
 
 ## responsibilities
@@ -28,7 +29,7 @@ Last Modified by: Codex
 - Label Agent messages with the user's two Agent profile names when building context.
 - Build deterministic compact summaries when raw history exceeds the recent window.
 - Build context through `context/`.
-- Generate model replies through `model_runtime/`.
+- Generate model replies through `orchestration/`, which delegates provider calls to `model_runtime/`.
 - Convert model runtime failures into stable API errors before they reach the client.
 - Save Agent replies through `conversations/`.
 

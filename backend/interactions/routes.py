@@ -13,7 +13,7 @@ from conversations.service import ConversationService
 from core.database import get_database
 from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionResponse, InteractionUserMessageRequest
 from interactions.service import InteractionService
-from model_runtime.client import OpenAICompatibleClient
+from model_runtime.client import OpenAICompatibleClient, OpenAIResponsesClient
 from model_runtime.config_repository import ModelRuntimeConfigRepository
 from model_runtime.orchestrator import ModelRuntime
 from workers.derived_jobs import DerivedJobRepository, DerivedJobService
@@ -31,6 +31,7 @@ def get_interaction_service() -> InteractionService:
     model_runtime = ModelRuntime(
         config_repository=ModelRuntimeConfigRepository(),
         client=OpenAICompatibleClient(),
+        responses_client=OpenAIResponsesClient(),
     )
     return InteractionService(
         conversation_service=conversation_service,

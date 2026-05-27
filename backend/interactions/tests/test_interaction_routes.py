@@ -60,6 +60,8 @@ class InteractionRoutesTest(TestCase):
         self.assertEqual(body["agentMessage"]["senderType"], "agent")
         self.assertEqual(body["agentMessage"]["senderSlot"], "agent_2")
         self.assertEqual(body["context"]["modelName"], "fake-model")
+        self.assertEqual(body["context"]["orchestrationPolicy"], "idle_quality_v1")
+        self.assertEqual(body["context"]["reasoningEffort"], "low")
         self.assertIn("promptHash", body["context"])
 
     def test_idle_tick_route_accepts_discussion_direction_without_saving_user_message(self) -> None:

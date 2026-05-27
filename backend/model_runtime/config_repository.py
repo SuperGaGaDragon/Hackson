@@ -27,6 +27,8 @@ class ModelEnvSettings(BaseSettings):
     api_key: str | None = None
     base_url: str | None = None
     name: str | None = None
+    api_mode: str | None = None
+    responses_enabled: bool | None = None
     timeout_seconds: float | None = None
     max_output_tokens: int | None = None
     temperature: float | None = None
@@ -52,6 +54,7 @@ class ModelRuntimeConfigRepository:
             or DEFAULT_OPENAI_COMPATIBLE_BASE_URL,
             model_name=settings.name or _first_config_value(env_values, "STYLE_REPORT_MODEL") or DEFAULT_MODEL_NAME,
             api_key=api_key,
+            api_mode=_api_mode(settings, env_values),
             timeout_seconds=settings.timeout_seconds or 60,
             max_output_tokens=settings.max_output_tokens or 1024,
             temperature=settings.temperature or 0.7,
@@ -98,3 +101,16 @@ def _resolve_env_file(env_file: str | tuple[str, ...] | None) -> str | tuple[str
     )
     existing = tuple(str(path) for path in candidates if path.is_file())
     return existing or ".env"
+
+
+def _api_mode(settings: ModelEnvSettings, env_values: dict[str, str | None]) -> str:
+    explicit_mode = settings.api_mode or _first_config_value(env_values, "HACKSON_MODEL_API_MODE")
+    if explicit_mode:
+        mode = explicit_mode.strip().lower()
+        if mode in {"responses", "chat_completions"}:
+            return mode
+    responses_enabled = settings.responses_enabled
+    if responses_enabled is None:
+        raw = _first_config_value(env_values, "HACKSON_MODEL_RESPONSES_ENABLED")
+        responses_enabled = raw.strip().lower() in {"1", "true", "yes", "on"} if raw else False
+    return "responses" if responses_enabled else "chat_completions"

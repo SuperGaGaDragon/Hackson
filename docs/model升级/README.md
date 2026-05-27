@@ -20,7 +20,8 @@ Lst Modified by: Codex
 |-goal.md product goal and ChatGPT-like orchestration rationale
 |-version.md versioned rollout plan for unified orchestration
 |-plan.md V1 Hackson Orchestrator implementation manual
+|-eval.md fixed qualitative evaluation set for V1
 |-diary.md concise Chinese engineering log
 
 ## 代办
-- Add `eval.md` before implementation to compare baseline and orchestrated output quality.
+- Keep `eval.md` updated only when the quality gate changes.

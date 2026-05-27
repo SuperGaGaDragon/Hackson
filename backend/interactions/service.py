@@ -23,11 +23,17 @@ from agents.catalog import DEFAULT_TARGET_AGENT_ID, default_agent_snapshots, ens
 from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionUserMessageRequest
 from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, RuntimeMessage
+from orchestration.schemas import OrchestrationRequest, OrchestrationResponse
+from orchestration.service import HacksonOrchestrator
 from workers.derived_jobs import DerivedJobCreateRequest, DerivedJobService
 
 
 class ModelRuntimeProtocol(Protocol):
     def generate(self, request: ModelGenerateRequest) -> ModelGenerateResponse: ...
+
+
+class OrchestratorProtocol(Protocol):
+    def generate(self, request: OrchestrationRequest) -> OrchestrationResponse: ...
 
 
 class UserServiceProtocol(Protocol):
@@ -50,12 +56,14 @@ class InteractionService:
         conversation_service: ConversationService,
         context_builder: ContextBuilder,
         model_runtime: ModelRuntimeProtocol,
+        orchestrator: OrchestratorProtocol | None = None,
         derived_jobs: DerivedJobService | None = None,
         user_service: UserServiceProtocol | None = None,
     ):
         self.conversation_service = conversation_service
         self.context_builder = context_builder
         self.model_runtime = model_runtime
+        self.orchestrator = orchestrator or HacksonOrchestrator(model_runtime)
         self.derived_jobs = derived_jobs
         self.user_service = user_service
 
@@ -77,7 +85,12 @@ class InteractionService:
                 token_budget=6000,
             )
         )
-        model_response = self._generate(package)
+        model_response = self._generate(
+            package,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            target_agent_id=target_agent_id,
+        )
         agent_message = self._save_agent_message(
             user_id,
             conversation_id,
@@ -130,7 +143,12 @@ class InteractionService:
                 token_budget=6000,
             )
         )
-        model_response = self._generate(package)
+        model_response = self._generate(
+            package,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            target_agent_id=target_agent_id,
+        )
         user_message = self.conversation_service.append_message(
             user_id,
             conversation_id,
@@ -201,7 +219,12 @@ class InteractionService:
                 token_budget=6000,
             )
         )
-        model_response = self._generate(package)
+        model_response = self._generate(
+            package,
+            user_id=user_id,
+            conversation_id=companion["id"],
+            target_agent_id=target_agent_id,
+        )
         agent_message = self._save_agent_message(
             user_id,
             companion["id"],
@@ -270,7 +293,12 @@ class InteractionService:
                 token_budget=6000,
             )
         )
-        model_response = self._generate(package)
+        model_response = self._generate(
+            package,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            target_agent_id=target_agent_id,
+        )
         agent_message = self._save_agent_message(
             user_id,
             conversation_id,
@@ -332,7 +360,12 @@ class InteractionService:
                 token_budget=6000,
             )
         )
-        model_response = self._generate(package)
+        model_response = self._generate(
+            package,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            target_agent_id=target_agent_id,
+        )
         agent_message = self._save_agent_message(
             user_id,
             conversation_id,
@@ -392,7 +425,12 @@ class InteractionService:
                 token_budget=6000,
             )
         )
-        model_response = self._generate(package)
+        model_response = self._generate(
+            package,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            target_agent_id=target_agent_id,
+        )
         agent_message = self._save_agent_message(
             user_id,
             conversation_id,
@@ -496,13 +534,22 @@ class InteractionService:
         user = self.user_service.get_user(user_id)
         return user.get("displayName") or user.get("username") or "User"
 
-    def _generate(self, package) -> ModelGenerateResponse:
+    def _generate(
+        self,
+        package,
+        *,
+        user_id: str,
+        conversation_id: str,
+        target_agent_id: str,
+    ) -> OrchestrationResponse:
         try:
-            return self.model_runtime.generate(
-                ModelGenerateRequest(
-                    messages=[RuntimeMessage(role=message.role, content=message.content) for message in package.messages],
-                    max_output_tokens=360,
-                    temperature=0.4,
+            return self.orchestrator.generate(
+                OrchestrationRequest(
+                    mode=package.mode,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    target_agent_id=target_agent_id,
+                    context_package=package,
                 )
             )
         except ModelRuntimeError as exc:
@@ -523,7 +570,7 @@ class InteractionService:
         user_id: str,
         conversation_id: str,
         target_agent_id: str,
-        model_response: ModelGenerateResponse,
+        model_response: OrchestrationResponse,
         package,
         extra_metadata: dict | None,
     ) -> dict:
@@ -531,7 +578,18 @@ class InteractionService:
             "prompt_hash": package.prompt_hash,
             "token_estimate": package.token_estimate,
             "model_name": model_response.model_name,
+            "provider": model_response.provider,
+            "orchestration_policy": model_response.policy_name,
+            "reasoning_effort": model_response.reasoning_effort,
+            "tool_policy": model_response.tool_policy,
         }
+        if model_response.provider_response_id:
+            metadata["provider_response_id"] = model_response.provider_response_id
+        if model_response.reasoning_summary:
+            metadata["reasoning_summary"] = model_response.reasoning_summary
+        if model_response.tool_events:
+            metadata["tool_events"] = model_response.tool_events
+        metadata.update(model_response.metadata)
         if extra_metadata:
             metadata.update(extra_metadata)
         return self.conversation_service.append_message(
@@ -598,6 +656,8 @@ class InteractionService:
                 "promptHash": package.prompt_hash,
                 "tokenEstimate": package.token_estimate,
                 "modelName": model_response.model_name,
+                "orchestrationPolicy": model_response.policy_name,
+                "reasoningEffort": model_response.reasoning_effort,
             },
         }
 

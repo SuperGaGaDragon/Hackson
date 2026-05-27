@@ -18,6 +18,7 @@ Last Modified by: Codex
 - Handle timeout, retry, and concurrency limits.
 - Normalize model responses for callers.
 - Expose structured provider/network errors that API modules can map to stable HTTP responses.
+- Support chat-completions fallback and non-streaming Responses API mode.
 - Support streaming later if the frontend needs it.
 
 ## not responsible for
@@ -43,6 +44,8 @@ Last Modified by: Codex
 - `model_runtime_configs` may store `api_key_secret_ref`, never raw user-facing secrets.
 - MVP supports one platform-managed OpenAI-compatible Codex relay.
 - MVP reads `HACKSON_MODEL_*` env vars first, then falls back to local Codex/OpenAI-compatible env vars such as `OPENAI_API_KEY` and `STYLE_REPORT_MODEL`.
+- `HACKSON_MODEL_API_MODE=responses` enables the Responses API path; default remains `chat_completions`.
+- `HACKSON_MODEL_RESPONSES_ENABLED=true` can also enable Responses mode when no explicit API mode is set.
 - Runtime config reads process env first, then `.env`, `../.env`, and `~/.env` so target-machine secrets can stay outside the synced backend folder.
 
 ## version plan
@@ -50,6 +53,7 @@ Last Modified by: Codex
 - v1.1: Support companion_1 calls through the same interface.
 - v1.2: Add token budget awareness and better timeout handling.
 - v1.5: Support work-mode tool-call-oriented prompts if needed.
+- v1.6: Add non-streaming Responses API mode for Hackson Orchestrator V1. Implemented with chat-completions fallback.
 
 ## implementation notes
 - This module does not know idle, companion_1, companion_2, or work prompt rules.

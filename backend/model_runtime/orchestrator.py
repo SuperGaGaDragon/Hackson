@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -12,7 +12,7 @@ from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, M
 
 
 class ModelClientProtocol(Protocol):
-    def generate(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> str: ...
+    def generate(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> ModelGenerateResponse: ...
 
 
 class ModelRuntime:
@@ -22,16 +22,24 @@ class ModelRuntime:
         self,
         config_repository: ModelRuntimeConfigRepository,
         client: ModelClientProtocol,
+        responses_client: ModelClientProtocol | None = None,
     ):
         self.config_repository = config_repository
         self.client = client
+        self.responses_client = responses_client
 
     def generate(self, request: ModelGenerateRequest) -> ModelGenerateResponse:
         config = self.config_repository.get_enabled_config()
-        text = self.client.generate(config, request)
-        return ModelGenerateResponse(
-            text=text,
-            model_name=config.model_name,
-            provider=config.provider,
-        )
+        client = self._client_for(config, request)
+        response = client.generate(config, request)
+        if not response.model_name:
+            response.model_name = config.model_name
+        if not response.provider:
+            response.provider = config.provider
+        return response
 
+    def _client_for(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> ModelClientProtocol:
+        use_responses = request.use_responses_api if request.use_responses_api is not None else config.api_mode == "responses"
+        if use_responses and self.responses_client is not None:
+            return self.responses_client
+        return self.client

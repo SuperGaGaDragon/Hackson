@@ -98,7 +98,11 @@ class InteractionServiceTest(TestCase):
         self.assertEqual(response["agentMessage"]["senderType"], "agent")
         self.assertEqual(response["agentMessage"]["sequence"], 2)
         self.assertIn("promptHash", response["context"])
+        self.assertEqual(response["context"]["orchestrationPolicy"], "idle_quality_v1")
+        self.assertEqual(response["agentMessage"]["metadata"]["orchestration_policy"], "idle_quality_v1")
+        self.assertEqual(response["agentMessage"]["metadata"]["reasoning_effort"], "low")
         self.assertEqual(len(self.model_runtime.requests), 1)
+        self.assertEqual(self.model_runtime.requests[-1].reasoning_effort, "low")
 
     def test_idle_tick_uses_latest_recent_messages_after_long_history(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle("user_1")
@@ -497,6 +501,8 @@ class InteractionServiceTest(TestCase):
         self.assertEqual(response["userMessage"]["sequence"], 1)
         self.assertEqual(response["agentMessage"]["sequence"], 2)
         self.assertEqual(response["agentMessage"]["senderSlot"], "agent_2")
+        self.assertEqual(response["agentMessage"]["metadata"]["orchestration_policy"], "companion_chat_quality_v1")
+        self.assertEqual(response["agentMessage"]["metadata"]["reasoning_effort"], "medium")
         prompt = _prompt_text(self.model_runtime.requests[-1])
         self.assertIn("Current mode: companion_2", prompt)
         self.assertIn("一句话说 V1 目标", prompt)
