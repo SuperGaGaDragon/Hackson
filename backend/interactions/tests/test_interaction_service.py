@@ -8,12 +8,15 @@ Last Modified by: Codex
 from typing import Any
 from unittest import TestCase
 
+from fastapi import HTTPException
+
 from conversations.schemas import ConversationCreateRequest, MessageAppendRequest
 from conversations.tests.test_conversation_service import FakeConversationRepository
 from conversations.service import ConversationService
 from context.builder import ContextBuilder
-from interactions.schemas import IdleTickRequest, InteractionUserMessageRequest
+from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionUserMessageRequest
 from interactions.service import InteractionService
+from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse
 from workers.tests.test_derived_jobs import FakeDerivedJobRepository
 from workers.derived_jobs import DerivedJobService
@@ -33,6 +36,16 @@ class FakeModelRuntime:
         else:
             text = "那我们继续把这个 idle 想法讲清楚。"
         return ModelGenerateResponse(text=text, model_name="fake-model", provider="fake")
+
+
+class FailingModelRuntime:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+        self.requests: list[ModelGenerateRequest] = []
+
+    def generate(self, request: ModelGenerateRequest) -> ModelGenerateResponse:
+        self.requests.append(request)
+        raise self.error
 
 
 class FakeUserService:
@@ -289,6 +302,131 @@ class InteractionServiceTest(TestCase):
         self.assertIn("- Rook: 那我先把开场压短。", prompt)
         self.assertNotIn("- user_1: 希望从用户视角讲演示。", prompt)
         self.assertIn("The other Agent is not the User.", prompt)
+
+    def test_idle_tick_chooses_next_agent_from_transcript(self) -> None:
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_1",
+                role="assistant",
+                content="Nora just spoke.",
+            ),
+        )
+
+        response = self.service.run_idle_tick(
+            "user_1",
+            idle["id"],
+            IdleTickRequest(targetAgentId="agent_1"),
+        )
+
+        self.assertEqual(response["agentMessage"]["senderSlot"], "agent_2")
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("Current speaking Agent:\nname: Vale", prompt)
+
+    def test_idle_user_interjection_saves_user_then_agent_reply(self) -> None:
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=self.model_runtime,
+            user_service=FakeUserService({"user_1": {"id": "user_1", "displayName": "Demo"}}),
+        )
+        idle = self.conversation_service.create_conversation(
+            "user_1",
+            ConversationCreateRequest(
+                mode="idle",
+                title="Demo opening",
+                metadata={"topicDirection": "只讨论 30 秒 demo 开场"},
+            ),
+        )
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_1",
+                role="assistant",
+                content="我们先说开场。",
+            ),
+        )
+
+        response = service.run_idle_user_message(
+            "user_1",
+            idle["id"],
+            IdleUserMessageRequest(content="我觉得应该先讲用户痛点。"),
+        )
+
+        self.assertEqual(response["conversation"]["mode"], "idle")
+        self.assertEqual(response["conversation"]["messageCount"], 3)
+        self.assertEqual(response["userMessage"]["sequence"], 2)
+        self.assertEqual(response["userMessage"]["senderType"], "user")
+        self.assertEqual(response["agentMessage"]["sequence"], 3)
+        self.assertEqual(response["agentMessage"]["senderSlot"], "agent_2")
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("Current idle topic selected by user:", prompt)
+        self.assertIn("只讨论 30 秒 demo 开场", prompt)
+        self.assertIn("- Demo: 我觉得应该先讲用户痛点。", prompt)
+
+    def test_idle_user_interjection_does_not_persist_half_turn_when_model_fails(self) -> None:
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=FailingModelRuntime(ModelRuntimeError("model_http_error:429", http_status=429)),
+            user_service=FakeUserService({"user_1": {"id": "user_1", "displayName": "Demo"}}),
+        )
+        idle = self.conversation_service.create_conversation(
+            "user_1",
+            ConversationCreateRequest(
+                mode="idle",
+                title="Demo opening",
+                metadata={"topicDirection": "只讨论 30 秒 demo 开场"},
+            ),
+        )
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_1",
+                role="assistant",
+                content="我们先说开场。",
+            ),
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            service.run_idle_user_message(
+                "user_1",
+                idle["id"],
+                IdleUserMessageRequest(content="我觉得应该先讲用户痛点。"),
+            )
+
+        self.assertEqual(error.exception.status_code, 429)
+        self.assertEqual(error.exception.detail, "model_rate_limited")
+        page = self.conversation_service.list_messages(
+            "user_1",
+            idle["id"],
+            after_sequence=0,
+            created_after=None,
+            created_before=None,
+            limit=10,
+        )
+        self.assertEqual([message["senderType"] for message in page["messages"]], ["agent"])
+
+    def test_idle_tick_maps_model_runtime_failure_to_stable_api_error(self) -> None:
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=FailingModelRuntime(ModelRuntimeError("model_network_error")),
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+
+        with self.assertRaises(HTTPException) as error:
+            service.run_idle_tick("user_1", idle["id"], IdleTickRequest())
+
+        self.assertEqual(error.exception.status_code, 503)
+        self.assertEqual(error.exception.detail, "model_unavailable")
 
     def test_companion_1_join_creates_child_conversation_and_transition_reply(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle("user_1")

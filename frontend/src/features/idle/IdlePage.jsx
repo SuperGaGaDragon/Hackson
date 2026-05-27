@@ -7,13 +7,12 @@ Last Modified by: Codex
 import { Send } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  appendConversationMessage,
   createConversation,
   getConversationMessages,
   getIdleConversation,
   listConversations,
 } from "../../api/conversations";
-import { joinIdle, sendCompanionMessage, tickIdle } from "../../api/interactions";
+import { joinIdle, sendCompanionMessage, sendIdleMessage, tickIdle } from "../../api/interactions";
 import { FALLBACK_AGENTS, nextAgentSlot, normalizeAgents } from "../../domain/agents";
 import { makePendingUserMessage, makeSystemMessage, sortMessages, uniqueMessages } from "../../domain/messages";
 import AgentSlot from "../../shared/components/AgentSlot";
@@ -91,29 +90,14 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     const activeTarget = targetAgentId;
     const direction = topic.trim();
     try {
-      const data = await tickIdle(idleConversation.id, {
+      const data = await requestIdleTick(idleConversation, {
         targetAgentId: activeTarget,
         discussionDirection: direction || undefined,
-        idleSeed: "继续 idle 对话，保持自然、简短、有生活感。",
-        metadata: {},
       });
-      setConversation((current) => ({ ...current, ...data.conversation }));
-      setIdleConversation((current) => ({ ...current, ...data.conversation }));
-      setIdleConversations((current) =>
-        localizeIdleTitles(
-          current.map((item) =>
-            item.id === data.conversation.id
-              ? {
-                  ...item,
-                  ...data.conversation,
-                }
-              : item,
-          ),
-        ),
-      );
-      setIdleMessages((current) => uniqueMessages([...current, data.agentMessage]));
-      setTargetAgentId(nextAgentSlot(activeTarget, agentProfiles));
+      applyIdleTurn(data);
+      setTargetAgentId(nextAgentSlot(data.agentMessage.senderSlot, agentProfiles));
     } catch (err) {
+      setAutoIdle(false);
       setError(err.message || "Tick failed");
     } finally {
       setBusy(false);
@@ -141,10 +125,14 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
       setTopic(direction);
       setDraft("");
       setMode("idle");
-      setAutoIdle(false);
       setShowNewTopic(false);
       setNewTopic("");
+      const data = await requestIdleTick(idle, { discussionDirection: direction });
+      applyIdleTurn(data);
+      setAutoIdle(true);
+      setTargetAgentId(nextAgentSlot(data.agentMessage.senderSlot, agentProfiles));
     } catch (err) {
+      setAutoIdle(false);
       setError(err.message || "New failed");
     } finally {
       setBusy(false);
@@ -190,51 +178,22 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     setDraft("");
     setIdleMessages((current) => uniqueMessages([...current, pendingMessage]));
     try {
-      const message = await appendConversationMessage(idleConversation.id, {
-        sender_type: "user",
-        sender_id: "me",
-        role: "user",
+      const data = await sendIdleMessage(idleConversation.id, {
         content,
-        metadata: { source: "idle_say" },
+        discussionDirection: topic.trim() || undefined,
+        metadata: {},
       });
       setIdleMessages((current) =>
         uniqueMessages([
           ...current.filter((item) => item.id !== pendingMessage.id),
-          message,
+          data.userMessage,
+          data.agentMessage,
         ]),
       );
-      setConversation((current) =>
-        current
-          ? {
-              ...current,
-              messageCount: Math.max(current.messageCount || 0, message.sequence || 0),
-              lastMessageAt: message.createdAt || current.lastMessageAt,
-            }
-          : current,
-      );
-      setIdleConversation((current) =>
-        current
-          ? {
-              ...current,
-              messageCount: Math.max(current.messageCount || 0, message.sequence || 0),
-              lastMessageAt: message.createdAt || current.lastMessageAt,
-            }
-          : current,
-      );
-      setIdleConversations((current) =>
-        localizeIdleTitles(
-          current.map((item) =>
-            item.id === idleConversation.id
-              ? {
-                  ...item,
-                  messageCount: Math.max(item.messageCount || 0, message.sequence || 0),
-                  lastMessageAt: message.createdAt || item.lastMessageAt,
-                }
-              : item,
-          ),
-        ),
-      );
+      applyIdleConversation(data.conversation);
+      setTargetAgentId(nextAgentSlot(data.agentMessage.senderSlot, agentProfiles));
     } catch (err) {
+      setAutoIdle(false);
       setError(err.message || "Say failed");
       setIdleMessages((current) => current.filter((item) => item.id !== pendingMessage.id));
     } finally {
@@ -301,6 +260,38 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function requestIdleTick(targetConversation, overrides = {}) {
+    const direction = overrides.discussionDirection ?? topicFromConversation(targetConversation);
+    return tickIdle(targetConversation.id, {
+      targetAgentId: overrides.targetAgentId,
+      discussionDirection: direction || undefined,
+      idleSeed: "继续 idle 对话，保持自然、简短、有生活感。",
+      metadata: {},
+    });
+  }
+
+  function applyIdleTurn(data) {
+    applyIdleConversation(data.conversation);
+    setIdleMessages((current) => uniqueMessages([...current, data.agentMessage]));
+  }
+
+  function applyIdleConversation(nextConversation) {
+    setConversation((current) => ({ ...current, ...nextConversation }));
+    setIdleConversation((current) => ({ ...current, ...nextConversation }));
+    setIdleConversations((current) =>
+      localizeIdleTitles(
+        current.map((item) =>
+          item.id === nextConversation.id
+            ? {
+                ...item,
+                ...nextConversation,
+              }
+            : item,
+        ),
+      ),
+    );
   }
 
   return (

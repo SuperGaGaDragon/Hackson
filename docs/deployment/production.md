@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -25,6 +25,26 @@ Last Modified by: Codex
 | Public target URL over Tailscale | `http://100.70.248.39:8130/` |
 | Production MongoDB database | `hackson` |
 
+## public domain topology
+| Item | Value |
+| --- | --- |
+| Public URL | `https://hackson.catachess.com/` |
+| Public source path | `~/hackson_domain_8145` |
+| Public backend path | `~/hackson_domain_8145/backend` |
+| Public frontend build path | `~/hackson_domain_8145/frontend/dist` |
+| Process manager | user-level `systemd` |
+| App service name | `hackson-domain-8145.service` |
+| Tunnel service name | `hackson-cloudflared.service` |
+| Backend bind | `127.0.0.1:8145` |
+| Public MongoDB database | `hackson_domain_8145` |
+
+## port cleanup policy
+- Keep Hackson public domain services: `hackson-domain-8145.service` and `hackson-cloudflared.service`.
+- Keep legacy Hackson production service `hackson-production.service` on `8130` until the user explicitly retires it.
+- Do not touch non-Hackson services such as catachess database/game ports.
+- Stop ad hoc Hackson smoke uvicorn processes after their verification value is folded into `api.md`.
+- After public domain promotion, do not keep old smoke ports such as `8101`, `8122-8126`, `8131-8133`, `8141-8144`, `8146`, or `8147` running.
+
 ## runtime configuration
 - Production secrets live only on the target machine in `~/hackson_production/backend/.env`.
 - Required backend env keys:
@@ -46,50 +66,83 @@ Last Modified by: Codex
 8. Install or update `~/.config/systemd/user/hackson-production.service`.
 9. Run `systemctl --user daemon-reload`, enable, restart, and verify the service.
 
+## public domain deployment steps
+1. Confirm local tests and frontend build pass.
+2. Sync the current working tree to `~/hackson_domain_8145` with `rsync`, excluding `.git`, local dependency caches, and backend `.venv`.
+3. Reuse or create `~/hackson_domain_8145/backend/.venv`.
+4. Build frontend `dist` locally or on target, then ensure `HACKSON_STATIC_FRONTEND_DIR=/home/catadragon/hackson_domain_8145/frontend/dist`.
+5. Run target backend tests in `~/hackson_domain_8145/backend`.
+6. Restart only `hackson-domain-8145.service`.
+7. Verify `https://hackson.catachess.com/` through API and browser checks.
+
 ## verification checklist
 - `GET /health` returns `200`.
 - `GET /` returns the React frontend HTML from `frontend/dist`.
 - `GET /assets/*` returns built frontend assets.
-- `POST /api/users/register` writes into MongoDB database `hackson`.
+- `POST /api/users/register` writes into MongoDB database `hackson_domain_8145` for public domain verification.
 - `GET /api/users/me` works with the returned JWT.
-- `GET /api/agents` returns the two fixed V1 Agent display profiles.
+- `PATCH /api/users/me` saves the user's two editable Agent profiles.
+- `GET /api/agents` returns baseline Agent display profiles.
 - `GET /api/idle/conversation` creates or returns an idle conversation.
+- `POST /api/idle/{conversationId}/tick` returns one Agent reply.
+- `POST /api/idle/{conversationId}/messages` records a visible Idle user line and returns one Agent reply.
 - `POST /api/idle/{conversationId}/join` returns a `companion_1` conversation and Agent response.
 - `POST /api/companion/{conversationId}/messages` continues the companion conversation.
-- `POST /api/tasks` creates a Work Mode task.
+- `POST /api/tasks` creates a legacy minimal Work Mode task.
 - `POST /api/tasks/{taskId}/messages` returns a Work Mode Agent response.
+- `POST /api/work/projects` creates a Project by name.
+- `POST /api/work/missions` creates a Mission with `agent_1` or `agent_2` as lead.
+- `POST /api/work/missions/{missionId}/start` starts the deterministic V0 worker.
+- `GET /api/work/missions/{missionId}/events` returns Mission timeline events.
 
 ## current status
-- Production port `8130` is live and verified.
-- `hackson-production.service` is enabled and active under user-level `systemd`.
-- Production serves FastAPI APIs and React `frontend/dist` from the same origin: `http://100.70.248.39:8130/`.
-- Latest verified frontend assets:
-  - `/assets/index-CSg3RgOA.js`
-  - `/assets/index-DOSivJMg.css`
-- Latest production API smoke verified:
+- Public domain `https://hackson.catachess.com/` is live and verified.
+- `hackson-domain-8145.service` is enabled and active under user-level `systemd`.
+- `hackson-cloudflared.service` is enabled and active under user-level `systemd`.
+- Public domain serves FastAPI APIs and React `frontend/dist` from one origin.
+- Public backend binds to `127.0.0.1:8145`.
+- Public MongoDB database is `hackson_domain_8145`.
+- Latest verified public frontend asset:
+  - `/assets/index-DGOMmalo.js`
+- Latest public API smoke verified:
   - `GET /health`
   - `GET /`
-  - `GET /assets/index-CSg3RgOA.js`
+  - `GET /assets/index-DGOMmalo.js`
   - `POST /api/users/register`
+  - `POST /api/users/login`
   - `GET /api/users/me`
+  - `PATCH /api/users/me`
   - `GET /api/agents`
   - `GET /api/idle/conversation`
+  - `POST /api/idle/{conversationId}/tick`
+  - `POST /api/idle/{conversationId}/messages`
   - `POST /api/idle/{conversationId}/join`
   - `POST /api/companion/{conversationId}/messages`
   - `POST /api/tasks`
+  - `GET /api/tasks`
   - `POST /api/tasks/{taskId}/messages`
-- Latest production UI E2E verified on `http://100.70.248.39:8130/`:
-  - Register succeeded.
-  - Idle join returned `201`.
-  - Companion follow-up returned `201`.
-  - Work task creation returned `201`.
-  - Work message returned `201`.
-  - No browser console errors.
-  - No failed browser requests.
-- Production database verification:
-  - MongoDB database `hackson` contains the production smoke users, conversations, messages, and tasks.
-  - `messages` indexes include `conversation_id_1_sequence_1`, `conversation_id_1_created_at_-1`, `user_id_1_created_at_-1`, and `user_id_1_sender_slot_1_created_at_-1`.
-  - `tasks` indexes include `user_id_1_status_1_updated_at_-1` and `conversation_id_1`.
+  - `POST /api/work/projects`
+  - `GET /api/work/projects`
+  - `POST /api/work/missions`
+  - `GET /api/work/projects/{projectId}/missions`
+  - `GET /api/work/missions/{missionId}`
+  - `POST /api/work/missions/{missionId}/start`
+  - `GET /api/work/missions/{missionId}/events`
+- Latest public UI E2E verified on `https://hackson.catachess.com/`:
+  - Register/Login succeeded.
+  - The two Agent profiles were saved and used as Work Mission leads.
+  - Workspace showed Projects and New Project only.
+  - Project detail showed Agents and Missions without Employee or Team setup.
+  - Mission creation, Start, polling, and completion timeline succeeded.
+  - Desktop and mobile screenshots passed with `0` failed API responses.
+- Model-backed Idle/Companion smoke can return upstream `429` during provider throttling; the public API now exposes this as `{"detail":"model_rate_limited"}` instead of an unhandled `500`.
+- Latest public screenshots:
+  - `/tmp/hackson_public_work_agents_desktop.png`
+  - `/tmp/hackson_public_work_done_desktop.png`
+  - `/tmp/hackson_public_work_mobile.png`
+- Legacy production port `8130` remains live as `hackson-production.service` until explicitly retired.
+- Old Hackson smoke uvicorn ports were stopped after public-domain promotion: `8101`, `8122-8126`, `8131-8133`, `8141-8144`, `8146`, `8147`.
+- Non-Hackson target services were not touched.
 
 ## resolved production issue
 - The first production UI E2E showed the Idle composer entering `Working` without sending `/api/idle/{conversationId}/join`.

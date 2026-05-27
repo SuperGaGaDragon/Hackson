@@ -12,14 +12,14 @@ Lst Modified by: Codex
   - Local dev uses same-origin `/api` paths and Vite proxy to avoid CORS.
   - Feature-specific files expose small functions grouped by backend module.
   - Components should call feature hooks, not raw API paths.
-  - Idle `Say` is the only frontend-approved raw message append path because it records a visible user interjection without generating a model reply.
+  - Idle `Say` must use the interaction API because it records the user interjection and the immediate Agent reply as one product turn.
 
 ## folder structure
 |-README.md API folder guide
 |-client.js shared fetch wrapper and token helpers
 |-agents.js backend-owned Agent display profile APIs
 |-users.js user auth and settings APIs
-|-conversations.js conversation creation, message history, and Idle Say append APIs
+|-conversations.js conversation creation and message history APIs
 |-interactions.js idle and companion product interaction APIs
 |-tasks.js Work Mode task APIs
 

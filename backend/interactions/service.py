@@ -19,8 +19,9 @@ from context.schemas import (
     SenderType,
     UserProfileSnapshot,
 )
-from agents.catalog import default_agent_snapshots, ensure_agent_id, user_agent_snapshots
-from interactions.schemas import IdleTickRequest, InteractionUserMessageRequest
+from agents.catalog import DEFAULT_TARGET_AGENT_ID, default_agent_snapshots, ensure_agent_id, user_agent_snapshots
+from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionUserMessageRequest
+from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, RuntimeMessage
 from workers.derived_jobs import DerivedJobCreateRequest, DerivedJobService
 
@@ -61,7 +62,7 @@ class InteractionService:
     def run_idle_tick(self, user_id: str, conversation_id: str, payload: IdleTickRequest) -> dict:
         conversation = self.conversation_service.get_conversation(user_id, conversation_id)
         context_window = self._context_window(user_id, conversation_id)
-        target_agent_id = ensure_agent_id(payload.target_agent_id)
+        target_agent_id = self._next_idle_agent_id(context_window.recent_messages, payload.target_agent_id)
         package = self.context_builder.build(
             ContextBuildInput(
                 mode=ContextMode.IDLE,
@@ -71,7 +72,7 @@ class InteractionService:
                 recent_messages=context_window.recent_messages,
                 summary=context_window.summary,
                 user_profile=self._user_profile(user_id),
-                user_direction=payload.discussion_direction,
+                user_direction=self._idle_direction(conversation, payload.discussion_direction),
                 idle_seed=payload.idle_seed or "继续 idle 对话，保持自然、简短、有生活感。",
                 token_budget=6000,
             )
@@ -88,6 +89,75 @@ class InteractionService:
         self._enqueue_derived_work(user_id, conversation_id, [agent_message["id"]], conversation["mode"])
         updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
         return self._response(updated_conversation, None, agent_message, package, model_response)
+
+    def run_idle_user_message(
+        self,
+        user_id: str,
+        conversation_id: str,
+        payload: IdleUserMessageRequest,
+    ) -> dict:
+        conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        if conversation["mode"] != "idle":
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="conversation_must_be_idle",
+            )
+        context_window = self._context_window(user_id, conversation_id)
+        context_messages = [
+            *context_window.recent_messages,
+            ConversationMessage(
+                sender_type=SenderType.USER,
+                sender_id=user_id,
+                sender_name=context_window.user_name,
+                content=payload.content,
+                metadata={**payload.metadata, "source": "idle_say"},
+            ),
+        ]
+        target_agent_id = self._next_idle_agent_id(context_window.recent_messages, None)
+        package = self.context_builder.build(
+            ContextBuildInput(
+                mode=ContextMode.IDLE,
+                conversation_id=conversation_id,
+                target_agent_id=target_agent_id,
+                agents=self._agent_snapshots(user_id),
+                recent_messages=context_messages,
+                summary=context_window.summary,
+                user_profile=self._user_profile(user_id),
+                user_direction=self._idle_direction(conversation, payload.discussion_direction),
+                idle_seed="用户刚刚自然插入了 idle 对话。请接住用户的话，再把两位 Agent 的讨论继续推进。",
+                token_budget=6000,
+            )
+        )
+        model_response = self._generate(package)
+        user_message = self.conversation_service.append_message(
+            user_id,
+            conversation_id,
+            MessageAppendRequest(
+                sender_type="user",
+                sender_id=user_id,
+                role="user",
+                content=payload.content,
+                metadata={**payload.metadata, "source": "idle_say"},
+            ),
+        )
+        agent_message = self._save_agent_message(
+            user_id,
+            conversation_id,
+            target_agent_id,
+            model_response,
+            package,
+            extra_metadata=None,
+        )
+        self._enqueue_derived_work(
+            user_id,
+            conversation_id,
+            [user_message["id"], agent_message["id"]],
+            conversation["mode"],
+        )
+        updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        return self._response(updated_conversation, user_message, agent_message, package, model_response)
 
     def run_companion_1_join(
         self,
@@ -427,13 +497,26 @@ class InteractionService:
         return user.get("displayName") or user.get("username") or "User"
 
     def _generate(self, package) -> ModelGenerateResponse:
-        return self.model_runtime.generate(
-            ModelGenerateRequest(
-                messages=[RuntimeMessage(role=message.role, content=message.content) for message in package.messages],
-                max_output_tokens=360,
-                temperature=0.4,
+        try:
+            return self.model_runtime.generate(
+                ModelGenerateRequest(
+                    messages=[RuntimeMessage(role=message.role, content=message.content) for message in package.messages],
+                    max_output_tokens=360,
+                    temperature=0.4,
+                )
             )
-        )
+        except ModelRuntimeError as exc:
+            from fastapi import HTTPException, status
+
+            if exc.http_status == status.HTTP_429_TOO_MANY_REQUESTS:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="model_rate_limited",
+                ) from exc
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="model_unavailable",
+            ) from exc
 
     def _save_agent_message(
         self,
@@ -462,6 +545,26 @@ class InteractionService:
                 metadata=metadata,
             ),
         )
+
+    def _next_idle_agent_id(
+        self,
+        recent_messages: list[ConversationMessage],
+        requested_agent_id: str | None,
+    ) -> str:
+        for message in reversed(recent_messages):
+            if message.sender_type != SenderType.AGENT:
+                continue
+            if message.sender_id == "agent_1":
+                return "agent_2"
+            if message.sender_id == "agent_2":
+                return "agent_1"
+        return ensure_agent_id(requested_agent_id) if requested_agent_id else DEFAULT_TARGET_AGENT_ID
+
+    def _idle_direction(self, conversation: dict, request_direction: str | None) -> str | None:
+        if request_direction and request_direction.strip():
+            return request_direction
+        metadata = conversation.get("metadata") or {}
+        return metadata.get("topicDirection") or metadata.get("discussionDirection")
 
     def _enqueue_derived_work(
         self,

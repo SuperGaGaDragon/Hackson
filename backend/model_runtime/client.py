@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -10,6 +10,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelGenerateRequest, ModelRuntimeConfig
 
 
@@ -48,9 +49,9 @@ class OpenAICompatibleClient:
             with urlopen(request, timeout=timeout_seconds) as response:
                 raw = response.read().decode("utf-8")
         except HTTPError as exc:
-            raise RuntimeError(f"model_http_error:{exc.code}") from exc
+            raise ModelRuntimeError(f"model_http_error:{exc.code}", http_status=exc.code) from exc
         except URLError as exc:
-            raise RuntimeError("model_network_error") from exc
+            raise ModelRuntimeError("model_network_error") from exc
         return json.loads(raw)
 
 
@@ -64,9 +65,9 @@ def _chat_completions_url(base_url: str) -> str:
 def _extract_text(response: dict[str, Any]) -> str:
     choices = response.get("choices")
     if not choices:
-        raise RuntimeError("model_response_missing_choices")
+        raise ModelRuntimeError("model_response_missing_choices")
     message = choices[0].get("message") or {}
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
-        raise RuntimeError("model_response_missing_text")
+        raise ModelRuntimeError("model_response_missing_text")
     return content

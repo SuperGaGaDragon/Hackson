@@ -932,33 +932,30 @@ cd frontend
 npm run build
 ```
 
-### Step 11: Target-Machine Smoke
+### Step 11: Public-Domain Smoke
 
-Do not stop existing services.
+Use the current public product environment unless an isolated regression port is explicitly needed.
 
-Use a new free port.
+Current product target:
 
-Recommended pattern:
-
-```bash
-cd ~/hackson_backend_test/backend
-HACKSON_MONGO_DATABASE=hackson_work_mode_smoke \
-HACKSON_JWT_SECRET=target-test-secret-with-more-than-32-bytes \
-PYTHONPATH=. \
-.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port <new_port>
+```text
+https://hackson.catachess.com/
 ```
+
+If an isolated smoke process is necessary, use a new free port, document it temporarily, and stop it immediately after verification. Do not leave smoke ports running.
 
 Smoke:
 
 - `GET /health`
 - register user
+- save the two user Agent profiles
 - create Project
-- create Mission
+- create Mission with `agent_1` or `agent_2` as lead
 - start Mission
 - poll events
 - stop Mission if still running
 
-Only update `api.md` after this target smoke passes.
+Only update `api.md` after the public-domain or explicitly isolated target smoke passes.
 
 ## 11. Testing Matrix
 

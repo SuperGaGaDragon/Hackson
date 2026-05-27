@@ -15,6 +15,7 @@ Supported:
 - Login.
 - Current user.
 - User settings.
+- Two editable Agent profiles.
 - Idle conversation.
 - Idle message history.
 - Idle tick.
@@ -22,14 +23,15 @@ Supported:
 - Idle join.
 - Companion chat.
 - Companion message history.
-- Work tasks.
-- Work task messages.
-- User personality and story settings after the matching backend slice is verified.
-- Idle topic direction after the matching backend slice is verified.
+- Workspace Projects.
+- Project Missions.
+- Mission lead selection from the user's two Agents.
+- Mission start and timeline polling.
+- User personality and story settings.
+- Idle topic direction.
 
 Not supported in this pass:
 
-- Agent editing.
 - Diary.
 - Memory cards.
 - Relationship editor.
@@ -66,7 +68,7 @@ Uses:
 - `GET /api/idle/conversation`
 - `GET /api/conversations/{conversationId}/messages`
 - `POST /api/idle/{conversationId}/tick`
-- `POST /api/conversations/{conversationId}/messages`
+- `POST /api/idle/{conversationId}/messages`
 - `POST /api/idle/{conversationId}/join`
 - `POST /api/companion/{conversationId}/messages`
 
@@ -164,35 +166,41 @@ Behavior:
 
 ### Work
 
-Purpose: create a task and send Work Mode messages.
+Purpose: manage Projects, create Missions, and supervise Mission progress.
 
 Uses:
 
 - `GET /api/agents`
-- `POST /api/tasks`
-- `GET /api/tasks`
-- `GET /api/conversations/{conversationId}/messages`
-- `POST /api/tasks/{taskId}/messages`
+- `POST /api/work/projects`
+- `GET /api/work/projects`
+- `POST /api/work/missions`
+- `GET /api/work/projects/{projectId}/missions`
+- `GET /api/work/missions/{missionId}`
+- `POST /api/work/missions/{missionId}/start`
+- `GET /api/work/missions/{missionId}/events`
 
 UI:
 
-- `Work`
-- `Tasks`
-- `Objective`
-- `Send`
+- `Workspace`
+- `New Project`
+- `Project`
+- `Agents`
+- `Missions`
+- `Start`
+- `Timeline`
 
 Behavior:
 
-- List existing tasks.
-- Create a new task from an objective.
-- Load selected task transcript.
-- Send work messages through the task interaction endpoint.
-- Show the user message immediately while the model reply is pending.
-- New work messages auto-scroll to the bottom.
+- The Work entry screen shows only existing Projects and New Project.
+- A Project is created by name only. The UI does not ask for a repo path.
+- After a Project is opened, the user can create Missions.
+- A Mission lead is selected from the current user's two Agent profiles.
+- `Start` runs the V0 deterministic Mission worker.
+- The page polls Mission events and renders progress, summary, product, logs, and warnings.
 
 ## 3. API Base
 
-The frontend uses same-origin `/api` calls in local dev.
+The frontend uses same-origin `/api` calls.
 
 Default:
 
@@ -200,22 +208,19 @@ Default:
 /api
 ```
 
-Local dev proxy:
+Public product environment:
 
 ```text
-VITE_API_PROXY_TARGET=http://127.0.0.1:18126
+https://hackson.catachess.com/
 ```
 
 Reason:
 
-- `api.md` says target port `8126` is the latest product-level backend smoke for the production MongoDB database `hackson`.
-- Local port `18126` is the SSH tunnel to target `127.0.0.1:8126`.
-- User registration must land in `hackson.users`, not a temporary review database.
-- The same FastAPI app mounts the API paths.
-- Browser requests from Vite to a different backend origin can hit CORS.
-- Vite proxy keeps browser requests same-origin while forwarding to the active backend.
-- `VITE_API_BASE_URL` is reserved for environments where the backend explicitly allows cross-origin requests.
-- If `/api/agents` returns 404 through Vite, the dev server is pointed at an older backend process.
+- The public app serves FastAPI APIs and React assets from one origin.
+- Target backend binds to `127.0.0.1:8145` behind cloudflared.
+- User registration lands in MongoDB database `hackson_domain_8145`.
+- `VITE_API_BASE_URL` is reserved for explicitly cross-origin environments.
+- Old target smoke ports are not product endpoints.
 
 ## 4. Frontend Architecture
 
@@ -252,8 +257,8 @@ Rules:
 - `shared/` owns reusable UI.
 - Components do not know raw endpoint paths.
 - Normal product messaging never calls raw append.
-- Idle `Say` is the one product-approved raw append path because it records a visible user interjection without generating a companion reply.
-- Agent display names come from backend `/api/agents`; prompt persona also comes from the same backend catalog.
+- Idle `Say` uses `/api/idle/{conversationId}/messages`; it records a visible user interjection and generates the next Agent reply without leaving Idle.
+- Agent display names come from the current user's editable `agentProfiles`; `/api/agents` is only the baseline fallback catalog.
 
 ## 5. Data Rules
 
@@ -286,7 +291,7 @@ Errors:
 Must pass:
 
 - `npm run build`
-- local render on `127.0.0.1:5173`
+- public render on `https://hackson.catachess.com/` after deployment
 - desktop screenshot
 - mobile screenshot
 
@@ -299,7 +304,10 @@ Manual backend verification:
 - Open Chat.
 - Send a message.
 - Open Work.
-- Create a task.
-- Send a work message.
+- Create a Project.
+- Open Project detail.
+- Create a Mission with one of the two Agents as lead.
+- Start the Mission.
+- Verify Mission completion events render.
 - Verify `companion_1` follow-up after `Join`.
 - Save user settings.

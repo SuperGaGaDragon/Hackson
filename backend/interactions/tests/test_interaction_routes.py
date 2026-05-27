@@ -10,13 +10,14 @@ from unittest import TestCase
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from conversations.schemas import ConversationCreateRequest
+from conversations.schemas import ConversationCreateRequest, MessageAppendRequest
 from conversations.service import ConversationService
 from conversations.tests.test_conversation_service import FakeConversationRepository
 from context.builder import ContextBuilder
 from interactions.routes import companion_router, get_interaction_service, idle_router
 from interactions.service import InteractionService
-from interactions.tests.test_interaction_service import FakeModelRuntime
+from interactions.tests.test_interaction_service import FailingModelRuntime, FakeModelRuntime
+from model_runtime.errors import ModelRuntimeError
 from users.auth import get_current_user_id
 
 
@@ -85,6 +86,51 @@ class InteractionRoutesTest(TestCase):
             limit=10,
         )
         self.assertEqual([message["senderType"] for message in messages["messages"]], ["agent"])
+
+    def test_idle_message_route_saves_interjection_and_agent_reply(self) -> None:
+        idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)
+        self.conversation_service.append_message(
+            TEST_USER_ID,
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_1",
+                role="assistant",
+                content="先讲开场。",
+            ),
+        )
+
+        response = self.client.post(
+            f"/api/idle/{idle['id']}/messages",
+            json={
+                "content": "我插一句，先讲用户痛点。",
+                "discussionDirection": "只讨论 demo 开场",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertEqual(body["conversation"]["mode"], "idle")
+        self.assertEqual(body["conversation"]["messageCount"], 3)
+        self.assertEqual(body["userMessage"]["sequence"], 2)
+        self.assertEqual(body["agentMessage"]["sequence"], 3)
+        self.assertEqual(body["agentMessage"]["senderSlot"], "agent_2")
+        prompt = "\n".join(message.content for message in self.model_runtime.requests[-1].messages)
+        self.assertIn("我插一句，先讲用户痛点。", prompt)
+        self.assertIn("只讨论 demo 开场", prompt)
+
+    def test_idle_tick_route_returns_stable_model_rate_limit_error(self) -> None:
+        self.service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=FailingModelRuntime(ModelRuntimeError("model_http_error:429", http_status=429)),
+        )
+        idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)
+
+        response = self.client.post(f"/api/idle/{idle['id']}/tick", json={})
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["detail"], "model_rate_limited")
 
     def test_idle_join_route_creates_companion_1_child(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)

@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -11,6 +11,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelRuntimeConfig
 
 
@@ -43,7 +44,7 @@ class ModelRuntimeConfigRepository:
         settings = ModelEnvSettings(_env_file=env_file)
         api_key = settings.api_key or _first_config_value(env_values, "OPENAI_API_KEY")
         if not api_key:
-            raise RuntimeError("model_api_key_missing")
+            raise ModelRuntimeError("model_api_key_missing")
 
         return ModelRuntimeConfig(
             base_url=settings.base_url

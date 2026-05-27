@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -17,6 +17,7 @@ Last Modified by: Codex
 - Call the configured model endpoint.
 - Handle timeout, retry, and concurrency limits.
 - Normalize model responses for callers.
+- Expose structured provider/network errors that API modules can map to stable HTTP responses.
 - Support streaming later if the frontend needs it.
 
 ## not responsible for
@@ -30,6 +31,7 @@ Last Modified by: Codex
 |-README.md module guide
 |-__init__.py Python package marker
 |-client.py low-level provider HTTP or SDK calls
+|-errors.py structured runtime error types safe for API-layer mapping
 |-orchestrator.py timeout, retry, streaming, and concurrency orchestration
 |-config_repository.py model_runtime_configs persistence
 |-schemas.py model request and response schemas

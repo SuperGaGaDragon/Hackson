@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Lst Modified by: Codex
 
 ## brief intro
@@ -19,6 +19,7 @@ Lst Modified by: Codex
 |-context-innovation-proposal.md Context OS innovation proposal
 |-plan.md product-level context system implementation plan
 |-persona-topic-compact.md implementation blueprint for user profile, idle topic direction, speaker boundary, and compact
+|-idle-auto-flow.md product-level Idle Auto state machine and test plan
 
 ## related documents
 - ../backend-architecture.md explains where backend modules such as `context/`, `model_runtime/`, `conversations/`, and `workers/` should live.
@@ -26,3 +27,4 @@ Lst Modified by: Codex
 
 ## 代办
 - Keep `persona-topic-compact.md` synchronized while the V1 compact and profile path stabilizes.
+- Keep `idle-auto-flow.md` synchronized while Idle Auto moves from frontend cadence to backend-owned turn policy.

@@ -16,6 +16,8 @@ Last Modified by: Codex
 
 ## responsibilities
 - Run idle tick generation.
+- Run idle user interjection generation in the same idle transcript.
+- Decide the next idle speaking Agent from the saved transcript.
 - Run companion_1 user-joins-idle generation.
 - Run companion_1 continuation turns after the join-created child conversation exists.
 - Run companion_2 user-message generation.
@@ -27,6 +29,7 @@ Last Modified by: Codex
 - Build deterministic compact summaries when raw history exceeds the recent window.
 - Build context through `context/`.
 - Generate model replies through `model_runtime/`.
+- Convert model runtime failures into stable API errors before they reach the client.
 - Save Agent replies through `conversations/`.
 
 ## not responsible for
@@ -45,11 +48,11 @@ Last Modified by: Codex
 |-tests/ interaction tests
 
 ## route plan
-|-POST /api/idle/{conversation_id}/tick generate one idle Agent reply; accepts optional `discussionDirection`
+|-POST /api/idle/{conversation_id}/tick generate one idle Agent reply; accepts optional `discussionDirection`; backend chooses the next speaker from transcript
+|-POST /api/idle/{conversation_id}/messages generate against the user interjection, then save user and Agent messages in the same idle conversation only after generation succeeds
 |-POST /api/idle/{conversation_id}/join create companion_1 turn from idle
 |-POST /api/companion/{conversation_id}/messages append a companion_1 or companion_2 user message and generate Agent reply
 
 ## 代办
-- Add speaker selection policy instead of fixed target Agent defaults.
 - Add streaming support after the frontend is ready.
 - Replace deterministic compact summaries with persisted worker summaries when summary worker is ready.

@@ -192,8 +192,7 @@ No route or worker behavior changes are required.
 
 Target-backed smoke must verify:
 
-- Backend is the target-machine port `8143`.
-- MongoDB database is `hackson_work_mode_v01_employees`.
+- Current regression verification runs against `https://hackson.catachess.com/`.
 - Existing Projects render on the Workspace screen.
 - New Project creates a real Project with name only and opens Project detail.
 - `POST /api/work/projects` accepts `{ "name": "novel" }` without `repoPath`.
@@ -231,8 +230,7 @@ The current user has exactly two editable Agents from `Me`. A Project does not c
 
 Target-machine smoke must verify:
 
-- Backend is on a new target-machine port.
-- MongoDB uses a new smoke database.
+- Current regression verification runs against `https://hackson.catachess.com/`.
 - `POST /api/work/missions` accepts `leadEmployeeId: "agent_1"` without any Employee or Team API call.
 - Mission response and first event show the user-edited Agent name.
 - Project detail does not show Employee creation, Project Team add, or `Name` / `Role` Employee inputs.

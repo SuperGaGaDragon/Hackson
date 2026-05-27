@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -11,7 +11,7 @@ from context.builder import ContextBuilder
 from conversations.repository import ConversationRepository
 from conversations.service import ConversationService
 from core.database import get_database
-from interactions.schemas import IdleTickRequest, InteractionResponse, InteractionUserMessageRequest
+from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionResponse, InteractionUserMessageRequest
 from interactions.service import InteractionService
 from model_runtime.client import OpenAICompatibleClient
 from model_runtime.config_repository import ModelRuntimeConfigRepository
@@ -53,6 +53,20 @@ def idle_tick(
     service: InteractionService = Depends(get_interaction_service),
 ) -> dict:
     return service.run_idle_tick(current_user_id, conversation_id, payload)
+
+
+@idle_router.post(
+    "/{conversation_id}/messages",
+    response_model=InteractionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def idle_message(
+    conversation_id: str,
+    payload: IdleUserMessageRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: InteractionService = Depends(get_interaction_service),
+) -> dict:
+    return service.run_idle_user_message(current_user_id, conversation_id, payload)
 
 
 @idle_router.post(

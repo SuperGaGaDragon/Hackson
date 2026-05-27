@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -11,8 +11,9 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from model_runtime.client import _chat_completions_url, _extract_text
+from model_runtime.client import OpenAICompatibleClient, _chat_completions_url, _extract_text
 from model_runtime.config_repository import ModelRuntimeConfigRepository
+from model_runtime.errors import ModelRuntimeError
 from model_runtime.orchestrator import ModelRuntime
 from model_runtime.schemas import ModelGenerateRequest, ModelRuntimeConfig, RuntimeMessage
 
@@ -70,6 +71,13 @@ class ModelRuntimeTest(TestCase):
         self.assertEqual(config.model_name, "file-model")
         self.assertEqual(config.api_key, "secret-file")
 
+    def test_missing_model_api_key_raises_structured_runtime_error(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(ModelRuntimeError) as error:
+                ModelRuntimeConfigRepository(env_file=None).get_enabled_config()
+
+        self.assertEqual(error.exception.code, "model_api_key_missing")
+
     def test_orchestrator_returns_normalized_response_without_exposing_secret(self) -> None:
         fake_client = FakeClient()
         runtime = ModelRuntime(
@@ -100,6 +108,34 @@ class ModelRuntimeTest(TestCase):
     def test_extract_text_from_openai_compatible_response(self) -> None:
         text = _extract_text({"choices": [{"message": {"content": "hello"}}]})
         self.assertEqual(text, "hello")
+
+    def test_extract_text_raises_structured_runtime_error(self) -> None:
+        with self.assertRaises(ModelRuntimeError) as error:
+            _extract_text({"choices": []})
+
+        self.assertEqual(error.exception.code, "model_response_missing_choices")
+
+    def test_http_error_maps_to_structured_runtime_error(self) -> None:
+        client = OpenAICompatibleClient()
+        with patch("model_runtime.client.urlopen") as fake_urlopen:
+            from urllib.error import HTTPError
+
+            fake_urlopen.side_effect = HTTPError(
+                url="https://relay.example.com/v1/chat/completions",
+                code=429,
+                msg="Too Many Requests",
+                hdrs=None,
+                fp=None,
+            )
+
+            with self.assertRaises(ModelRuntimeError) as error:
+                client.generate(
+                    StaticConfigRepository().get_enabled_config(),
+                    ModelGenerateRequest(messages=[RuntimeMessage(role="user", content="hello")]),
+                )
+
+        self.assertEqual(error.exception.code, "model_http_error:429")
+        self.assertEqual(error.exception.http_status, 429)
 
 
 class StaticConfigRepository:
