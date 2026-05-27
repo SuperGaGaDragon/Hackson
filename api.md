@@ -26,6 +26,14 @@ Last Modified by: Codex
 - Work Mode V0.1 Employee smoke venv: `~/hackson_work_mode_v01_employees/backend/.venv`
 - Work Mode Workspace name-only smoke directory on target machine: `~/hackson_work_mode_workspace_nameonly_8144/backend`
 - Work Mode Workspace name-only smoke venv: `~/hackson_work_mode_workspace_nameonly_8144/backend/.venv`
+- Public domain deployment directory on target machine: `~/hackson_domain_8145`
+- Public domain deployment backend venv: `~/hackson_domain_8145/backend/.venv`
+- Public domain deployment URL: `https://hackson.catachess.com/`
+- Public domain deployment backend bind: `127.0.0.1:8145`
+- Public domain deployment service: `hackson-domain-8145.service`, user-level systemd, enabled and active.
+- Public domain cloudflared service: `hackson-cloudflared.service`, user-level systemd, enabled and active.
+- Public domain cloudflared config: `~/.cloudflared/hackson.yml`
+- Public domain note: target-machine cloudflared currently manages the `catachess.com` zone; `hackson.catiechess.com` did not resolve from this target configuration.
 - Production directory on target machine: `~/hackson_production`
 - Production user-level systemd service: `hackson-production.service`
 - Production app URL: `http://100.70.248.39:8130/`
@@ -58,6 +66,7 @@ cd ~/hackson_backend_test/backend
 - Verified Work Mode V0 stable smoke port: `127.0.0.1:8142`
 - Verified Work Mode V0.1 Employee smoke port: `127.0.0.1:8143`
 - Verified Work Mode Workspace name-only smoke port: `127.0.0.1:8144`
+- Verified public domain deployment port: `127.0.0.1:8145`
 - Verified production port: `100.70.248.39:8130`
 - Port status after verification: target smoke ports are running; local tunnels/dev servers are temporary unless listed as running.
 - Database used in raw user/conversation verification: MongoDB database `hackson_test`
@@ -71,6 +80,7 @@ cd ~/hackson_backend_test/backend
 - Database used in Work Mode V0 stable smoke verification: MongoDB database `hackson_work_mode_v0_stable`
 - Database used in Work Mode V0.1 Employee smoke verification: MongoDB database `hackson_work_mode_v01_employees`
 - Database used in Work Mode Workspace name-only smoke verification: MongoDB database `hackson_work_mode_workspace_nameonly_8144`
+- Database used in public domain deployment verification: MongoDB database `hackson_domain_8145`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
   - collections: `users`, `conversations`, `messages`, `conversation_counters`, `derived_jobs`, `tasks`, `tool_traces`
@@ -144,6 +154,14 @@ cd ~/hackson_backend_test/backend
   - API smoke registered `nameonly_1779860201`, created `Name Only Project` through `POST /api/work/projects` with body `{"name":"Name Only Project"}`, listed it through `GET /api/work/projects`, and confirmed MongoDB stored `repo_path` as an empty internal value.
   - Frontend target-backed path `5186 -> 18144 -> 8144` registered a new user, verified the Workspace New Project form has no repo/path input, created `Name UI 1779860276330` with name only, opened Project detail, returned to Workspace on mobile, and had `0` failed API responses.
   - Screenshots: `/tmp/hackson_work_nameonly_workspace_desktop.png`, `/tmp/hackson_work_nameonly_project_desktop.png`, `/tmp/hackson_work_nameonly_workspace_mobile.png`.
+- Public domain deployment verification:
+  - Target backend path `~/hackson_domain_8145/backend` serves FastAPI on `127.0.0.1:8145` with React assets from `~/hackson_domain_8145/frontend/dist`.
+  - Services are enabled and active: `hackson-domain-8145.service` and `hackson-cloudflared.service`.
+  - Public URL is `https://hackson.catachess.com/`.
+  - Target deployment tests passed: `tests/test_main_static_frontend.py` and `work_mode/tests`, `13 passed`.
+  - Public smoke verified `GET /health`, `GET /`, `GET /assets/index-CheJ5rE_.js`, `POST /api/users/register`, `POST /api/work/projects`, and `POST /api/idle/{conversationId}/tick`.
+  - Public model smoke returned `gpt-5.1`.
+  - Browser screenshot: `/tmp/hackson_domain_home.png`.
 - Last verified at: 2026-05-27
 
 ## port map
@@ -164,6 +182,7 @@ cd ~/hackson_backend_test/backend
 | 8142 | FastAPI backend temporary Work Mode V0 stable smoke server | `127.0.0.1` | Verified and running | Target-machine Work Mode V0 completed and stopped path smoke using MongoDB database `hackson_work_mode_v0_stable` |
 | 8143 | FastAPI backend temporary Work Mode V0.1 Employee smoke server | `127.0.0.1` | Verified and running | Target-machine Employee Library and Project Team smoke using MongoDB database `hackson_work_mode_v01_employees` |
 | 8144 | FastAPI backend temporary Work Mode Workspace name-only smoke server | `127.0.0.1` | Verified and running | Target-machine name-only Project creation smoke using MongoDB database `hackson_work_mode_workspace_nameonly_8144` |
+| 8145 | Hackson public domain FastAPI backend and frontend | `127.0.0.1` | Verified, enabled, and running as `hackson-domain-8145.service` | Public domain deployment for `https://hackson.catachess.com/`, serving `/api/*` and React `dist/` from one origin |
 | 8130 | Hackson production FastAPI backend and frontend | `0.0.0.0` | Verified, enabled, and running as `hackson-production.service` | Production app serving `/api/*` and React `dist/` from one origin |
 | 8130 | FastAPI backend temporary local context-fix server | `127.0.0.1` on local Mac | Verified and running in `screen` session `hackson_backend_8130` | Local-only latest idle context verification with in-memory `mongomock`; not production |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
@@ -194,10 +213,10 @@ cd ~/hackson_backend_test/backend
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/health` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144` | `backend/main.py` | Backend health check |
-| GET | `/` | No | `8130` | `backend/main.py` | Production React frontend HTML |
-| GET | `/assets/{asset}` | No | `8130` | `backend/main.py` | Production React frontend assets |
-| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144` | `backend/users/` | Register user and return JWT |
+| GET | `/health` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8145`, `https://hackson.catachess.com` | `backend/main.py` | Backend health check |
+| GET | `/` | No | `8130`, `8145`, `https://hackson.catachess.com` | `backend/main.py` | React frontend HTML |
+| GET | `/assets/{asset}` | No | `8130`, `8145`, `https://hackson.catachess.com` | `backend/main.py` | React frontend assets |
+| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8145`, `https://hackson.catachess.com` | `backend/users/` | Register user and return JWT |
 | POST | `/api/users/login` | No | `8100`, `8141`, `8142`, `8143` | `backend/users/` | Login by email or username |
 | GET | `/api/users/me` | Bearer JWT | `8100`, `8126`, `8130`, `8131`, `8132`, `8133` | `backend/users/` | Read current user, including human profile and two Agent profiles |
 | PATCH | `/api/users/me` | Bearer JWT | `8100`, `8131`, `8132`, `8133` | `backend/users/` | Update current user settings, including human profile and two Agent profiles |
@@ -209,14 +228,14 @@ cd ~/hackson_backend_test/backend
 | POST | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8131`, `8133` | `backend/conversations/` | Append raw historical message; product-approved for Idle Say interjection |
 | GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101`, `8131`, `8132`, `8133` | `backend/conversations/` | Page conversation messages |
 | GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101`, `8130`, `8131`, `8133` | `backend/conversations/` | Get or create active idle conversation |
-| POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101`, `8131`, `8132`, `8133` | `backend/interactions/` | Generate one idle Agent reply; accepts optional `discussionDirection` |
+| POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101`, `8131`, `8132`, `8133`, `8145`, `https://hackson.catachess.com` | `backend/interactions/` | Generate one idle Agent reply; accepts optional `discussionDirection` |
 | POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101`, `8122`, `8125`, `8130` | `backend/interactions/` | Create companion_1 from idle and reply |
 | POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101`, `8125`, `8130` | `backend/interactions/` | Save companion_1 or companion_2 user message and reply |
 | POST | `/api/tasks` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/` | Create Work Mode task and its `work` conversation |
 | GET | `/api/tasks` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/` | List current user's Work Mode tasks |
 | GET | `/api/tasks/{taskId}` | Bearer JWT | Local tests | `backend/tasks/` | Read one current-user-owned Work Mode task |
 | POST | `/api/tasks/{taskId}/messages` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/`, `backend/interactions/` | Send a minimal Work Mode message using task state |
-| POST | `/api/work/projects` | Bearer JWT | `8141`, `8142`, `8143`, `8144` | `backend/work_mode/` | Create a Work Mode Project by name; `repoPath` is optional internal metadata |
+| POST | `/api/work/projects` | Bearer JWT | `8141`, `8142`, `8143`, `8144`, `8145`, `https://hackson.catachess.com` | `backend/work_mode/` | Create a Work Mode Project by name; `repoPath` is optional internal metadata |
 | GET | `/api/work/projects` | Bearer JWT | `8141`, `8142`, `8143`, `8144` | `backend/work_mode/` | List current user's Work Mode Projects |
 | POST | `/api/work/employees` | Bearer JWT | `8143` | `backend/work_mode/` | Create a Work Mode Employee profile |
 | GET | `/api/work/employees` | Bearer JWT | `8143` | `backend/work_mode/` | List current user's Work Mode Employees |

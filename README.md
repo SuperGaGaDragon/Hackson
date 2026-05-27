@@ -27,6 +27,13 @@ Last Modified by: Codex
 | Production path | `~/hackson_production` |
 | Production backend bind | `0.0.0.0:8130` |
 | Production frontend assets | served by FastAPI from `~/hackson_production/frontend/dist` |
+| Hackson public domain URL | `https://hackson.catachess.com/`, verified and running |
+| Hackson public domain service | `hackson-domain-8145.service`, user-level systemd, enabled |
+| Hackson public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled |
+| Hackson public domain path | `~/hackson_domain_8145` |
+| Hackson public domain backend bind | `127.0.0.1:8145` |
+| Hackson public domain cloudflared config | `~/.cloudflared/hackson.yml` |
+| Hackson public domain note | Target cloudflared cert manages `catachess.com`; `hackson.catiechess.com` did not resolve from this target config |
 | Current product smoke backend path | `~/hackson_backend_current_8125/backend` |
 | Current product smoke venv | `~/hackson_backend_review_smoke/backend/.venv` |
 | Raw API verification port | `127.0.0.1:8100`, verified, not kept running |
@@ -48,6 +55,7 @@ Last Modified by: Codex
 | Latest smoke MongoDB database | `hackson_current_8125` |
 | Work Mode V0 stable MongoDB database | `hackson_work_mode_v0_stable` |
 | Work Mode V0.1 Employee MongoDB database | `hackson_work_mode_v01_employees` |
+| Hackson public domain MongoDB database | `hackson_domain_8145` |
 | Older smoke MongoDB databases | `hackson_test`, `hackson_target_smoke`, `hackson_review_smoke_latest` |
 
 ## must-read documents
