@@ -24,6 +24,10 @@ Last Modified by: Codex
 | Public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled and active |
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
+| Public model provider | `codex_cli` through target-machine Codex CLI |
+| Public model | `gpt-5.4` |
+| Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
+| Public model auth/config | `/home/catadragon/.codex` |
 | Public cloudflared config | `~/.cloudflared/hackson.yml` |
 | Idle Auto smoke source path | `~/hackson_idle_auto_8146` |
 | Idle Auto smoke backend path | `~/hackson_idle_auto_8146/backend` |
@@ -66,6 +70,8 @@ Last Modified by: Codex
 
 ## verified public APIs
 All rows below were verified against `https://hackson.catachess.com/` on 2026-05-27.
+
+Model-backed rows were additionally verified on the target machine against `http://127.0.0.1:8145` on 2026-05-27 after configuring `HACKSON_MODEL_PROVIDER=codex_cli`; the smoke confirmed assistant metadata `provider=codex_cli`, `modelName=gpt-5.4`, `idle_quality_v1`, and `companion_join_quality_v1`.
 
 | Method | API | Auth | Module | Purpose |
 | --- | --- | --- | --- | --- |

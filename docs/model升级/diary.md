@@ -51,6 +51,13 @@ Lst Modified by: Codex
   - `127.0.0.1:8145/health` 和 `https://hackson.catachess.com/health` 返回 `{"status":"ok"}`。
   - Public API smoke 验证 register、conversation creation；模型 backed routes 当前受上游 provider rate limit，稳定返回 `429 {"detail":"model_rate_limited"}`。
   - Public 代码已包含 `backend/orchestration/` 和 `InteractionService -> HacksonOrchestrator` 路径。
+- 追加 Codex CLI provider：
+  - 新增 `HACKSON_MODEL_PROVIDER=codex_cli` 路径，后端通过目标机自己的 `codex exec` 调用模型。
+  - 目标机安装 `@openai/codex` CLI，版本 `0.134.0`。
+  - 目标机直接验证 `codex exec -m gpt-5.4` 返回 `OK`。
+  - 目标机后端 `ModelRuntime.generate` 直接验证返回 `HACKSON_OK`，provider 为 `codex_cli`。
+  - 目标机 public `8145` API smoke 通过：`register`、`conversation`、`idle tick`、`companion_1 join` 均成功，assistant metadata 中 `provider=codex_cli`。
+  - Public service 已恢复并运行：`hackson-domain-8145.service` active，`127.0.0.1:8145/health` 与 `https://hackson.catachess.com/health` 均正常。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -59,11 +66,11 @@ Lst Modified by: Codex
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
 
 ### 下一步
-- 等上游 provider rate limit 恢复后，补一次 public 成功路径 smoke，确认线上 metadata 写入。
-- 生产建议继续保留 `HACKSON_MODEL_API_MODE=chat_completions`，确认线上行为稳定后再切 `responses`。
+- 继续观察 `codex_cli` 冷启动延迟；如需要，再做常驻 worker 或队列化。
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
 
 ### 风险
 - 如果一次性加入 streaming、web search、memory、citation，问题会混在一起，难以定位。
 - `idle` 自动生成如果开高 reasoning 或搜索，会带来成本和循环失败风险。
 - reasoning summary 可以产品化展示，但原始 chain-of-thought 不能展示或依赖。
+- `codex_cli` 是进程级调用，稳定但比直接 HTTP relay 更重；当前先完成最小闭环，后续再优化性能。
