@@ -33,3 +33,12 @@ editted by: Quanhao Li, Jorlanda Chen
 3. Work mode
 - 两个ai进行分工合作，相当于领导调动codex cli。他们可以要求codex cli返回什么东西。并且在网站上实施显示进度，可以24x7后台跑。
 - 桌宠的结合。桌宠出现进度。
+
+Work Mode 新产品定义：
+- Work Mode 不是普通聊天，而是 Project / Mission / Employee Runtime。
+- 用户可以在网站里创建和编辑 AI 员工。员工有名字、性格、工作风格、经历、项目经验和显示形象。
+- 每个 Project 可以选择自己的员工列表。
+- 用户创建 Mission 时，可以选择哪些员工加入，并指定一个主员工。
+- 主员工负责推进 Mission，调动工具箱，整理对用户可见的进度。
+- 工具箱包括：React 展示工具、shell/Codex CLI 执行工具、调动其他员工的 brainstorm/review 工具。
+- 员工之间的 brainstorm 过程可以展示，但默认不淹没主界面；主界面主要显示 progress、warning、summary、product、approval、diff、test result。

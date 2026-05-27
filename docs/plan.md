@@ -62,5 +62,12 @@ v2: 软件桌宠的加入
 
 v3: codex cli的work mode 
 
+- Project / Mission / Employee Runtime。
+- 用户可以编辑 AI 员工的性格、经历、工作风格和项目经验。
+- 每个 Project 可以添加多个员工。
+- 每个 Mission 选择一个主员工和若干辅助员工。
+- 主员工负责调动 React 展示工具、shell/Codex CLI 执行工具、其他员工 brainstorm/review 工具。
+- 第一版先做 Mission Runtime 和事件流；员工系统作为后续版本加入，不能阻塞最小闭环。
+
 其他
 - cata的桌宠想法（卖好看的桌宠）

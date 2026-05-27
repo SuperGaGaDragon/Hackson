@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 # Work Mode V0 Implementation Plan
@@ -12,7 +12,7 @@ This document is the implementation manual for Work Mode V0.
 
 A developer who has never seen this repository should be able to follow this plan and build the first Agent Mission Runtime slice without guessing product behavior, file ownership, data shape, or verification steps.
 
-V0 must not attempt to build the full autonomous Codex workflow. V0 must build the smallest reliable runtime foundation:
+V0 must not attempt to build the full autonomous Codex workflow or editable Employee roster. V0 must build the smallest reliable runtime foundation:
 
 ```text
 Create Project
@@ -83,13 +83,14 @@ Use these product terms consistently:
 1. User opens Work.
 2. User creates a Project with name and repo path.
 3. User creates a Mission under that Project with a goal.
-4. User opens Mission detail.
-5. User clicks Start.
-6. Backend creates a Run.
-7. Worker appends events.
-8. UI updates timeline and panels.
-9. User can click Stop.
-10. Mission ends as completed, failed, or stopped.
+4. System assigns a default Lead Employee label for V0.
+5. User opens Mission detail.
+6. User clicks Start.
+7. Backend creates a Run.
+8. Worker appends events.
+9. UI updates timeline and panels.
+10. User can click Stop.
+11. Mission ends as completed, failed, or stopped.
 
 ### 4.3 V0 UI Must Show
 
@@ -124,6 +125,9 @@ Bottom:
 Do not implement these in V0:
 
 - Full Codex autonomous loop.
+- Editable Employee creation.
+- Multi-Employee brainstorm.
+- Employee-to-Employee tool calls.
 - Multi-agent Worker/Reviewer.
 - Git push.
 - Deploy.
@@ -183,6 +187,7 @@ WorkerLauncher:
 MissionWorker:
 
 - Emits deterministic V0 events.
+- Emits a default Lead Employee label in event payloads.
 - Does not call arbitrary shell in the first slice.
 - Later can call Codex runner through a controlled adapter.
 
@@ -283,6 +288,8 @@ Required request models:
   - `project_id`: alias `projectId`
   - `title`: 1 to 160 chars
   - `goal`: 1 to 8000 chars
+  - `lead_employee_id`: alias `leadEmployeeId`, default `employee_default_lead`
+  - `supporting_employee_ids`: alias `supportingEmployeeIds`, default `[]`
   - `autonomy_level`: alias `autonomyLevel`, default `"supervised"`
   - `max_iterations`: alias `maxIterations`, default `1`, min `1`, max `20`
   - `metadata`: dict
@@ -312,6 +319,15 @@ MongoDB collections:
 - `work_steps`
 - `work_events`
 
+V0 Employee rule:
+
+- Do not create a full Employee module yet.
+- Store `lead_employee_id`, `lead_employee_name`, and `supporting_employee_ids` as Mission fields or metadata with default values.
+- Default Lead Employee:
+  - id: `employee_default_lead`
+  - name: `Lead`
+  - role: `Mission lead`
+
 Indexes:
 
 ```text
@@ -322,6 +338,7 @@ work_projects:
 work_missions:
   user_id + project_id + status + updated_at desc
   user_id + status + updated_at desc
+  user_id + lead_employee_id + updated_at desc
 
 work_runs:
   user_id + mission_id + started_at desc
@@ -627,6 +644,11 @@ V0 payload examples:
 
 ```json
 {
+  "employee": {
+    "id": "employee_default_lead",
+    "name": "Lead",
+    "role": "Mission lead"
+  },
   "items": [
     "Mission loaded",
     "Repo path recorded",
@@ -648,6 +670,11 @@ V0 payload examples:
 
 ```json
 {
+  "employee": {
+    "id": "employee_default_lead",
+    "name": "Lead",
+    "role": "Mission lead"
+  },
   "stream": "stdout",
   "text": "V0 worker inspected mission state."
 }
@@ -657,6 +684,11 @@ V0 payload examples:
 
 ```json
 {
+  "employee": {
+    "id": "employee_default_lead",
+    "name": "Lead",
+    "role": "Mission lead"
+  },
   "kind": "mission_result",
   "summary": "V0 Mission Runtime completed a deterministic worker run.",
   "changedFiles": [],
@@ -669,6 +701,8 @@ V0 payload examples:
 V0:
 
 - No arbitrary user command execution.
+- No user-created Employee execution.
+- No Employee-to-Employee tool calls.
 - No production write operations beyond database records for the logged-in user.
 - No Git mutation.
 - No file mutation by worker.
@@ -680,6 +714,13 @@ V0.5 and later:
 - Add repo path validation.
 - Add worktree isolation.
 - Add approval gates.
+
+V1.25 and later:
+
+- Add editable Employee profile storage.
+- Add Project Employee roster.
+- Add Lead Employee selection UI.
+- Add Employee provenance to every model-generated event.
 
 Never allow:
 
@@ -894,6 +935,25 @@ Only update `api.md` after this target smoke passes.
 
 ## 11. Testing Matrix
 
+### V0 Stabilization Batch
+
+Scope for the current batch:
+
+- Keep the worker deterministic.
+- Do not add model planning.
+- Do not add editable Employees.
+- Verify the existing Mission state machine.
+
+Required stable behaviors:
+
+- Starting a draft Mission writes `MISSION_STARTED` and creates one running Run.
+- Completed worker runs end with `MISSION_COMPLETED`.
+- Stop on a draft Mission returns `409`.
+- Stop on a running Mission writes `MISSION_STOP_REQUESTED`.
+- A worker that observes `stopping` writes `MISSION_STOPPED` and leaves the Mission terminal.
+- Event polling with `afterSequence` returns only later events.
+- The Work UI keeps Mission list status synchronized with Mission detail status.
+
 Backend unit:
 
 - Schema validation.
@@ -919,6 +979,7 @@ Frontend manual:
 - Mobile screenshot.
 - Create Project.
 - Create Mission.
+- Confirm default Lead Employee is visible.
 - Start Mission.
 - See timeline update.
 - See product panel.

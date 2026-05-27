@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -37,11 +37,14 @@ Last Modified by: Codex
 | Product database smoke backend | `127.0.0.1:8126`, verified and running |
 | Product database local tunnel | `127.0.0.1:18126 -> 127.0.0.1:8126`, verified and running |
 | Product database frontend dev port | `127.0.0.1:5178`, verified and running |
+| Work Mode V0 stable backend | `127.0.0.1:8142`, verified and running on target machine |
+| Work Mode V0 stable local frontend check | `127.0.0.1:5182 -> 18142 -> 8142`, verified but not kept running |
 | Local context-fix backend | `127.0.0.1:8130`, verified and running with in-memory `mongomock` |
 | Local context-fix frontend dev port | `127.0.0.1:5179`, verified and running |
 | Default frontend local dev port | `127.0.0.1:5173` |
 | Production MongoDB database | `hackson` |
 | Latest smoke MongoDB database | `hackson_current_8125` |
+| Work Mode V0 stable MongoDB database | `hackson_work_mode_v0_stable` |
 | Older smoke MongoDB databases | `hackson_test`, `hackson_target_smoke`, `hackson_review_smoke_latest` |
 
 ## must-read documents

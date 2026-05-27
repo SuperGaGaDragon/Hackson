@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: User
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 你要做的不是“让模型自己写前端 UI”，而是：
@@ -20,6 +20,18 @@ MVP 可以非常清晰。
 用户可以同时创建多个 Project，每个 Project 里可以启动多个 Mission。每个 Mission 点开后，Agent 会持续循环执行，直到任务完成、失败、被阻塞、或者用户手动停止。过程中 Agent 通过固定 React 组件展示 warning、summary、product、raw logs、progress、approval。
 
 这就是一个 Agent Mission Runtime + Web UI。
+
+补充新产品方向：
+
+Work Mode 里的 Agent 可以产品化成“员工”。用户可以在网站里编辑员工的性格、工作风格、经历和项目经验。每个 Project 有自己的员工列表。用户创建 Mission 时可以选择哪些员工加入，并指定一个主员工。
+
+主员工是 Mission driver。主员工可以：
+
+1. 使用 React UI 工具向用户展示进度、warning、summary、product、approval。
+2. 使用执行工具调动 shell、Codex CLI、测试、文件系统。
+3. 使用 employee 工具调动其他员工做 brainstorm、review、challenge、summary。
+
+主界面只展示主员工整理后的关键进展；员工之间的 brainstorm 过程可以放进 Raw Conversation 或 Brainstorm Panel，默认折叠。
 
 核心不是白板，而是“组件协议”
 

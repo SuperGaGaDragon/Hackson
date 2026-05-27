@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -15,6 +15,11 @@ Last Modified by: Codex
 - Backend test directory on target machine: `~/hackson_backend_test/backend`
 - Latest current backend directory on target machine: `~/hackson_backend_current_8125/backend`
 - Latest smoke venv used by current backend ports: `~/hackson_backend_review_smoke/backend/.venv`
+- Persona/topic/compact smoke directory on target machine: `~/hackson_persona_topic_8131/backend`
+- Work Mode Mission Runtime smoke directory on target machine: `~/hackson_work_mode_smoke/backend`
+- Work Mode Mission Runtime smoke venv: `~/hackson_work_mode_smoke/backend/.venv`
+- Work Mode V0 stable smoke directory on target machine: `~/hackson_work_mode_v0_stable/backend`
+- Work Mode V0 stable smoke venv: `~/hackson_work_mode_v0_stable/backend/.venv`
 - Production directory on target machine: `~/hackson_production`
 - Production user-level systemd service: `hackson-production.service`
 - Production app URL: `http://100.70.248.39:8130/`
@@ -40,12 +45,18 @@ cd ~/hackson_backend_test/backend
 - Verified interaction/model port: `127.0.0.1:8101`
 - Verified review smoke port: `127.0.0.1:8125`
 - Verified product database smoke port: `127.0.0.1:8126`
+- Verified persona/topic/compact smoke port: `127.0.0.1:8131`
+- Verified Work Mode Mission Runtime smoke port: `127.0.0.1:8141`
+- Verified Work Mode V0 stable smoke port: `127.0.0.1:8142`
 - Verified production port: `100.70.248.39:8130`
 - Port status after verification: target smoke ports are running; local tunnels/dev servers are temporary unless listed as running.
 - Database used in raw user/conversation verification: MongoDB database `hackson_test`
 - Database used in interaction/model verification: MongoDB database `hackson_target_smoke`
 - Database used in review smoke verification: MongoDB database `hackson_current_8125`
 - Database used in product database smoke verification: MongoDB database `hackson`
+- Database used in persona/topic/compact smoke verification: MongoDB database `hackson_persona_topic_8131`
+- Database used in Work Mode Mission Runtime smoke verification: MongoDB database `hackson_work_mode_smoke`
+- Database used in Work Mode V0 stable smoke verification: MongoDB database `hackson_work_mode_v0_stable`
 - Production database initialized: MongoDB database `hackson`
 - Production database status:
   - collections: `users`, `conversations`, `messages`, `conversation_counters`, `derived_jobs`, `tasks`, `tool_traces`
@@ -67,7 +78,28 @@ cd ~/hackson_backend_test/backend
   - Local frontend path `5179 -> 127.0.0.1:8130` registered `ui_ctx_1779852614`.
   - The local `8130` process uses in-memory `mongomock`; it is separate from target production `100.70.248.39:8130`.
   - After 46 idle messages, Nora `#47` responded to the latest "红色按钮" marker instead of the older "工具还是同事" marker.
-- Last verified at: 2026-05-26
+- Persona/topic/compact verification:
+  - Target backend path `~/hackson_persona_topic_8131/backend` served FastAPI on `127.0.0.1:8131` without touching production `8130`.
+  - Target backend tests passed: `58 passed, 4 warnings`.
+  - API smoke user `persona_1779855711` saved `personality` and `story`, created a long idle history, sent `discussionDirection`, received an Agent reply from `agent_1`, and persisted `0` user messages for the topic direction.
+  - API smoke model: `gpt-5.1`.
+  - Frontend target-backed path `5180 -> 18131 -> 8131` completed Register, Me profile save, Idle Topic entry, and Tick with `31` API responses and `0` API errors.
+  - Screenshot: `/tmp/hackson_persona_topic_ui.png`.
+- Work Mode Mission Runtime verification:
+  - Target backend path `~/hackson_work_mode_smoke/backend` served FastAPI on `127.0.0.1:8141` without touching production `8130`.
+  - Target MongoDB database `hackson_work_mode_smoke` stored `work_projects`, `work_missions`, `work_runs`, `work_steps`, `work_events`, and `work_event_counters`.
+  - Verified event sequence: `MISSION_CREATED`, `MISSION_STARTED`, `STEP_STARTED`, `SUMMARY`, `RAW_LOG`, `PRODUCT_UPDATED`, `STEP_COMPLETED`, `MISSION_COMPLETED`.
+  - Verified Lead Employee fields: `leadEmployeeId=employee_default_lead`, `leadEmployeeName=Lead`.
+  - Frontend target-backed path `5181 -> 18141 -> 8141` completed Register, Login, Project create, Mission create, Mission start, event polling, and responsive screenshots.
+  - Screenshots: `/tmp/hackson_work_mode_target_desktop.png`, `/tmp/hackson_work_mode_target_mobile.png`.
+- Work Mode V0 stable verification:
+  - Target backend path `~/hackson_work_mode_v0_stable/backend` served FastAPI on `127.0.0.1:8142` without touching production `8130`.
+  - Target backend module tests passed, including `work_mode/tests` with `9` tests.
+  - Target API smoke verified Start, Stop, `MISSION_STOP_REQUESTED`, `MISSION_STOPPED`, `afterSequence`, Lead Employee fields, and MongoDB indexes.
+  - Target event sequence for stop path: `MISSION_CREATED`, `MISSION_STARTED`, `STEP_STARTED`, `MISSION_STOP_REQUESTED`, `MISSION_STOPPED`.
+  - Frontend target-backed path `5182 -> 18142 -> 8142` completed Register, Login, Project create, Mission create, completed path, stopped path, event polling, and mobile check.
+  - Screenshots: `/tmp/hackson_work_mode_v0_complete_desktop.png`, `/tmp/hackson_work_mode_v0_stop_desktop.png`, `/tmp/hackson_work_mode_v0_mobile.png`.
+- Last verified at: 2026-05-27
 
 ## port map
 | Port | Service | Bind | Status | Purpose |
@@ -80,6 +112,9 @@ cd ~/hackson_backend_test/backend
 | 8124 | FastAPI backend temporary test server | `127.0.0.1` | Older review smoke, superseded by `8125` | Target-machine review smoke for task API and new backend modules without touching existing services |
 | 8125 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest backend review smoke | Latest target-machine smoke for companion_1 continuation and Work Mode without touching existing services |
 | 8126 | FastAPI backend temporary product database smoke server | `127.0.0.1` | Verified and running | Product database auth smoke using MongoDB database `hackson` without touching existing services |
+| 8131 | FastAPI backend temporary persona/topic/compact smoke server | `127.0.0.1` | Verified and running | Target-machine persona, idle topic direction, and compact smoke using MongoDB database `hackson_persona_topic_8131` without touching production |
+| 8141 | FastAPI backend temporary Work Mode Mission Runtime smoke server | `127.0.0.1` | Verified and running | Target-machine Work Mode V0 Mission Runtime smoke using MongoDB database `hackson_work_mode_smoke` without touching production |
+| 8142 | FastAPI backend temporary Work Mode V0 stable smoke server | `127.0.0.1` | Verified and running | Target-machine Work Mode V0 completed and stopped path smoke using MongoDB database `hackson_work_mode_v0_stable` |
 | 8130 | Hackson production FastAPI backend and frontend | `0.0.0.0` | Verified, enabled, and running as `hackson-production.service` | Production app serving `/api/*` and React `dist/` from one origin |
 | 8130 | FastAPI backend temporary local context-fix server | `127.0.0.1` on local Mac | Verified and running in `screen` session `hackson_backend_8130` | Local-only latest idle context verification with in-memory `mongomock`; not production |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
@@ -88,43 +123,57 @@ cd ~/hackson_backend_test/backend
 | 18124 | SSH local tunnel to target backend | `127.0.0.1` | Historical Work frontend integration | Local browser access to target backend `127.0.0.1:8124` |
 | 18125 | SSH local tunnel to target backend | `127.0.0.1` | Verified during latest frontend integration, not kept running locally | Local browser access to latest target backend `127.0.0.1:8125` |
 | 18126 | SSH local tunnel to target backend | `127.0.0.1` | Verified and running | Local browser access to product database backend `127.0.0.1:8126` |
+| 18131 | SSH local tunnel to target backend | `127.0.0.1` | Verified and running | Local browser access to target persona/topic/compact backend `127.0.0.1:8131` |
+| 18141 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode frontend integration, not kept running locally | Local browser access to target Work Mode backend `127.0.0.1:8141` |
+| 18142 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode V0 stable frontend integration, not kept running locally | Local browser access to target Work Mode V0 backend `127.0.0.1:8142` |
 | 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified after restart against `18122`; running as PID recorded in `/tmp/hackson_frontend_5175.pid` | Local frontend connected to latest target backend through Vite proxy |
 | 5177 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified against `18125 -> 8125`, not kept running locally | Local frontend E2E for companion_1 continuation and Work Mode |
 | 5178 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running | Local frontend product database auth smoke through default proxy `18126 -> 8126` |
 | 5179 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running in `screen` session `hackson_frontend_5179` | Local UI verification for latest idle context fix through `127.0.0.1:8130` |
+| 5180 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running in `screen` session `hackson_frontend_5180` | Local persona/topic UI verification through `18131 -> 8131` |
+| 5181 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode frontend integration, not kept running locally | Local Work Mode UI verification through `18141 -> 8141` |
+| 5182 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode V0 stable frontend integration, not kept running locally | Local Work Mode V0 completed/stopped UI verification through `18142 -> 8142` |
 
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/health` | No | `8100`, `8101`, `8126`, `8130` | `backend/main.py` | Backend health check |
+| GET | `/health` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8141`, `8142` | `backend/main.py` | Backend health check |
 | GET | `/` | No | `8130` | `backend/main.py` | Production React frontend HTML |
 | GET | `/assets/{asset}` | No | `8130` | `backend/main.py` | Production React frontend assets |
-| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130` | `backend/users/` | Register user and return JWT |
-| POST | `/api/users/login` | No | `8100` | `backend/users/` | Login by email or username |
-| GET | `/api/users/me` | Bearer JWT | `8100`, `8126`, `8130` | `backend/users/` | Read current user |
-| PATCH | `/api/users/me` | Bearer JWT | `8100` | `backend/users/` | Update current user settings |
+| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8141`, `8142` | `backend/users/` | Register user and return JWT |
+| POST | `/api/users/login` | No | `8100`, `8141`, `8142` | `backend/users/` | Login by email or username |
+| GET | `/api/users/me` | Bearer JWT | `8100`, `8126`, `8130`, `8131` | `backend/users/` | Read current user, including `personality` and `story` |
+| PATCH | `/api/users/me` | Bearer JWT | `8100`, `8131` | `backend/users/` | Update current user settings, including `personality` and `story` |
 | POST | `/api/users/logout` | No server state | `8100` | `backend/users/` | Client-side JWT logout placeholder |
-| GET | `/api/agents` | No | `8120`, `8122`, `8130` | `backend/agents/` | List fixed V1 Agent display profiles |
+| GET | `/api/agents` | No | `8120`, `8122`, `8130`, `8131` | `backend/agents/` | List fixed V1 Agent display profiles |
 | POST | `/api/conversations` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Create conversation container |
 | GET | `/api/conversations` | Bearer JWT | `8100` | `backend/conversations/` | List current user's conversations |
 | GET | `/api/conversations/{conversationId}` | Bearer JWT | `8100` | `backend/conversations/` | Read one owned conversation |
-| POST | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100` | `backend/conversations/` | Append raw historical message |
-| GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101` | `backend/conversations/` | Page conversation messages |
-| GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101`, `8130` | `backend/conversations/` | Get or create active idle conversation |
-| POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101` | `backend/interactions/` | Generate one idle Agent reply |
+| POST | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8131` | `backend/conversations/` | Append raw historical message |
+| GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101`, `8131` | `backend/conversations/` | Page conversation messages |
+| GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101`, `8130`, `8131` | `backend/conversations/` | Get or create active idle conversation |
+| POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101`, `8131` | `backend/interactions/` | Generate one idle Agent reply; accepts optional `discussionDirection` |
 | POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101`, `8122`, `8125`, `8130` | `backend/interactions/` | Create companion_1 from idle and reply |
 | POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101`, `8125`, `8130` | `backend/interactions/` | Save companion_1 or companion_2 user message and reply |
 | POST | `/api/tasks` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/` | Create Work Mode task and its `work` conversation |
 | GET | `/api/tasks` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/` | List current user's Work Mode tasks |
 | GET | `/api/tasks/{taskId}` | Bearer JWT | Local tests | `backend/tasks/` | Read one current-user-owned Work Mode task |
 | POST | `/api/tasks/{taskId}/messages` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/`, `backend/interactions/` | Send a minimal Work Mode message using task state |
+| POST | `/api/work/projects` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | Create a Work Mode Project for Mission Runtime |
+| GET | `/api/work/projects` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | List current user's Work Mode Projects |
+| POST | `/api/work/missions` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | Create a Mission with the default Lead Employee |
+| GET | `/api/work/projects/{projectId}/missions` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | List Missions in one Project |
+| GET | `/api/work/missions/{missionId}` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | Read Mission detail and recent events |
+| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | Start the V0 deterministic Mission worker |
+| POST | `/api/work/missions/{missionId}/stop` | Bearer JWT | `8142` | `backend/work_mode/` | Request stop for a running Mission and emit stop events |
+| GET | `/api/work/missions/{missionId}/events` | Bearer JWT | `8141`, `8142` | `backend/work_mode/` | Poll Mission events after a sequence number |
 
 Notes:
 - Ports `8100` and `8101` were temporary target-machine verification ports and are not kept running.
 - The API paths are mounted by the same FastAPI app; use the active backend deployment base URL in production.
 - Production base URL is `http://100.70.248.39:8130/`.
 - Detailed request and response shapes are listed below.
-- New derived modules are verified by local and target-machine backend tests: `summaries/`, `memory/`, `diary/`, `workers/`, and `tasks/`.
+- New derived modules are verified by local and target-machine backend tests: `summaries/`, `memory/`, `diary/`, `workers/`, `tasks/`, and `work_mode/`.
 
 ## verified frontend
 
@@ -163,6 +212,7 @@ Verified checks:
 - Latest frontend integration uses SSH tunnel `18125` to target backend `8125`, then Vite port `5177`
 - Product database auth smoke uses SSH tunnel `18126` to target backend `8126`, then Vite port `5178`
 - Local context-fix UI verification uses Vite port `5179` to local backend `127.0.0.1:8130`
+- Persona/topic UI verification uses SSH tunnel `18131` to target backend `8131`, then Vite port `5180`
 - Production UI E2E uses `http://100.70.248.39:8130/` directly with no Vite proxy.
 - latest `5175` API smoke: `/api/agents` returned `200 OK`; `/api/idle/{conversationId}/join` returned `201 Created`
 
@@ -223,6 +273,7 @@ Latest frontend issue check:
 - Production UI E2E on `http://100.70.248.39:8130/`: Register, Idle join, companion follow-up, Work task create, and Work message all completed through production APIs with no browser console errors and no failed requests. Screenshot: `/tmp/hackson_production_ui.png`.
 - Production UI fix: optimistic message IDs no longer require `crypto.randomUUID()` because target-machine production currently uses an HTTP origin.
 - Local context-fix UI E2E on `5179 -> 127.0.0.1:8130`: after 45 old idle messages plus one latest "红色按钮" marker, Nora `#47` answered the latest marker; browser console errors and failed requests were empty. Screenshot: `/tmp/hackson-context-fix-user-test.png`.
+- Persona/topic UI E2E on `5180 -> 18131 -> 8131`: Register, Me profile save, Idle Topic entry, and Tick completed with no failed API responses. Screenshot: `/tmp/hackson_persona_topic_ui.png`.
 
 ## verified APIs
 
@@ -267,6 +318,8 @@ Verified response shape:
     "email": "api_doc_1779741798@example.com",
     "idleOn": true,
     "languagePreference": "zh",
+    "personality": "",
+    "story": "",
     "createdAt": "<iso_datetime>",
     "updatedAt": "<iso_datetime>"
   }
@@ -303,6 +356,8 @@ Verified response shape:
     "email": "api_doc_1779741798@example.com",
     "idleOn": true,
     "languagePreference": "zh",
+    "personality": "",
+    "story": "",
     "createdAt": "<iso_datetime>",
     "updatedAt": "<iso_datetime>"
   }
@@ -328,6 +383,8 @@ Verified response shape:
   "email": "api_doc_1779741798@example.com",
   "idleOn": true,
   "languagePreference": "zh",
+  "personality": "说话直接，先给结论，再给理由。",
+  "story": "我是一个正在打磨 Hackson demo 的用户。",
   "createdAt": "<iso_datetime>",
   "updatedAt": "<iso_datetime>"
 }
@@ -349,7 +406,9 @@ Request body:
 {
   "display_name": "API Doc User",
   "idle_on": false,
-  "language_preference": "en"
+  "language_preference": "en",
+  "personality": "说话直接，先给结论，再给理由。",
+  "story": "我是一个正在打磨 Hackson demo 的用户。"
 }
 ```
 
@@ -363,10 +422,16 @@ Verified response shape:
   "email": "api_doc_1779741798@example.com",
   "idleOn": false,
   "languagePreference": "en",
+  "personality": "说话直接，先给结论，再给理由。",
+  "story": "我是一个正在打磨 Hackson demo 的用户。",
   "createdAt": "<iso_datetime>",
   "updatedAt": "<iso_datetime>"
 }
 ```
+
+Notes:
+- `personality` maximum length is 1200 characters.
+- `story` maximum length is 4000 characters.
 
 ### POST /api/users/logout
 Purpose: V1 client-side JWT logout placeholder.
@@ -700,6 +765,7 @@ Verified request body:
 {
   "targetAgentId": "agent_1",
   "idleSeed": "继续 idle 对话，保持自然、简短、有生活感。",
+  "discussionDirection": "希望从产品约束和用户预期的角度继续讨论。",
   "metadata": {}
 }
 ```
@@ -748,6 +814,8 @@ Verified target-machine smoke values:
 
 Notes:
 - This API does not create a user message.
+- `discussionDirection` is an optional user steering field. It enters the model context as direction, not as a persisted transcript message.
+- Long idle histories are compacted into a deterministic context summary before recent messages are sent to the model.
 - `targetAgentId` defaults to `agent_1`.
 - `agent_1` and `agent_2` map to the fixed backend Agent catalog until `backend/agents/` persistence exists.
 

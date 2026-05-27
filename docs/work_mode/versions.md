@@ -1,18 +1,26 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 # Work Mode Version Roadmap
 
 ## 1. Product North Star
 
-Work Mode is an Agent Mission Runtime.
+Work Mode is an Agent Mission Runtime with project-scoped AI Employees.
 
-The user creates Projects. Each Project can contain multiple Missions. A Mission runs a supervised loop that uses fixed UI events to show progress and controlled worker execution to change code, run commands, collect diffs, run tests, request approval, and produce a final result.
+The user creates Projects. Each Project can contain multiple Missions and a roster of AI Employees. The user can edit an Employee's personality, working style, and experience notes. Each Mission chooses one Lead Employee and can invite other Employees to brainstorm, review, or execute supporting work.
+
+A Mission runs a supervised loop that uses fixed UI events to show progress and controlled worker execution to change code, run commands, collect diffs, run tests, request approval, and produce a final result.
 
 The model does not draw UI. The model emits structured events and tool decisions. The frontend renders those events with fixed React surfaces. The backend owns the runtime loop, safety gates, persistence, and worker execution.
+
+The Lead Employee is the mission driver. The Lead Employee can use three tool classes:
+
+- UI tools: emit React-rendered mission events.
+- Execution tools: invoke shell, Codex CLI, tests, and file-system work through backend safety gates.
+- Employee tools: ask other Employees to brainstorm, critique, summarize, or review.
 
 ## 2. Version Principles
 
@@ -22,6 +30,8 @@ The model does not draw UI. The model emits structured events and tool decisions
 - Each version must separate Work Mode memory and logs from Idle and Companion defaults.
 - Each version must treat Codex and shell execution as controlled worker actions, not direct model freedom.
 - Each version must record events before showing them in UI.
+- Each version that uses Employees must persist which Employee made or influenced an event.
+- Employee personality and experience are user-editable product data, but Mission execution still runs under backend safety gates.
 
 ## 3. Version Summary
 
@@ -30,8 +40,9 @@ The model does not draw UI. The model emits structured events and tool decisions
 | V0 | Mission Event Console | User can create a Project and Mission, start/stop it, and watch live structured events. | No autonomous code edits required. Worker can run a safe stub or read-only command. | Event stream works end to end on target machine. |
 | V0.5 | Single Codex Run | User can run one controlled Codex step for a Mission and see logs, summary, and artifacts. | One worker process invokes Codex or a configured command once. | Logs and result artifacts are persisted and visible. |
 | V1 | Supervised Mission Loop | Mission repeats controlled iterations until done, stopped, blocked, or limit reached. | Hard-coded supervisor loop controls max iterations, runtime, no-progress, and approval gates. | A coding Mission can run multiple iterations and stop deterministically. |
+| V1.25 | Project Employee Roster | User can add Employees to a Project, edit personality and experience, and choose a Lead Employee for a Mission. | Mission state stores roster selection and lead employee. | A Mission displays which Employee is leading and which Employees are available. |
 | V1.5 | Diff, Tests, Approval | User sees changed files, test results, warnings, and approval cards. | Worker captures diff, command results, and approval-required states. | Dangerous actions block until user approval. |
-| V2 | Worker + Reviewer | Separate Worker and Reviewer roles improve code task quality. | Reviewer evaluates diff/logs/tests before supervisor continues or completes. | A Mission can fail review, loop, then pass review. |
+| V2 | Lead + Supporting Employees | Lead Employee can ask other Employees to brainstorm, critique, summarize, or review. | Employee tool calls produce structured events and raw conversation records. | A Mission shows brainstorm process without flooding the main timeline. |
 | V3 | Multi Project Runtime | Multiple Projects and Missions can run or pause independently. | Runtime isolates repo paths, worktrees, events, and workers per Mission. | Two Missions can run without log, state, or repo collision. |
 | V4 | Custom Agent Graph | Advanced users define role graphs and mission policies. | Runtime executes configured role graph under the same safety and event protocol. | Custom graph cannot bypass safety gates. |
 
@@ -80,6 +91,8 @@ Optional in V0:
 
 - `work_artifacts`
 - `work_approvals`
+- `work_employees`
+- `work_project_employees`
 
 ### Required Event Types
 
@@ -98,6 +111,7 @@ Optional in V0:
 ### Non Goals
 
 - No multi-agent reviewer.
+- No editable Employee roster.
 - No arbitrary shell command UI.
 - No Git push.
 - No deploy.
@@ -182,26 +196,72 @@ Require approval before:
 - Deploying.
 - Running commands outside the allowlist.
 
-## 8. V2 Worker + Reviewer
+## 8. V1.25 Project Employee Roster
 
 ### Product Goal
 
-Improve quality by separating implementation from review.
+Let users staff a Project with AI Employees.
+
+Each Employee can have:
+
+- Name.
+- Role.
+- Personality.
+- Working style.
+- Experience notes.
+- Avatar or display color.
+- Project-specific memory notes.
+
+Each Mission can select:
+
+- Lead Employee.
+- Supporting Employees.
+
+### Runtime Scope
+
+V1.25 does not need multi-Employee execution yet.
+
+It must persist roster data and show which Employee is responsible for the Mission.
+
+### Release Gate
+
+- User can create an Employee.
+- User can add Employee to a Project.
+- User can choose a Lead Employee when creating a Mission.
+- Mission events show the Lead Employee.
+
+## 9. V2 Lead + Supporting Employees
+
+### Product Goal
+
+Improve quality by allowing the Lead Employee to consult supporting Employees.
 
 ### Runtime Flow
 
 1. Supervisor chooses next goal.
-2. Worker runs Codex.
-3. System captures diff, logs, and tests.
-4. Reviewer reads artifacts.
-5. Reviewer emits pass, fail, or blocked.
-6. Supervisor continues or stops.
+2. Lead Employee decides whether to act directly or ask another Employee.
+3. Supporting Employee returns brainstorm, critique, summary, or review.
+4. Lead Employee decides whether to call execution tools.
+5. System captures diff, logs, and tests.
+6. Reviewer-style Employee can evaluate artifacts.
+7. Supervisor continues or stops.
+
+### Employee Tool Calls
+
+Required tools:
+
+- `employee.brainstorm`
+- `employee.review`
+- `employee.summarize`
+- `employee.challenge`
+
+These tools write structured `EMPLOYEE_MESSAGE` or `BRAINSTORM_SUMMARY` events.
 
 ### Release Gate
 
-A Mission with an intentionally failing first attempt must loop after reviewer failure and complete after the next pass.
+A Mission can show a folded brainstorm thread and a concise Lead Employee decision in the main timeline.
 
-## 9. V3 Multi Project Runtime
+## 10. V3 Multi Project Runtime
 
 ### Product Goal
 
@@ -220,7 +280,7 @@ Run multiple independent Projects and Missions.
 
 Two Missions for two Projects can run without shared logs, shared worktrees, shared approval states, or crossed UI streams.
 
-## 10. V4 Custom Agent Graph
+## 11. V4 Custom Agent Graph
 
 ### Product Goal
 
@@ -238,7 +298,7 @@ Custom graphs cannot bypass:
 - Workspace isolation.
 - Event persistence.
 
-## 11. Current Repository Position
+## 12. Current Repository Position
 
 The repository currently has:
 
@@ -251,6 +311,9 @@ The repository currently has:
 
 The repository does not yet have:
 
+- Editable Work Mode Employees.
+- Project employee roster.
+- Lead Employee selection.
 - Project runtime.
 - Mission runtime.
 - Run and Step persistence.

@@ -1,0 +1,119 @@
+"""
+Created at: 2026-05-26
+Created by: Codex
+Last Modified at: 2026-05-26
+Last Modified by: Codex
+"""
+
+from collections.abc import Callable
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+
+from core.database import get_database
+from users.auth import get_current_user_id
+from work_mode.repository import WorkModeRepository
+from work_mode.schemas import (
+    EventResponse,
+    MissionCreateRequest,
+    MissionDetailResponse,
+    MissionResponse,
+    MissionStartRequest,
+    MissionStopRequest,
+    ProjectCreateRequest,
+    ProjectResponse,
+)
+from work_mode.service import WorkModeService
+from work_mode.worker import run_v0_mission_from_database
+
+router = APIRouter()
+
+
+def get_work_mode_service() -> WorkModeService:
+    return WorkModeService(WorkModeRepository(get_database()))
+
+
+def get_work_mode_worker_launcher() -> Callable[[str, str, str], None]:
+    return run_v0_mission_from_database
+
+
+@router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+def create_project(
+    payload: ProjectCreateRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.create_project(current_user_id, payload)
+
+
+@router.get("/projects", response_model=list[ProjectResponse])
+def list_projects(
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> list[dict]:
+    return service.list_projects(current_user_id, limit)
+
+
+@router.post("/missions", response_model=MissionResponse, status_code=status.HTTP_201_CREATED)
+def create_mission(
+    payload: MissionCreateRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.create_mission(current_user_id, payload)
+
+
+@router.get("/projects/{project_id}/missions", response_model=list[MissionResponse])
+def list_project_missions(
+    project_id: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> list[dict]:
+    return service.list_missions(current_user_id, project_id, limit)
+
+
+@router.get("/missions/{mission_id}", response_model=MissionDetailResponse)
+def get_mission(
+    mission_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.get_mission_detail(current_user_id, mission_id)
+
+
+@router.post("/missions/{mission_id}/start", response_model=MissionDetailResponse)
+def start_mission(
+    mission_id: str,
+    payload: MissionStartRequest,
+    background_tasks: BackgroundTasks,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+    worker_launcher: Callable[[str, str, str], None] = Depends(get_work_mode_worker_launcher),
+) -> dict:
+    detail = service.start_mission(current_user_id, mission_id, payload)
+    active_run = detail.get("activeRun")
+    if active_run is not None:
+        background_tasks.add_task(worker_launcher, current_user_id, mission_id, active_run["id"])
+    return detail
+
+
+@router.post("/missions/{mission_id}/stop", response_model=MissionDetailResponse)
+def stop_mission(
+    mission_id: str,
+    payload: MissionStopRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.stop_mission(current_user_id, mission_id, payload)
+
+
+@router.get("/missions/{mission_id}/events", response_model=list[EventResponse])
+def list_mission_events(
+    mission_id: str,
+    after_sequence: int | None = Query(default=None, ge=0, alias="afterSequence"),
+    limit: int = Query(default=100, ge=1, le=500),
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> list[dict]:
+    return service.list_events(current_user_id, mission_id, after_sequence, limit)

@@ -1,46 +1,66 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
-import { Plus, Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { getConversationMessages } from "../../api/conversations";
-import { createTask, listTasks, sendTaskMessage } from "../../api/tasks";
-import { FALLBACK_AGENTS, normalizeAgents } from "../../domain/agents";
-import { makeClientId, sortMessages, uniqueMessages } from "../../domain/messages";
-import AgentSlot from "../../shared/components/AgentSlot";
-import StatusLine from "../../shared/components/StatusLine";
-import Timeline from "../../shared/components/Timeline";
+import { useEffect, useMemo, useState } from "react";
+import {
+  createMission,
+  createProject,
+  getMission,
+  listMissionEvents,
+  listProjectMissions,
+  listProjects,
+  startMission,
+  stopMission,
+} from "../../api/workMode";
+import InspectorPanel from "./components/InspectorPanel";
+import MissionHeader from "./components/MissionHeader";
+import ProductPanel from "./components/ProductPanel";
+import ProgressTimeline from "./components/ProgressTimeline";
+import ProjectMissionRail from "./components/ProjectMissionRail";
+import RawLogPanel from "./components/RawLogPanel";
+import SummaryCard from "./components/SummaryCard";
+import WarningCard from "./components/WarningCard";
 
-function WorkPage({ agents = FALLBACK_AGENTS }) {
-  const agentProfiles = normalizeAgents(agents);
-  const [tasks, setTasks] = useState([]);
-  const [task, setTask] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [objective, setObjective] = useState("");
-  const [draft, setDraft] = useState("");
-  const [targetAgentId, setTargetAgentId] = useState("agent_2");
+const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked"]);
+
+function WorkPage() {
+  const [projects, setProjects] = useState([]);
+  const [missions, setMissions] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedMission, setSelectedMission] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [projectName, setProjectName] = useState("");
+  const [projectRepoPath, setProjectRepoPath] = useState("");
+  const [missionTitle, setMissionTitle] = useState("");
+  const [missionGoal, setMissionGoal] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const timelineRef = useRef(null);
+
+  const afterSequence = useMemo(() => Math.max(0, ...events.map((event) => event.sequence || 0)), [events]);
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadWork() {
+    async function load() {
       setLoading(true);
       setError("");
       try {
-        const rows = await listTasks();
-        const first = rows[0] || null;
-        const history = first ? await getConversationMessages(first.conversationId) : { messages: [] };
+        const rows = await listProjects();
+        const firstProject = rows[0] || null;
+        const missionRows = firstProject ? await listProjectMissions(firstProject.id) : [];
+        const firstMission = missionRows[0] || null;
+        const detail = firstMission ? await getMission(firstMission.id) : null;
         if (!mounted) return;
-        setTasks(rows);
-        setTask(first);
-        setMessages(sortMessages(history.messages || []));
+        setProjects(rows);
+        setSelectedProject(firstProject);
+        const selected = detail?.mission || firstMission;
+        setMissions(replaceMission(missionRows, selected));
+        setSelectedMission(selected);
+        setEvents(detail?.events || []);
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -48,30 +68,44 @@ function WorkPage({ agents = FALLBACK_AGENTS }) {
       }
     }
 
-    loadWork();
+    load();
     return () => {
       mounted = false;
     };
   }, []);
 
   useEffect(() => {
-    timelineRef.current?.scrollTo({
-      top: timelineRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages.length, busy]);
+    if (!selectedMission || terminalStatuses.has(selectedMission.status)) return undefined;
+    if (!["running", "stopping"].includes(selectedMission.status)) return undefined;
+    const timer = window.setInterval(async () => {
+      try {
+        const nextEvents = await listMissionEvents(selectedMission.id, afterSequence);
+        if (nextEvents.length > 0) {
+          setEvents((current) => mergeEvents(current, nextEvents));
+          const detail = await getMission(selectedMission.id);
+          setSelectedMission(detail.mission);
+          setMissions((current) => replaceMission(current, detail.mission));
+        }
+      } catch (err) {
+        setError(err.message || "Poll failed");
+      }
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, [afterSequence, selectedMission]);
 
-  async function addTask() {
-    const nextObjective = objective.trim();
-    if (!nextObjective || busy) return;
+  async function addProject() {
+    if (!projectName.trim() || !projectRepoPath.trim() || busy) return;
     setBusy(true);
     setError("");
     try {
-      const created = await createTask({ objective: nextObjective });
-      setTasks((current) => [created, ...current]);
-      setTask(created);
-      setMessages([]);
-      setObjective("");
+      const project = await createProject({ name: projectName, repoPath: projectRepoPath });
+      setProjects((current) => [project, ...current]);
+      setSelectedProject(project);
+      setMissions([]);
+      setSelectedMission(null);
+      setEvents([]);
+      setProjectName("");
+      setProjectRepoPath("");
     } catch (err) {
       setError(err.message || "Create failed");
     } finally {
@@ -79,156 +113,146 @@ function WorkPage({ agents = FALLBACK_AGENTS }) {
     }
   }
 
-  async function selectTask(nextTask) {
-    if (busy || nextTask.id === task?.id) return;
-    setLoading(true);
+  async function selectProject(project) {
+    if (busy || project.id === selectedProject?.id) return;
+    setBusy(true);
     setError("");
     try {
-      const history = await getConversationMessages(nextTask.conversationId);
-      setTask(nextTask);
-      setMessages(sortMessages(history.messages || []));
+      const missionRows = await listProjectMissions(project.id);
+      const firstMission = missionRows[0] || null;
+      const detail = firstMission ? await getMission(firstMission.id) : null;
+      const selected = detail?.mission || firstMission;
+      setSelectedProject(project);
+      setMissions(replaceMission(missionRows, selected));
+      setSelectedMission(selected);
+      setEvents(detail?.events || []);
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  async function send() {
-    const content = draft.trim();
-    if (!task || !content || busy) return;
-    const pendingMessage = makePendingWorkMessage(task, content, messages);
+  async function addMission() {
+    if (!selectedProject || !missionTitle.trim() || !missionGoal.trim() || busy) return;
     setBusy(true);
     setError("");
-    setDraft("");
-    setMessages((current) => uniqueMessages([...current, pendingMessage]));
     try {
-      const data = await sendTaskMessage(task.id, {
-        content,
-        targetAgentId,
-        metadata: {},
+      const mission = await createMission({
+        projectId: selectedProject.id,
+        title: missionTitle,
+        goal: missionGoal,
       });
-      setMessages((current) =>
-        uniqueMessages([
-          ...current.filter((message) => message.id !== pendingMessage.id),
-          data.userMessage,
-          data.agentMessage,
-        ]),
-      );
+      const detail = await getMission(mission.id);
+      setMissions((current) => [detail.mission, ...current]);
+      setSelectedMission(detail.mission);
+      setEvents(detail.events || []);
+      setMissionTitle("");
+      setMissionGoal("");
     } catch (err) {
-      setError(err.message || "Send failed");
+      setError(err.message || "Create failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function selectMission(mission) {
+    if (busy || mission.id === selectedMission?.id) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await getMission(mission.id);
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+    } catch (err) {
+      setError(err.message || "Load failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function start() {
+    if (!selectedMission || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await startMission(selectedMission.id);
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+    } catch (err) {
+      setError(err.message || "Start failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function stop() {
+    if (!selectedMission || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await stopMission(selectedMission.id, { reason: "Stopped by user" });
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+    } catch (err) {
+      setError(err.message || "Stop failed");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="chat-grid with-history work-grid">
-      <aside className="history-rail">
-        <div className="panel-head compact">
-          <div>
-            <p className="eyebrow">Work</p>
-            <h2>Tasks</h2>
-          </div>
-        </div>
-        <div className="task-create">
-          <input
-            aria-label="Objective"
-            disabled={busy || loading}
-            onChange={(event) => setObjective(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") addTask();
-            }}
-            placeholder="Objective"
-            value={objective}
-          />
-          <button disabled={busy || loading || !objective.trim()} onClick={addTask} title="Create" type="button">
-            <Plus size={17} />
-          </button>
-        </div>
-        <div className="history-list">
-          {tasks.map((item) => (
-            <button
-              className={`history-item ${item.id === task?.id ? "active" : ""}`}
-              key={item.id}
-              onClick={() => selectTask(item)}
-              type="button"
-            >
-              <strong>{item.objective}</strong>
-              <span>{item.status}</span>
-            </button>
-          ))}
-        </div>
-      </aside>
-      <section className="timeline-panel">
-        <div className="panel-head">
-          <div>
-            <p className="eyebrow">Work</p>
-            <h2>{task?.objective || "Task"}</h2>
-          </div>
-          <span className="chip">{task?.status || "new"}</span>
-        </div>
-        <Timeline agents={agentProfiles} messages={messages} timelineRef={timelineRef} />
-        <div className="composer">
-          <input
-            aria-label="Work message"
-            disabled={busy || loading || !task}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") send();
-            }}
-            placeholder="Next step"
-            value={draft}
-          />
-          <button disabled={busy || loading || !task} onClick={send} title="Send" type="button">
-            <Send size={18} />
-          </button>
+    <div className="work-console-grid">
+      <ProjectMissionRail
+        busy={busy || loading}
+        missionGoal={missionGoal}
+        missionTitle={missionTitle}
+        missions={missions}
+        onCreateMission={addMission}
+        onCreateProject={addProject}
+        onMissionGoalChange={setMissionGoal}
+        onMissionTitleChange={setMissionTitle}
+        onProjectNameChange={setProjectName}
+        onProjectRepoPathChange={setProjectRepoPath}
+        onSelectMission={selectMission}
+        onSelectProject={selectProject}
+        projectName={projectName}
+        projectRepoPath={projectRepoPath}
+        projects={projects}
+        selectedMission={selectedMission}
+        selectedProject={selectedProject}
+      />
+      <section className="mission-console">
+        <MissionHeader busy={busy || loading} mission={selectedMission} onStart={start} onStop={stop} />
+        <div className="mission-content">
+          <ProgressTimeline events={events} />
+          <SummaryCard events={events} />
+          <ProductPanel events={events} />
+          <RawLogPanel events={events} />
         </div>
       </section>
-      <aside className="context-rail">
-        <div className="panel-head compact">
-          <div>
-            <p className="eyebrow">Target</p>
-            <h2>Agent</h2>
-          </div>
-        </div>
-        {agentProfiles.map((agent) => (
-          <button
-            className={`agent-target ${targetAgentId === agent.slot ? "active" : ""}`}
-            key={agent.slot}
-            onClick={() => setTargetAgentId(agent.slot)}
-            type="button"
-          >
-            <AgentSlot agent={agent} state={targetAgentId === agent.slot ? "On" : "Off"} />
-          </button>
-        ))}
-        <div className="context-item">
-          <span>Phase</span>
-          <p>{task?.currentPhase || "intake"}</p>
-        </div>
-        <StatusLine error={error} loading={loading} text={busy ? "Working" : ""} />
-      </aside>
+      <div className="work-side">
+        <InspectorPanel busy={busy || loading} error={error} mission={selectedMission} project={selectedProject} />
+        <WarningCard events={events} />
+      </div>
     </div>
   );
 }
 
-function makePendingWorkMessage(task, content, messages) {
-  const maxSequence = Math.max(0, ...messages.map((message) => message.sequence || 0));
-  return {
-    id: `pending-${makeClientId()}`,
-    conversationId: task.conversationId,
-    userId: task.userId,
-    mode: "work",
-    sequence: maxSequence + 0.5,
-    senderType: "user",
-    senderId: "me",
-    senderSlot: null,
-    role: "user",
-    content,
-    contentType: "text",
-    metadata: { pending: true },
-    createdAt: new Date().toISOString(),
-  };
+function mergeEvents(current, nextEvents) {
+  const map = new Map(current.map((event) => [event.id, event]));
+  for (const event of nextEvents) {
+    map.set(event.id, event);
+  }
+  return Array.from(map.values()).sort((a, b) => a.sequence - b.sequence);
+}
+
+function replaceMission(missions, mission) {
+  if (!mission) return missions;
+  return missions.map((item) => (item.id === mission.id ? mission : item));
 }
 
 export default WorkPage;
