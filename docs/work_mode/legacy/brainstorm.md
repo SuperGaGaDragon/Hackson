@@ -4,6 +4,8 @@ Created by: User
 Last Modified at: 2026-05-27
 Last Modified by: Codex
 
+LEGACY NOTICE: This document is archived. Do not use it as the Work Mode execution source. Use `../final_version.md`.
+
 你要做的不是“让模型自己写前端 UI”，而是：
 
 给模型一组已经设计好的 React 展示组件，让模型选择什么时候调用哪个组件、填什么内容。

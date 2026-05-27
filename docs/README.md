@@ -10,7 +10,7 @@ Lst Modified by: Codex
 - 架构思路
   - Keep verified runtime facts in `api.md` at the repository root.
   - Keep product-level plans in this folder.
-  - Keep Work Mode Mission Runtime documents under `work_mode/`.
+  - Keep current Work Mode Mission Runtime documents under `work_mode/`.
   - Keep context research and implementation plans under `上下文/`.
 
 ## folder structure
@@ -21,7 +21,7 @@ Lst Modified by: Codex
 |-backend-architecture.md backend product-level module architecture plan
 |-deployment/ production deployment topology and verification records
 |-frontend/ frontend product design direction
-|-work_mode/ Work Mode Agent Mission Runtime plans
+|-work_mode/ current Work Mode Agent Mission Runtime documents; old V0/V0.5 plans are archived under `work_mode/legacy/`
 |-上下文/ context system research, requirements, and plans
 |-数据库/ database design and local target-machine notes
 |-model升级/ model and orchestration upgrade plans
@@ -32,15 +32,21 @@ Lst Modified by: Codex
 3. `docs/backend-architecture.md`
 4. `docs/frontend/design.md`
 5. `docs/deployment/production.md`
-6. `docs/work_mode/versions.md`
-7. `docs/work_mode/plan.md`
+6. `docs/work_mode/final_version.md`
+7. `docs/work_mode/implementation_plan.md`
 8. `backend/README.md`
 9. `docs/plan.md`
 
 ## important files
-- `docs/work_mode/brainstorm.md`: Work Mode Agent Mission Runtime raw brainstorm.
-- `docs/work_mode/versions.md`: Work Mode product version roadmap and release gates.
-- `docs/work_mode/plan.md`: detailed Work Mode V0 implementation plan.
+- `docs/work_mode/final_version.md`: authoritative Work Mode roadmap and version contract.
+- `docs/work_mode/architecture.md`: Work Mode Mission Runtime architecture.
+- `docs/work_mode/tool_protocol.md`: model-visible tool protocol and hard constraints.
+- `docs/work_mode/state_machine.md`: Mission, Run, Work Window, Product, and Artifact state machine.
+- `docs/work_mode/context_design.md`: Lead and Delegate Agent context design.
+- `docs/work_mode/ui_contract.md`: React Work UI rendering contract.
+- `docs/work_mode/implementation_plan.md`: detailed Work Mode V1.0 implementation sequence.
+- `docs/work_mode/issues/`: technical risk notes linked from the final roadmap.
+- `docs/work_mode/legacy/`: archived V0/V0.5 plans, not an execution source.
 - `docs/上下文/context-mainstream-research.md`: 主流上下文处理方案与论文综述.
 - `docs/上下文/context-requirements-for-hackson.md`: 结合 Hackson 产品模式的上下文系统需求文档.
 - `docs/上下文/context-innovation-proposal.md`: Hackson Context OS 创新架构提案.

@@ -6,6 +6,8 @@ Last Modified by: Codex
 
 # Work Mode V0.5 Single Model Run
 
+LEGACY NOTICE: This document is archived. Do not use it as the Work Mode execution source. Use `../final_version.md`.
+
 ## product goal
 - Start must produce a real visible Mission artifact.
 - `completed` must mean the configured runner produced and persisted output, not that a stub event sequence ended.

@@ -6,6 +6,8 @@ Last Modified by: Codex
 
 # Work Mode Version Roadmap
 
+LEGACY NOTICE: This document is archived. Do not use it as the Work Mode execution source. Use `../final_version.md`.
+
 ## 1. Product North Star
 
 Work Mode is an Agent Mission Runtime that uses the two user-owned Agents edited in `Me`.

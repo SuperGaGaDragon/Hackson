@@ -1,3 +1,11 @@
+## header
+Created at: 2026-05-27
+Created by: User
+Last Modified at: 2026-05-27
+Last Modified by: Codex
+
+LEGACY NOTICE: This document is archived. Do not use it as the Work Mode execution source. Use `../final_version.md`.
+
 1. 产品核心形态
 
 可以叫：

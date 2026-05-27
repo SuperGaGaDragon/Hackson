@@ -6,6 +6,8 @@ Last Modified by: Codex
 
 # Work Mode V0 Implementation Plan
 
+LEGACY NOTICE: This document is archived. Do not use it as the Work Mode execution source. Use `../final_version.md`.
+
 ## 1. Purpose
 
 This document is the implementation manual for Work Mode V0.
