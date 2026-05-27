@@ -226,7 +226,7 @@ class WorkModeService:
         mission = self._require_mission(user_id, mission_id)
         if mission["status"] in {"running", "stopping"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_already_running")
-        if mission["status"] not in {"draft", "paused", "stopped", "blocked", "failed", "completed"}:
+        if mission["status"] not in {"draft", "paused", "paused_retryable", "stopped", "blocked", "failed", "completed"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_cannot_start")
         timestamp = now_utc()
         mission = self._update_mission(

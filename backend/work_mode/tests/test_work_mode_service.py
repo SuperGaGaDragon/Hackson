@@ -368,6 +368,19 @@ class WorkModeServiceTest(TestCase):
         with self.assertRaises(HTTPException):
             self.service.start_mission("user_1", mission["id"], MissionStartRequest())
 
+    def test_start_allows_paused_retryable_resume_with_new_run(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        first_run_id = detail["activeRun"]["id"]
+        self.service.mark_mission_paused_retryable("user_1", mission["id"], first_run_id, "model_timeout")
+
+        resumed = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+
+        self.assertEqual(resumed["mission"]["status"], "running")
+        self.assertEqual(resumed["activeRun"]["status"], "running")
+        self.assertNotEqual(resumed["activeRun"]["id"], first_run_id)
+        self.assertEqual(resumed["latestRun"]["id"], resumed["activeRun"]["id"])
+
     def test_worker_completes_v0_event_sequence(self) -> None:
         mission = self._mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())

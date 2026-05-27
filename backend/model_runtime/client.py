@@ -7,6 +7,7 @@ Last Modified by: Codex
 
 import json
 import os
+import signal
 import subprocess
 import tempfile
 from typing import Any
@@ -75,13 +76,10 @@ class CodexCliClient:
             output_path = output_file.name
             output_file.close()
             try:
-                completed = subprocess.run(
+                completed = _run_codex_subprocess(
                     _codex_command(config, request, workdir, output_path),
                     input=prompt,
-                    text=True,
-                    capture_output=True,
-                    timeout=config.timeout_seconds,
-                    check=False,
+                    timeout_seconds=config.timeout_seconds,
                     env=_codex_env(config),
                 )
                 if completed.returncode != 0:
@@ -102,6 +100,37 @@ class CodexCliClient:
             provider=config.provider,
             raw_metadata={"runner": "codex_exec"},
         )
+
+
+def _run_codex_subprocess(
+    command: list[str],
+    input: str,
+    timeout_seconds: float,
+    env: dict[str, str],
+) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+        env=env,
+    )
+    try:
+        stdout, stderr = process.communicate(input=input, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        _terminate_process_group(process)
+        process.wait(timeout=5)
+        raise
+    return subprocess.CompletedProcess(command, process.returncode, stdout=stdout, stderr=stderr)
+
+
+def _terminate_process_group(process: subprocess.Popen[str]) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
 
 
 def _chat_completions_url(base_url: str) -> str:

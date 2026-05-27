@@ -6,6 +6,8 @@ Last Modified by: Codex
 """
 
 import os
+import signal
+import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
@@ -18,6 +20,7 @@ from model_runtime.client import (
     _codex_command,
     _codex_prompt,
     _codex_reasoning_effort,
+    _run_codex_subprocess,
     _chat_completions_url,
     _extract_reasoning_summary,
     _extract_response_text,
@@ -325,17 +328,27 @@ class ModelRuntimeTest(TestCase):
         config = StaticConfigRepository(provider="codex_cli").get_enabled_config()
         request = ModelGenerateRequest(messages=[RuntimeMessage(role="user", content="hello")])
 
-        def fake_run(command, input, text, capture_output, timeout, check, env):
+        def fake_popen(command, stdin, stdout, stderr, text, start_new_session, env):
             output_path = command[command.index("-o") + 1]
             Path(output_path).write_text("codex reply\n", encoding="utf-8")
-            return FakeCompletedProcess(returncode=0, stdout="ignored stdout")
+            return FakePopen(stdout_text="ignored stdout")
 
-        with patch("model_runtime.client.subprocess.run", side_effect=fake_run):
+        with patch("model_runtime.client.subprocess.Popen", side_effect=fake_popen):
             response = CodexCliClient().generate(config, request)
 
         self.assertEqual(response.text, "codex reply")
         self.assertEqual(response.model_name, "codex-test-model")
         self.assertEqual(response.provider, "codex_cli")
+
+    def test_codex_subprocess_timeout_kills_process_group(self) -> None:
+        process = TimeoutPopen()
+        with patch("model_runtime.client.subprocess.Popen", return_value=process):
+            with patch("model_runtime.client.os.killpg") as fake_killpg:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    _run_codex_subprocess(["codex"], "prompt", timeout_seconds=1, env={})
+
+        fake_killpg.assert_called_once_with(process.pid, signal.SIGTERM)
+        self.assertTrue(process.wait_called)
 
     def test_codex_reasoning_maps_minimal_to_low(self) -> None:
         self.assertEqual(_codex_reasoning_effort("minimal"), "low")
@@ -354,10 +367,31 @@ class FakeHTTPXResponse:
         return self.payload
 
 
-class FakeCompletedProcess:
-    def __init__(self, returncode: int, stdout: str = ""):
+class FakePopen:
+    def __init__(self, returncode: int = 0, stdout_text: str = "", stderr_text: str = ""):
+        self.pid = 12345
         self.returncode = returncode
-        self.stdout = stdout
+        self.stdout_text = stdout_text
+        self.stderr_text = stderr_text
+
+    def communicate(self, input: str, timeout: float):
+        return self.stdout_text, self.stderr_text
+
+    def wait(self, timeout: float | None = None) -> int:
+        return self.returncode
+
+
+class TimeoutPopen:
+    def __init__(self):
+        self.pid = 54321
+        self.wait_called = False
+
+    def communicate(self, input: str, timeout: float):
+        raise subprocess.TimeoutExpired(cmd="codex", timeout=timeout)
+
+    def wait(self, timeout: float | None = None) -> int:
+        self.wait_called = True
+        return -signal.SIGTERM
 
 
 class StaticConfigRepository:

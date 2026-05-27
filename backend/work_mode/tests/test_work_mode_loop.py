@@ -129,6 +129,32 @@ class WorkModeLoopTest(TestCase):
         self.assertEqual(paused["latestRun"]["status"], "paused_retryable")
         self.assertEqual(paused["events"][-1]["type"], "MISSION_PAUSED_RETRYABLE")
 
+    def test_loop_resume_continues_from_persisted_product_manifest(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        first_run_id = detail["activeRun"]["id"]
+        first_client = FailingAfterProductActionClient()
+
+        MissionLoopRunner(self.service, action_client=first_client, max_turns=4).run("user_1", mission["id"], first_run_id)
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+        second_detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        second_run_id = second_detail["activeRun"]["id"]
+        second_client = ResumeFromManifestActionClient()
+
+        MissionLoopRunner(self.service, action_client=second_client, max_turns=4).run(
+            "user_1",
+            mission["id"],
+            second_run_id,
+        )
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(paused["mission"]["status"], "paused_retryable")
+        self.assertNotEqual(first_run_id, second_run_id)
+        self.assertEqual(completed["mission"]["status"], "completed")
+        self.assertEqual(len(completed["products"]), 1)
+        self.assertEqual(completed["products"][0]["status"], "final")
+        self.assertTrue(second_client.saw_existing_product)
+
     def _mission(self) -> dict:
         project = self.service.create_project("user_1", ProjectCreateRequest(name="Novel"))
         return self.service.create_mission(
@@ -180,3 +206,54 @@ class AlwaysFailingActionClient:
 
     def generate_action(self, context: dict):
         raise self.error
+
+
+class FailingAfterProductActionClient:
+    def __init__(self):
+        self.calls = 0
+
+    def generate_action(self, context: dict):
+        self.calls += 1
+        if self.calls == 1:
+            return parse_tool_action(
+                """
+                {
+                  "tool": "work_product",
+                  "arguments": {
+                    "reason": "先保存产品。",
+                    "operation": "create_product",
+                    "productId": null,
+                    "sourceArtifactIds": [],
+                    "productTitle": "雨夜车站",
+                    "artifactTitle": "第一章",
+                    "artifactKind": "chapter",
+                    "content": "已有章节。",
+                    "summary": "章节完成。"
+                  }
+                }
+                """
+            )
+        raise ToolActionClientError("model_timeout", "model_timeout", retryable=True)
+
+
+class ResumeFromManifestActionClient:
+    def __init__(self):
+        self.saw_existing_product = False
+
+    def generate_action(self, context: dict):
+        products = context.get("productManifest") or []
+        self.saw_existing_product = bool(products)
+        product = products[0]
+        return parse_tool_action(
+            f"""
+            {{
+              "tool": "finish_mission",
+              "arguments": {{
+                "reason": "继续已有产品并完成。",
+                "summary": "恢复完成。",
+                "finalProductIds": ["{product["id"]}"],
+                "finalArtifactIds": ["{product["latestArtifactId"]}"]
+              }}
+            }}
+            """
+        )
