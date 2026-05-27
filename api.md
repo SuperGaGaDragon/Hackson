@@ -63,6 +63,10 @@ cd ~/hackson_backend_test/backend
   - Vite proxy path `5178 -> 18126 -> 8126` registered `viteprod_1779763130`.
   - MongoDB query found `viteprod_1779763130@example.com` in `hackson.users`.
   - The same email was absent from `hackson_current_8125.users`.
+- Local context-fix verification:
+  - Local frontend path `5179 -> 127.0.0.1:8130` registered `ui_ctx_1779852614`.
+  - The local `8130` process uses in-memory `mongomock`; it is separate from target production `100.70.248.39:8130`.
+  - After 46 idle messages, Nora `#47` responded to the latest "红色按钮" marker instead of the older "工具还是同事" marker.
 - Last verified at: 2026-05-26
 
 ## port map
@@ -77,6 +81,7 @@ cd ~/hackson_backend_test/backend
 | 8125 | FastAPI backend temporary test server | `127.0.0.1` | Verified, running during latest backend review smoke | Latest target-machine smoke for companion_1 continuation and Work Mode without touching existing services |
 | 8126 | FastAPI backend temporary product database smoke server | `127.0.0.1` | Verified and running | Product database auth smoke using MongoDB database `hackson` without touching existing services |
 | 8130 | Hackson production FastAPI backend and frontend | `0.0.0.0` | Verified, enabled, and running as `hackson-production.service` | Production app serving `/api/*` and React `dist/` from one origin |
+| 8130 | FastAPI backend temporary local context-fix server | `127.0.0.1` on local Mac | Verified and running in `screen` session `hackson_backend_8130` | Local-only latest idle context verification with in-memory `mongomock`; not production |
 | 5173 | Vite frontend temporary dev server | `127.0.0.1` | Running locally | Hackson React frontend prototype |
 | 18101 | SSH local tunnel to target backend | `127.0.0.1` | Running locally during latest frontend check | Local browser access to target-machine `127.0.0.1:8101` |
 | 18122 | SSH local tunnel to target backend | `127.0.0.1` | Verified, running during latest diagnosis | Local browser access to latest target backend `127.0.0.1:8122` |
@@ -86,6 +91,7 @@ cd ~/hackson_backend_test/backend
 | 5175 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified after restart against `18122`; running as PID recorded in `/tmp/hackson_frontend_5175.pid` | Local frontend connected to latest target backend through Vite proxy |
 | 5177 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified against `18125 -> 8125`, not kept running locally | Local frontend E2E for companion_1 continuation and Work Mode |
 | 5178 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running | Local frontend product database auth smoke through default proxy `18126 -> 8126` |
+| 5179 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running in `screen` session `hackson_frontend_5179` | Local UI verification for latest idle context fix through `127.0.0.1:8130` |
 
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
@@ -156,6 +162,7 @@ Verified checks:
 - Work frontend integration used SSH tunnel `18124` to target backend `8124`
 - Latest frontend integration uses SSH tunnel `18125` to target backend `8125`, then Vite port `5177`
 - Product database auth smoke uses SSH tunnel `18126` to target backend `8126`, then Vite port `5178`
+- Local context-fix UI verification uses Vite port `5179` to local backend `127.0.0.1:8130`
 - Production UI E2E uses `http://100.70.248.39:8130/` directly with no Vite proxy.
 - latest `5175` API smoke: `/api/agents` returned `200 OK`; `/api/idle/{conversationId}/join` returned `201 Created`
 
@@ -215,6 +222,7 @@ Latest frontend issue check:
 - Production API smoke on `8130`: health, frontend HTML, frontend asset, register, current user, Agents, idle conversation, idle join, companion follow-up, task create, and Work message all returned 2xx; model calls used `gpt-5.1`; MongoDB confirmed the smoke user, 6 messages, and 1 task in `hackson`.
 - Production UI E2E on `http://100.70.248.39:8130/`: Register, Idle join, companion follow-up, Work task create, and Work message all completed through production APIs with no browser console errors and no failed requests. Screenshot: `/tmp/hackson_production_ui.png`.
 - Production UI fix: optimistic message IDs no longer require `crypto.randomUUID()` because target-machine production currently uses an HTTP origin.
+- Local context-fix UI E2E on `5179 -> 127.0.0.1:8130`: after 45 old idle messages plus one latest "红色按钮" marker, Nora `#47` answered the latest marker; browser console errors and failed requests were empty. Screenshot: `/tmp/hackson-context-fix-user-test.png`.
 
 ## verified APIs
 

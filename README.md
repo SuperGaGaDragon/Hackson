@@ -37,6 +37,8 @@ Last Modified by: Codex
 | Product database smoke backend | `127.0.0.1:8126`, verified and running |
 | Product database local tunnel | `127.0.0.1:18126 -> 127.0.0.1:8126`, verified and running |
 | Product database frontend dev port | `127.0.0.1:5178`, verified and running |
+| Local context-fix backend | `127.0.0.1:8130`, verified and running with in-memory `mongomock` |
+| Local context-fix frontend dev port | `127.0.0.1:5179`, verified and running |
 | Default frontend local dev port | `127.0.0.1:5173` |
 | Production MongoDB database | `hackson` |
 | Latest smoke MongoDB database | `hackson_current_8125` |
