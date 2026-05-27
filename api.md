@@ -7,8 +7,8 @@ Last Modified by: Codex
 ## brief intro
 - This document is the current verified API and port map for Hackson.
 - Public product traffic now uses `https://hackson.catachess.com/`.
-- Only currently retained Hackson services and APIs verified on the public domain are listed as active.
-- Historical smoke ports were intentionally removed from the active map after public-domain promotion.
+- Public-domain rows describe the currently retained product service.
+- The `8147` rows describe the isolated Idle Auto smoke service used for this fix.
 
 ## current environment
 | Item | Value |
@@ -24,6 +24,13 @@ Last Modified by: Codex
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
 | Public cloudflared config | `~/.cloudflared/hackson.yml` |
+| Idle Auto smoke source path | `~/hackson_idle_auto_8146` |
+| Idle Auto smoke backend path | `~/hackson_idle_auto_8146/backend` |
+| Idle Auto smoke frontend build path | `~/hackson_idle_auto_8146/frontend/dist` |
+| Idle Auto smoke service | `hackson-idle-auto-8147.service`, user-level systemd, active |
+| Idle Auto smoke backend bind | `127.0.0.1:8147` |
+| Idle Auto smoke local check | `127.0.0.1:5187 -> 18147 -> 8147` |
+| Idle Auto smoke MongoDB database | `hackson_idle_auto_8147` |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -34,11 +41,13 @@ Last Modified by: Codex
 | Port | Service | Bind | Status | Purpose |
 | --- | --- | --- | --- | --- |
 | 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service` |
+| 8147 | Hackson Idle Auto smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-idle-auto-8147.service` | Isolated verification for Idle Auto topic, interjection, speaker, and rate-limit behavior |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
 - On 2026-05-27, old Hackson smoke uvicorn ports were stopped after the current code was promoted to the public domain.
-- Stopped Hackson smoke ports: `8101`, `8122`, `8123`, `8124`, `8125`, `8126`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8146`, `8147`.
+- Stopped Hackson smoke ports: `8101`, `8122`, `8123`, `8124`, `8125`, `8126`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8146`.
+- On 2026-05-27, `8147` was reintroduced as `hackson-idle-auto-8147.service` for isolated Idle Auto verification without touching public `8145`.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
@@ -233,6 +242,11 @@ GET /api/work/missions/{missionId}/events?afterSequence=<last-sequence>
 - `hackson-domain-8145.service` was restarted and returned `{"status":"ok"}` on `127.0.0.1:8145/health`.
 - Public API smoke verified auth, Agent profile update, Project creation, Mission creation, Mission start, and Mission events.
 - Model-backed Idle/Companion routes can currently return `429 {"detail":"model_rate_limited"}` when the upstream model provider is rate-limited; this is a stable API response, not a backend crash.
+- Idle Auto smoke verification on `8147`:
+  - Target scoped tests passed: `40 passed, 4 warnings`.
+  - API smoke confirmed provider `429` returns `{"detail":"model_rate_limited"}` and a failed idle tick leaves `0` messages.
+  - Local UI path `5187 -> 18147 -> 8147` verified topic creation during rate limit shows `Model busy`, keeps `Auto` off, and makes no extra tick requests after failure.
+  - Screenshot: `/tmp/hackson_idle_auto_model_busy_ui.png`.
 - Public browser smoke verified Register/Login, Agent editing, Workspace Project creation, Project detail, Mission creation, Start, completion timeline, desktop screenshot, and mobile screenshot with `0` failed API responses.
 - Screenshots:
   - `/tmp/hackson_public_work_agents_desktop.png`

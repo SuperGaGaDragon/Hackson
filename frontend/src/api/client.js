@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 const TOKEN_KEY = "hackson_access_token";
@@ -68,7 +68,12 @@ export async function apiRequest(path, options = {}) {
 
 function resolveErrorMessage(data) {
   if (!data) return "Request failed";
-  if (typeof data.detail === "string") return data.detail;
+  if (typeof data.detail === "string") return KNOWN_ERROR_MESSAGES[data.detail] || data.detail;
   if (Array.isArray(data.detail)) return data.detail[0]?.msg || "Request failed";
   return data.message || "Request failed";
 }
+
+const KNOWN_ERROR_MESSAGES = {
+  model_rate_limited: "Model busy",
+  model_unavailable: "Model unavailable",
+};

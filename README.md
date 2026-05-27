@@ -26,14 +26,18 @@ Last Modified by: Codex
 | Hackson public domain backend bind | `127.0.0.1:8145` |
 | Hackson public domain cloudflared config | `~/.cloudflared/hackson.yml` |
 | Hackson public domain frontend assets | served by FastAPI from `~/hackson_domain_8145/frontend/dist` |
+| Idle Auto smoke service | `hackson-idle-auto-8147.service`, user-level systemd, active for current verification |
+| Idle Auto smoke backend bind | `127.0.0.1:8147` |
+| Idle Auto local frontend check | `127.0.0.1:5187 -> 18147 -> 8147` |
 | Legacy production URL | `http://100.70.248.39:8130/`, retained and running until explicitly retired |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled |
 | Legacy production path | `~/hackson_production` |
 | Legacy production backend bind | `0.0.0.0:8130` |
 | Default frontend local dev port | `127.0.0.1:5173` |
 | Hackson public domain MongoDB database | `hackson_domain_8145` |
+| Idle Auto smoke MongoDB database | `hackson_idle_auto_8147` |
 | Legacy production MongoDB database | `hackson` |
-| Stopped old Hackson smoke ports | `8101`, `8122-8126`, `8131-8133`, `8141-8144`, `8146`, `8147` |
+| Stopped old Hackson smoke ports | `8101`, `8122-8126`, `8131-8133`, `8141-8144`, `8146` |
 
 ## must-read documents
 | Path | Purpose |

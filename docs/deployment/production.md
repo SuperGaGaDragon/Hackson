@@ -43,7 +43,8 @@ Last Modified by: Codex
 - Keep legacy Hackson production service `hackson-production.service` on `8130` until the user explicitly retires it.
 - Do not touch non-Hackson services such as catachess database/game ports.
 - Stop ad hoc Hackson smoke uvicorn processes after their verification value is folded into `api.md`.
-- After public domain promotion, do not keep old smoke ports such as `8101`, `8122-8126`, `8131-8133`, `8141-8144`, `8146`, or `8147` running.
+- After public domain promotion, do not keep old smoke ports such as `8101`, `8122-8126`, `8131-8133`, `8141-8144`, or `8146` running.
+- Temporary smoke services may use a new port when a fix needs isolated target-machine validation. The current Idle Auto smoke uses `hackson-idle-auto-8147.service` on `127.0.0.1:8147`.
 
 ## runtime configuration
 - Production secrets live only on the target machine in `~/hackson_production/backend/.env`.
@@ -136,12 +137,15 @@ Last Modified by: Codex
   - Mission creation, Start, polling, and completion timeline succeeded.
   - Desktop and mobile screenshots passed with `0` failed API responses.
 - Model-backed Idle/Companion smoke can return upstream `429` during provider throttling; the public API now exposes this as `{"detail":"model_rate_limited"}` instead of an unhandled `500`.
+- Idle Auto smoke service `hackson-idle-auto-8147.service` is active on `127.0.0.1:8147` for isolated verification of topic start, user interjection, server-owned speaker selection, and rate-limit behavior.
+- Idle Auto smoke UI path `5187 -> 18147 -> 8147` verified rate-limit behavior: frontend shows `Model busy`, Auto turns off, no extra tick request is scheduled, and failed tick leaves no messages.
+- Idle Auto screenshot: `/tmp/hackson_idle_auto_model_busy_ui.png`.
 - Latest public screenshots:
   - `/tmp/hackson_public_work_agents_desktop.png`
   - `/tmp/hackson_public_work_done_desktop.png`
   - `/tmp/hackson_public_work_mobile.png`
 - Legacy production port `8130` remains live as `hackson-production.service` until explicitly retired.
-- Old Hackson smoke uvicorn ports were stopped after public-domain promotion: `8101`, `8122-8126`, `8131-8133`, `8141-8144`, `8146`, `8147`.
+- Old Hackson smoke uvicorn ports were stopped after public-domain promotion: `8101`, `8122-8126`, `8131-8133`, `8141-8144`, `8146`.
 - Non-Hackson target services were not touched.
 
 ## resolved production issue
