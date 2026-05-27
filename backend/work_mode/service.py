@@ -367,7 +367,25 @@ class WorkModeService:
             payload={"status": "completed", "employee": _employee_payload(mission)},
         )
 
-    def mark_mission_failed(self, user_id: str, mission_id: str, run_id: str, error: str) -> None:
+    def fail_step(self, user_id: str, step_id: str) -> dict[str, Any]:
+        timestamp = now_utc()
+        step = self.repository.update_step(
+            step_id,
+            user_id,
+            {"status": "failed", "ended_at": timestamp},
+        )
+        if step is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="step_not_found")
+        return step
+
+    def mark_mission_failed(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        error: str,
+        step_id: str | None = None,
+    ) -> None:
         timestamp = now_utc()
         mission = self._update_mission(
             user_id,
@@ -379,7 +397,7 @@ class WorkModeService:
             user_id,
             mission,
             run=run,
-            step=None,
+            step={"_id": step_id} if step_id else None,
             event_type="MISSION_FAILED",
             title="Failed",
             message=error,

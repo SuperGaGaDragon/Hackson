@@ -13,7 +13,7 @@ Lst Modified by: Codex
   - Current Mission leads come from the authenticated user's two editable Agent profiles, `agent_1` and `agent_2`.
   - Legacy Employee collections and routes remain for compatibility, but the current product UI does not require Work-only Employee or Team setup.
   - V0 worker emitted deterministic structured events only.
-  - V0.5 worker invokes the configured model runtime once, persists a text Artifact, and emits a fixed `PRODUCT_UPDATED` event that points at that Artifact.
+  - V0.5 worker invokes the configured model runtime once, persists a bounded text Artifact, and emits a fixed `PRODUCT_UPDATED` event that points at that Artifact.
   - The worker delegates model execution to `model_runtime/`, including the configured target-machine Codex CLI provider when enabled.
   - Routes expose `/api/work/*` while existing `/api/tasks` remains available until the Mission Runtime is verified.
 
@@ -38,9 +38,10 @@ Lst Modified by: Codex
 
 ## V0.5 result contract
 - `completed` means a runner returned output and `work_artifacts` contains the persisted result.
+- V0.5 is a bounded first-pass contract. If the user requests a large deliverable such as an 8000-character story, the worker asks the model for a concise usable draft, sample, or outline instead of blocking one background request until the whole deliverable is complete.
 - Mission detail returns `artifacts`, sorted newest first.
 - `PRODUCT_UPDATED` event payload contains `artifactId`, `kind`, `summary`, `changedFiles`, and `tests`; full text lives in the Artifact, not in the event payload.
-- If the model provider returns a stable failure such as rate limit, the Mission is marked `failed` and no fake Artifact is created.
+- If the model provider returns a stable failure such as timeout or rate limit, the Mission and active Step are marked `failed` and no fake Artifact is created.
 
 ## V0.5 limitations
 - No direct Work Mode shell execution; model calls go through `model_runtime/`.
@@ -49,6 +50,7 @@ Lst Modified by: Codex
 - No production deploy actions.
 - No WebSocket requirement; event polling is the first verified interface.
 - No multi-step supervisor loop yet.
+- No guaranteed full long-form generation in one run; that belongs in the later supervisor loop.
 
 ## 代办
 - Replace FastAPI in-process background tasks with a durable worker queue in V1.

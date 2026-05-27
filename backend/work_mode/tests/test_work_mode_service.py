@@ -362,6 +362,27 @@ class WorkModeServiceTest(TestCase):
         self.assertNotIn("content", product_events[-1]["payload"])
         self.assertIn("Chapter 1", product_events[-1]["payload"]["summary"])
 
+    def test_worker_marks_active_step_failed_when_runner_fails(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+
+        MissionWorker(self.service, runner=FailingMissionRunner("model_timeout")).run_v0_mission(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        failed_steps = [step for step in self.repository.steps.values() if step["mission_id"] == mission["id"]]
+        failed_events = [event for event in completed["events"] if event["type"] == "MISSION_FAILED"]
+
+        self.assertEqual(completed["mission"]["status"], "failed")
+        self.assertEqual(completed["mission"]["lastError"], "model_timeout")
+        self.assertEqual(completed["latestRun"]["status"], "failed")
+        self.assertEqual(failed_steps[0]["status"], "failed")
+        self.assertEqual(failed_events[-1]["stepId"], failed_steps[0]["_id"])
+
     def test_event_pagination_uses_after_sequence(self) -> None:
         mission = self._mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
@@ -408,11 +429,12 @@ class WorkModeServiceTest(TestCase):
                 os.environ["HACKSON_WORK_MODE_V0_EVENT_DELAY_SECONDS"] = original
 
     def test_model_mission_runner_supports_codex_cli_provider(self) -> None:
+        codex_client = RecordingModelClient("codex_cli")
         runner = ModelMissionRunner(
             ModelRuntime(
                 config_repository=StaticCodexConfigRepository(),
                 client=RecordingModelClient("openai_compatible"),
-                codex_cli_client=RecordingModelClient("codex_cli"),
+                codex_cli_client=codex_client,
             )
         )
         mission = self._mission()
@@ -429,6 +451,11 @@ class WorkModeServiceTest(TestCase):
 
         self.assertEqual(result["content"], "codex work artifact")
         self.assertEqual(result["metadata"]["provider"], "codex_cli")
+        self.assertIsNotNone(codex_client.last_request)
+        self.assertEqual(codex_client.last_request.max_output_tokens, 1200)
+        self.assertEqual(codex_client.last_request.reasoning_effort, "low")
+        self.assertIn("bounded V0.5 pass", codex_client.last_request.messages[0].content)
+        self.assertIn("600-1200 Chinese characters", codex_client.last_request.messages[1].content)
 
     def _mission(self) -> dict[str, Any]:
         project = self.service.create_project(
@@ -452,6 +479,14 @@ class FakeMissionRunner:
             "content": self.content,
             "metadata": {"runner": "fake"},
         }
+
+
+class FailingMissionRunner:
+    def __init__(self, error: str) -> None:
+        self.error = error
+
+    def run(self, context: dict[str, Any]) -> dict[str, Any]:
+        raise RuntimeError(self.error)
 
 
 class StaticCodexConfigRepository:

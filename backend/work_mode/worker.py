@@ -40,6 +40,8 @@ class MissionWorker:
             self._run(user_id, mission_id, run_id)
         except MissionStopped:
             return
+        except MissionFailed as exc:
+            self.service.mark_mission_failed(user_id, mission_id, run_id, exc.message, exc.step_id)
         except Exception as exc:
             self.service.mark_mission_failed(user_id, mission_id, run_id, str(exc))
 
@@ -59,7 +61,11 @@ class MissionWorker:
         self._pause_for_visibility()
         self._stop_if_needed(user_id, mission_id, run_id, str(step["_id"]))
 
-        result = self.runner.run({"project": project, "mission": mission, "runId": run_id, "employee": employee})
+        try:
+            result = self.runner.run({"project": project, "mission": mission, "runId": run_id, "employee": employee})
+        except Exception as exc:
+            failed_step = self.service.fail_step(user_id, str(step["_id"]))
+            raise MissionFailed(str(exc), str(failed_step["_id"])) from exc
 
         self._event(
             user_id,
@@ -145,6 +151,15 @@ class MissionStopped(Exception):
     """Internal control-flow marker for cooperative V0 stop."""
 
 
+class MissionFailed(Exception):
+    """Internal marker that carries the failed step for persisted events."""
+
+    def __init__(self, message: str, step_id: str):
+        super().__init__(message)
+        self.message = message
+        self.step_id = step_id
+
+
 class ModelMissionRunner:
     """Generate one text artifact through the platform model runtime."""
 
@@ -167,6 +182,9 @@ class ModelMissionRunner:
                         role="system",
                         content=(
                             "You are the Work Mode lead agent. Produce the requested artifact directly. "
+                            "This runtime is a single bounded V0.5 pass: create a useful first deliverable, "
+                            "not an exhaustive final manuscript. If the goal asks for a very long artifact, "
+                            "return a compact draft, sample, or outline that can seed the next iteration. "
                             "Do not describe the UI or claim external actions. Write concise, usable output."
                         ),
                     ),
@@ -177,12 +195,14 @@ class ModelMissionRunner:
                             f"Mission: {mission['title']}\n"
                             f"Goal: {mission['goal']}\n"
                             f"Lead agent: {employee['name']} ({employee['role']})\n"
-                            "Return the artifact content only."
+                            "Output target: 600-1200 Chinese characters when writing prose, or the equivalent "
+                            "concise artifact for other work. Return the artifact content only."
                         ),
                     ),
                 ],
-                max_output_tokens=1400,
+                max_output_tokens=1200,
                 temperature=0.4,
+                reasoning_effort="low",
             )
         )
         return {
