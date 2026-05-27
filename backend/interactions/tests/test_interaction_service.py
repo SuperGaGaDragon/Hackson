@@ -116,7 +116,7 @@ class InteractionServiceTest(TestCase):
 
         prompt = _prompt_text(self.model_runtime.requests[-1])
         self.assertIn("fresh anti-repeat marker", prompt)
-        recent_section = prompt.split("Recent Nora/Vale idle messages:", maxsplit=1)[1]
+        recent_section = prompt.split("Recent idle transcript:", maxsplit=1)[1]
         self.assertNotIn("old loop marker 0", recent_section)
         self.assertIn("Vale:", prompt)
 
@@ -196,8 +196,12 @@ class InteractionServiceTest(TestCase):
         self.assertIn("- Rook: A builder who converts ideas into next steps.", prompt)
         self.assertIn("personality: quiet, direct, product-minded", prompt)
         self.assertIn("story: I am preparing a 30 second demo.", prompt)
-        self.assertIn("User direction:", prompt)
+        self.assertIn("Current idle topic selected by user:", prompt)
         self.assertIn("希望从 demo 讲解节奏展开", prompt)
+        self.assertLess(
+            prompt.index("Current idle topic selected by user:"),
+            prompt.index("Recent idle transcript:"),
+        )
         self.assertIn("compact_context summary:", prompt)
         self.assertIn("older context marker 0", prompt)
         self.assertIn("latest visible topic marker", prompt)
@@ -211,6 +215,80 @@ class InteractionServiceTest(TestCase):
             limit=100,
         )
         self.assertFalse(any(message["senderType"] == "user" for message in page["messages"]))
+
+    def test_idle_tick_labels_user_interjection_and_other_agent_separately(self) -> None:
+        user_service = FakeUserService(
+            {
+                "user_1": {
+                    "id": "user_1",
+                    "username": "demo_user",
+                    "displayName": "Demo",
+                    "languagePreference": "zh",
+                    "personality": "",
+                    "story": "",
+                    "agentProfiles": [
+                        {
+                            "slot": "agent_1",
+                            "name": "Mira",
+                            "short": "A1",
+                            "color": "teal",
+                            "voice": "careful",
+                            "personality": "A careful skeptic.",
+                            "story": "",
+                        },
+                        {
+                            "slot": "agent_2",
+                            "name": "Rook",
+                            "short": "A2",
+                            "color": "amber",
+                            "voice": "builder",
+                            "personality": "A product builder.",
+                            "story": "",
+                        },
+                    ],
+                }
+            }
+        )
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=self.model_runtime,
+            user_service=user_service,
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="user",
+                sender_id="user_1",
+                role="user",
+                content="希望从用户视角讲演示。",
+            ),
+        )
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_2",
+                role="assistant",
+                content="那我先把开场压短。",
+            ),
+        )
+
+        service.run_idle_tick(
+            "user_1",
+            idle["id"],
+            IdleTickRequest(targetAgentId="agent_1", discussionDirection="只讨论 30 秒 demo 开场"),
+        )
+
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("Current speaking Agent:\nname: Mira", prompt)
+        self.assertIn("- Demo: 希望从用户视角讲演示。", prompt)
+        self.assertIn("- Rook: 那我先把开场压短。", prompt)
+        self.assertNotIn("- user_1: 希望从用户视角讲演示。", prompt)
+        self.assertIn("The other Agent is not the User.", prompt)
 
     def test_companion_1_join_creates_child_conversation_and_transition_reply(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle("user_1")

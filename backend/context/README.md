@@ -20,6 +20,8 @@ Last Modified by: Codex
 - Keep human user profile separate from Agent persona.
 - Use user-specific Agent profiles when the interaction layer provides them.
 - Keep idle user topic direction separate from visible transcript messages.
+- Treat idle topic direction as the selected topic anchor for the next Agent turn.
+- Preserve speaker boundaries between the User, current Agent, and other Agent.
 - Record context package metadata for debugging.
 
 ## not responsible for
@@ -48,7 +50,7 @@ conversations decides: how does the product flow proceed?
 ```
 
 ## recipe plan
-- `idle`: strong Agent persona, user profile, user direction, recent idle messages, idle seed, optional compact summary.
+- `idle`: strong Agent persona, user profile, selected topic direction, recent idle messages with authoritative speaker labels, idle seed, optional compact summary.
 - `companion_1`: Transition Context on join, user message, recent child companion messages, recent idle messages, idle summary, Agent persona, user profile.
 - `companion_2`: user message, current chat recent messages, Agent persona, lightweight profile.
 - `work`: user objective, task state, tool traces, role instructions.

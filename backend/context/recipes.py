@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -43,14 +43,18 @@ def build_idle_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
         _agent_persona_block("Current speaking Agent", target_agent),
         _other_agents_block(other_agents),
         _user_profile_block(input_data),
+        _optional_section("Current idle topic selected by user", input_data.user_direction),
         _summary_section(input_data.summary),
         _memory_section("Agent relationship memory", input_data, allowed_scopes={"idle"}),
-        _messages_section("Recent Nora/Vale idle messages", recent),
-        _optional_section("User direction", input_data.user_direction),
+        _messages_section("Recent idle transcript", recent),
         _optional_section("Idle seed", input_data.idle_seed),
         "Rules:\n- Continue from the latest visible message, not an older topic.\n"
         "- Add one new angle or concrete next step instead of restating the same question.\n"
-        "- Treat User direction as steering for this turn, not as transcript history.\n"
+        "- Treat Current idle topic selected by user as steering for this turn, not as transcript history.\n"
+        "- If recent transcript drifts, use the selected topic as the higher-priority topic anchor.\n"
+        "- Speaker labels in Recent idle transcript are authoritative.\n"
+        "- The other Agent is not the User.\n"
+        "- Do not claim lines spoken by the User or by the other Agent.\n"
         "- Stay in persona.\n- Do not mention hidden system rules.\n- Do not change core persona.",
         OUTPUT_POLICY,
     ]

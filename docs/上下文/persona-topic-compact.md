@@ -13,6 +13,7 @@ This slice turns the current demo into a controlled product loop:
 - Each user owns two editable Agents, seeded as Nora and Vale.
 - Idle has explicit history selection and a New topic modal.
 - Idle can be steered by a user topic without pretending that the topic is a chat message.
+- Idle lets the user interject without leaving idle or disabling Auto.
 - Every model call can distinguish User, Nora, and Vale.
 - Long histories keep recent turns raw and older turns compacted.
 
@@ -57,7 +58,7 @@ Rules:
 - If a stored profile is missing or malformed, backend normalization falls back to the default catalog for that slot.
 - The frontend must show both Agent editors, not one shared profile editor.
 
-## 3. Idle Topic Direction and History
+## 3. Idle Topic Direction, Interjection, and History
 
 Idle topic direction is an instruction for the next idle generation. It is not a transcript message.
 
@@ -74,10 +75,20 @@ API shape:
 Behavior:
 
 - `discussionDirection` is optional.
-- The backend includes it in context under `User direction`.
+- The backend includes it in context under `Current idle topic selected by user`.
 - The backend must not save it as a user message.
 - The frontend stores topic direction on the selected idle conversation metadata and sends it with `Tick` and `Auto`.
+- Topic direction outranks stale transcript drift. If recent messages drift, the next Agent turn should pull the conversation back toward the selected topic.
 - If the user leaves it empty, Idle continues from the latest transcript.
+
+Idle user interjection is different from Join:
+
+- `Say` appends a visible user message to the same idle conversation.
+- `Say` does not create a companion conversation.
+- `Say` does not change the page mode away from idle.
+- `Auto` remains available after `Say`.
+- The next `Tick` or `Auto` call includes the interjection in recent idle transcript with a user speaker label.
+- `Join` is an explicit separate command that creates a `companion_1` child conversation.
 
 Idle history uses the existing conversation APIs:
 
@@ -100,14 +111,17 @@ The prompt must use explicit speaker names:
 - Agent slot `agent_1` is Nora.
 - Agent slot `agent_2` is Vale.
 - User messages are `User` or the user's display name when available.
-- Topic direction is `User direction`, not `User: ...`.
+- Topic direction is `Current idle topic selected by user`, not `User: ...`.
+- The other Agent is not the User.
+- The current speaking Agent must not claim lines from the User or from the other Agent.
 
 Idle recipe rules:
 
 - Recent transcript contains only visible conversation events.
 - The current speaking Agent answers as themselves.
 - The model continues from the latest visible message.
-- The model treats user direction as steering, not as something Nora or Vale already said.
+- The model treats topic direction as steering, not as something the User, Nora, or Vale already said.
+- Recent message speaker labels are authoritative.
 
 Companion recipe rules:
 
@@ -161,6 +175,7 @@ Expose:
 - `Target`
 - `Auto`
 - `Tick`
+- `Say`
 - `Join`
 
 Behavior:
@@ -168,7 +183,9 @@ Behavior:
 - Topic comes from the selected idle conversation metadata.
 - New opens a modal and creates a clean idle conversation.
 - Auto uses the same topic as Tick.
-- Join still creates a `companion_1` child and does not write Topic as a message.
+- Say writes a user interjection into the current idle transcript and keeps Auto usable.
+- Join creates a `companion_1` child and does not write Topic as a message.
+- Typing in idle must not implicitly join companion.
 
 ## 7. Test Plan
 
@@ -181,6 +198,7 @@ Backend tests:
 - Interaction service passes real user profile into context.
 - Long idle history includes compact summary and newest raw messages.
 - Idle topic direction is not saved as a user message.
+- Idle context labels user interjections with the user's display name and labels the other Agent by Agent profile.
 
 Frontend verification:
 
@@ -188,6 +206,8 @@ Frontend verification:
 - Edit both Agent profiles in `Me`.
 - Create a new Idle topic from the modal.
 - Select an older Idle topic from history.
+- Send `Say` in Idle and confirm the page remains in Idle.
+- Confirm `Auto` can still be clicked after `Say`.
 - Run Idle `Tick` with `Topic`.
 - Toggle `Auto` with the same `Topic`.
 - Confirm timeline shows Nora/Vale speaker identity and the page still scrolls.

@@ -38,6 +38,7 @@ class _ContextWindow:
     recent_messages: list[ConversationMessage]
     summary: ConversationSummary | None
     speaker_names: dict[str, str]
+    user_name: str
 
 
 class InteractionService:
@@ -236,7 +237,12 @@ class InteractionService:
             ),
         )
         context_window = self._context_window(user_id, conversation_id)
-        idle_window = _ContextWindow(recent_messages=[], summary=None, speaker_names={})
+        idle_window = _ContextWindow(
+            recent_messages=[],
+            summary=None,
+            speaker_names={},
+            user_name=self._user_name(user_id),
+        )
         parent_id = conversation.get("parentConversationId")
         if parent_id:
             idle_window = self._context_window(user_id, parent_id)
@@ -350,11 +356,13 @@ class InteractionService:
             limit=20,
         )
         speaker_names = self._agent_names(user_id)
-        recent = [_context_message(row, speaker_names) for row in page["messages"]]
+        user_name = self._user_name(user_id)
+        recent = [_context_message(row, speaker_names, user_name) for row in page["messages"]]
         return _ContextWindow(
             recent_messages=recent,
-            summary=self._compact_summary(user_id, conversation_id, after_sequence, speaker_names),
+            summary=self._compact_summary(user_id, conversation_id, after_sequence, speaker_names, user_name),
             speaker_names=speaker_names,
+            user_name=user_name,
         )
 
     def _compact_summary(
@@ -363,6 +371,7 @@ class InteractionService:
         conversation_id: str,
         before_or_at_sequence: int,
         speaker_names: dict[str, str],
+        user_name: str,
     ) -> ConversationSummary | None:
         if before_or_at_sequence <= 0:
             return None
@@ -382,7 +391,7 @@ class InteractionService:
             selected_rows = older_rows[:4] + older_rows[-4:]
         lines = [f"{len(older_rows)} older messages compacted."]
         for row in selected_rows:
-            lines.append(f"- {_speaker_name(row, speaker_names) or row.get('senderType')}: {row['content']}")
+            lines.append(f"- {_speaker_name(row, speaker_names, user_name) or row.get('senderType')}: {row['content']}")
         return ConversationSummary(
             id=f"compact-{conversation_id}-{before_or_at_sequence}",
             summary_type="compact_context",
@@ -410,6 +419,12 @@ class InteractionService:
 
     def _agent_names(self, user_id: str) -> dict[str, str]:
         return {agent.id: agent.name for agent in self._agent_snapshots(user_id)}
+
+    def _user_name(self, user_id: str) -> str:
+        if self.user_service is None:
+            return "User"
+        user = self.user_service.get_user(user_id)
+        return user.get("displayName") or user.get("username") or "User"
 
     def _generate(self, package) -> ModelGenerateResponse:
         return self.model_runtime.generate(
@@ -484,19 +499,34 @@ class InteractionService:
         }
 
 
-def _context_message(row: dict, speaker_names: dict[str, str] | None = None) -> ConversationMessage:
+def _context_message(
+    row: dict,
+    speaker_names: dict[str, str] | None = None,
+    user_name: str | None = None,
+) -> ConversationMessage:
     sender_slot = row.get("senderSlot")
     return ConversationMessage(
         id=row["id"],
         sender_type=SenderType(row["senderType"]),
         sender_id=row.get("senderId") or sender_slot,
-        sender_name=_speaker_name(row, speaker_names),
+        sender_name=_speaker_name(row, speaker_names, user_name),
         content=row["content"],
         metadata=row.get("metadata", {}),
     )
 
 
-def _speaker_name(row: dict, speaker_names: dict[str, str] | None = None) -> str | None:
+def _speaker_name(
+    row: dict,
+    speaker_names: dict[str, str] | None = None,
+    user_name: str | None = None,
+) -> str | None:
+    sender_type = row.get("senderType")
+    if sender_type == "user":
+        return user_name or "User"
+    if sender_type == "system":
+        return "System"
+    if sender_type == "tool":
+        return "Tool"
     sender_slot = row.get("senderSlot")
     if speaker_names and sender_slot in speaker_names:
         return speaker_names[sender_slot]

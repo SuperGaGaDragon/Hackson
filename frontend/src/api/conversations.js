@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 import { apiRequest } from "./client";
@@ -20,6 +20,13 @@ export function listConversations(mode) {
 
 export function getConversationMessages(conversationId, limit = 100) {
   return apiRequest(`/api/conversations/${conversationId}/messages?limit=${limit}`);
+}
+
+export function appendConversationMessage(conversationId, payload) {
+  return apiRequest(`/api/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getIdleConversation() {

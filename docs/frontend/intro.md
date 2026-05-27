@@ -2,7 +2,7 @@
 
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## 1. Scope
@@ -18,6 +18,7 @@ Supported:
 - Idle conversation.
 - Idle message history.
 - Idle tick.
+- Idle user interjection.
 - Idle join.
 - Companion chat.
 - Companion message history.
@@ -65,6 +66,7 @@ Uses:
 - `GET /api/idle/conversation`
 - `GET /api/conversations/{conversationId}/messages`
 - `POST /api/idle/{conversationId}/tick`
+- `POST /api/conversations/{conversationId}/messages`
 - `POST /api/idle/{conversationId}/join`
 - `POST /api/companion/{conversationId}/messages`
 
@@ -74,6 +76,7 @@ UI:
 - `Tick`
 - `Auto`
 - `Topic`
+- `Say`
 - `Join`
 - timeline sorted by `sequence`
 
@@ -85,7 +88,9 @@ Behavior:
 - `Auto` drives repeated `Tick` calls while the page is open.
 - `Topic` sends `discussionDirection` to the backend. It is a steering instruction, not a saved message.
 - Auto mode alternates `agent_1` and `agent_2` so idle looks like two Agents taking turns.
-- `Join` creates a `companion_1` child and freezes the parent idle transcript as transition context.
+- `Say` appends a visible user interjection to the same idle conversation and keeps the UI in Idle.
+- After `Say`, `Auto` remains clickable and the next tick sees the user line as a user line.
+- `Join` is explicit. It creates a `companion_1` child and freezes the parent idle transcript as transition context.
 - After `Join`, the UI enters `Companion` mode and sends later turns to the child conversation through `/api/companion/{conversationId}/messages`.
 - Parent idle messages and child companion messages are not globally sequence-sorted together; parent context stays above child turns.
 - New messages auto-scroll to the bottom of the visible timeline.
@@ -247,6 +252,7 @@ Rules:
 - `shared/` owns reusable UI.
 - Components do not know raw endpoint paths.
 - Normal product messaging never calls raw append.
+- Idle `Say` is the one product-approved raw append path because it records a visible user interjection without generating a companion reply.
 - Agent display names come from backend `/api/agents`; prompt persona also comes from the same backend catalog.
 
 ## 5. Data Rules

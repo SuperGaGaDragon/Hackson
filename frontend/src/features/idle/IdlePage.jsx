@@ -6,7 +6,13 @@ Last Modified by: Codex
 */
 import { Send } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createConversation, getConversationMessages, getIdleConversation, listConversations } from "../../api/conversations";
+import {
+  appendConversationMessage,
+  createConversation,
+  getConversationMessages,
+  getIdleConversation,
+  listConversations,
+} from "../../api/conversations";
 import { joinIdle, sendCompanionMessage, tickIdle } from "../../api/interactions";
 import { FALLBACK_AGENTS, nextAgentSlot, normalizeAgents } from "../../domain/agents";
 import { makePendingUserMessage, makeSystemMessage, sortMessages, uniqueMessages } from "../../domain/messages";
@@ -166,13 +172,79 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     }
   }
 
-  async function join() {
+  async function sendDraft() {
     const content = draft.trim();
-    if (!idleConversation || !content || busy) return;
+    if (!content || busy) return;
     if (!isIdle) {
       await sendCompanionTurn(content);
       return;
     }
+    if (!idleConversation) return;
+    await sendIdleInterjection(content);
+  }
+
+  async function sendIdleInterjection(content) {
+    const pendingMessage = makePendingUserMessage(idleConversation, content, idleMessages);
+    setBusy(true);
+    setError("");
+    setDraft("");
+    setIdleMessages((current) => uniqueMessages([...current, pendingMessage]));
+    try {
+      const message = await appendConversationMessage(idleConversation.id, {
+        sender_type: "user",
+        sender_id: "me",
+        role: "user",
+        content,
+        metadata: { source: "idle_say" },
+      });
+      setIdleMessages((current) =>
+        uniqueMessages([
+          ...current.filter((item) => item.id !== pendingMessage.id),
+          message,
+        ]),
+      );
+      setConversation((current) =>
+        current
+          ? {
+              ...current,
+              messageCount: Math.max(current.messageCount || 0, message.sequence || 0),
+              lastMessageAt: message.createdAt || current.lastMessageAt,
+            }
+          : current,
+      );
+      setIdleConversation((current) =>
+        current
+          ? {
+              ...current,
+              messageCount: Math.max(current.messageCount || 0, message.sequence || 0),
+              lastMessageAt: message.createdAt || current.lastMessageAt,
+            }
+          : current,
+      );
+      setIdleConversations((current) =>
+        localizeIdleTitles(
+          current.map((item) =>
+            item.id === idleConversation.id
+              ? {
+                  ...item,
+                  messageCount: Math.max(item.messageCount || 0, message.sequence || 0),
+                  lastMessageAt: message.createdAt || item.lastMessageAt,
+                }
+              : item,
+          ),
+        ),
+      );
+    } catch (err) {
+      setError(err.message || "Say failed");
+      setIdleMessages((current) => current.filter((item) => item.id !== pendingMessage.id));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function joinCompanion() {
+    const content = draft.trim();
+    if (!idleConversation || !content || busy || !isIdle) return;
     setBusy(true);
     setError("");
     setDraft("");
@@ -280,21 +352,31 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
             <button className="secondary-button" disabled={busy || loading || !isIdle} onClick={tick} type="button">
               {busy ? "Wait" : "Tick"}
             </button>
+            {isIdle && (
+              <button
+                className="secondary-button"
+                disabled={busy || loading || !draft.trim()}
+                onClick={joinCompanion}
+                type="button"
+              >
+                Join
+              </button>
+            )}
           </div>
         </div>
         <Timeline agents={agentProfiles} messages={timelineMessages} timelineRef={timelineRef} />
         <div className="composer">
           <input
-            aria-label="Join"
+            aria-label={isIdle ? "Say" : "Message"}
             disabled={busy || loading}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") join();
+              if (event.key === "Enter") sendDraft();
             }}
-            placeholder={isIdle ? "Join" : "Message"}
+            placeholder={isIdle ? "Say" : "Message"}
             value={draft}
           />
-          <button disabled={busy || loading} onClick={join} title="Send" type="button">
+          <button disabled={busy || loading} onClick={sendDraft} title="Send" type="button">
             <Send size={18} />
           </button>
         </div>

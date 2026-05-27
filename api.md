@@ -17,6 +17,7 @@ Last Modified by: Codex
 - Latest smoke venv used by current backend ports: `~/hackson_backend_review_smoke/backend/.venv`
 - Persona/topic/compact smoke directory on target machine: `~/hackson_persona_topic_8131/backend`
 - Agent/Idle history smoke directory on target machine: `~/hackson_agent_idle_8132/backend`
+- Idle Say/topic/speaker smoke directory on target machine: `~/hackson_idle_say_8133/backend`
 - Work Mode Mission Runtime smoke directory on target machine: `~/hackson_work_mode_smoke/backend`
 - Work Mode Mission Runtime smoke venv: `~/hackson_work_mode_smoke/backend/.venv`
 - Work Mode V0 stable smoke directory on target machine: `~/hackson_work_mode_v0_stable/backend`
@@ -50,6 +51,7 @@ cd ~/hackson_backend_test/backend
 - Verified product database smoke port: `127.0.0.1:8126`
 - Verified persona/topic/compact smoke port: `127.0.0.1:8131`
 - Verified Agent/Idle history smoke port: `127.0.0.1:8132`
+- Verified Idle Say/topic/speaker smoke port: `127.0.0.1:8133`
 - Verified Work Mode Mission Runtime smoke port: `127.0.0.1:8141`
 - Verified Work Mode V0 stable smoke port: `127.0.0.1:8142`
 - Verified Work Mode V0.1 Employee smoke port: `127.0.0.1:8143`
@@ -61,6 +63,7 @@ cd ~/hackson_backend_test/backend
 - Database used in product database smoke verification: MongoDB database `hackson`
 - Database used in persona/topic/compact smoke verification: MongoDB database `hackson_persona_topic_8131`
 - Database used in Agent/Idle history smoke verification: MongoDB database `hackson_agent_idle_8132`
+- Database used in Idle Say/topic/speaker smoke verification: MongoDB database `hackson_idle_say_8133`
 - Database used in Work Mode Mission Runtime smoke verification: MongoDB database `hackson_work_mode_smoke`
 - Database used in Work Mode V0 stable smoke verification: MongoDB database `hackson_work_mode_v0_stable`
 - Database used in Work Mode V0.1 Employee smoke verification: MongoDB database `hackson_work_mode_v01_employees`
@@ -101,6 +104,15 @@ cd ~/hackson_backend_test/backend
   - API smoke model: `gpt-5.1`.
   - Frontend target-backed path `5183 -> 18132 -> 8132` verified Me renders two Agent editors, Idle renders History/New, New opens a topic modal, Tick produces a visible `Mira` Agent message, and no UI status errors were present.
   - Screenshot: `/tmp/hackson_agent_idle_ui.png`.
+- Idle Say/topic/speaker verification:
+  - Target backend path `~/hackson_idle_say_8133/backend` served FastAPI on `127.0.0.1:8133` without touching production `8130`.
+  - Local full backend tests passed: `67 passed, 4 warnings`.
+  - Target full backend tests passed: `67 passed, 4 warnings`.
+  - API smoke user `idlesay_1779859412` saved two user-owned Agent profiles `Mira` and `Rook`, created one idle conversation with `metadata.topicDirection`, appended a visible idle user interjection through `POST /api/conversations/{conversationId}/messages`, then ticked the same idle conversation with `discussionDirection`.
+  - API smoke confirmed message types stayed in one idle conversation as `["user", "agent"]`; no companion conversation was created for Say.
+  - API smoke model: `gpt-5.1`.
+  - Frontend target-backed path `5185 -> 18133 -> 8133` verified New topic, Say, Auto, and speaker labels. After Say, the page stayed in `IDLE`, `Auto` remained enabled, clicking Auto generated visible `Mira #2`, and the Topic panel retained `只讨论 30 秒产品演示开场，不要回到技术实现`.
+  - Screenshot: `/tmp/hackson_idle_say_ui.png`.
 - Work Mode Mission Runtime verification:
   - Target backend path `~/hackson_work_mode_smoke/backend` served FastAPI on `127.0.0.1:8141` without touching production `8130`.
   - Target MongoDB database `hackson_work_mode_smoke` stored `work_projects`, `work_missions`, `work_runs`, `work_steps`, `work_events`, and `work_event_counters`.
@@ -137,6 +149,7 @@ cd ~/hackson_backend_test/backend
 | 8126 | FastAPI backend temporary product database smoke server | `127.0.0.1` | Verified and running | Product database auth smoke using MongoDB database `hackson` without touching existing services |
 | 8131 | FastAPI backend temporary persona/topic/compact smoke server | `127.0.0.1` | Verified and running | Target-machine persona, idle topic direction, and compact smoke using MongoDB database `hackson_persona_topic_8131` without touching production |
 | 8132 | FastAPI backend temporary Agent/Idle history smoke server | `127.0.0.1` | Verified and running | Target-machine user-owned Agent profiles, idle history, and new topic modal smoke using MongoDB database `hackson_agent_idle_8132` |
+| 8133 | FastAPI backend temporary Idle Say/topic/speaker smoke server | `127.0.0.1` | Verified and running | Target-machine Idle Say, topic steering, and speaker boundary smoke using MongoDB database `hackson_idle_say_8133` |
 | 8141 | FastAPI backend temporary Work Mode Mission Runtime smoke server | `127.0.0.1` | Verified and running | Target-machine Work Mode V0 Mission Runtime smoke using MongoDB database `hackson_work_mode_smoke` without touching production |
 | 8142 | FastAPI backend temporary Work Mode V0 stable smoke server | `127.0.0.1` | Verified and running | Target-machine Work Mode V0 completed and stopped path smoke using MongoDB database `hackson_work_mode_v0_stable` |
 | 8143 | FastAPI backend temporary Work Mode V0.1 Employee smoke server | `127.0.0.1` | Verified and running | Target-machine Employee Library and Project Team smoke using MongoDB database `hackson_work_mode_v01_employees` |
@@ -150,6 +163,7 @@ cd ~/hackson_backend_test/backend
 | 18126 | SSH local tunnel to target backend | `127.0.0.1` | Verified and running | Local browser access to product database backend `127.0.0.1:8126` |
 | 18131 | SSH local tunnel to target backend | `127.0.0.1` | Verified and running | Local browser access to target persona/topic/compact backend `127.0.0.1:8131` |
 | 18132 | SSH local tunnel to target backend | `127.0.0.1` | Verified and running | Local browser access to target Agent/Idle history backend `127.0.0.1:8132` |
+| 18133 | SSH local tunnel to target backend | `127.0.0.1` | Verified and running | Local browser access to target Idle Say/topic/speaker backend `127.0.0.1:8133` |
 | 18141 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode frontend integration, not kept running locally | Local browser access to target Work Mode backend `127.0.0.1:8141` |
 | 18142 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode V0 stable frontend integration, not kept running locally | Local browser access to target Work Mode V0 backend `127.0.0.1:8142` |
 | 18143 | SSH local tunnel to target backend | `127.0.0.1` | Verified during Work Mode V0.1 Employee frontend integration, not kept running locally | Local browser access to target Work Mode Employee backend `127.0.0.1:8143` |
@@ -159,6 +173,7 @@ cd ~/hackson_backend_test/backend
 | 5179 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running in `screen` session `hackson_frontend_5179` | Local UI verification for latest idle context fix through `127.0.0.1:8130` |
 | 5180 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running in `screen` session `hackson_frontend_5180` | Local persona/topic UI verification through `18131 -> 8131` |
 | 5183 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running in `screen` session `hackson_frontend_5183` | Local Agent/Idle history UI verification through `18132 -> 8132` |
+| 5185 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified and running | Local Idle Say/topic/speaker UI verification through `18133 -> 8133` |
 | 5181 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode frontend integration, not kept running locally | Local Work Mode UI verification through `18141 -> 8141` |
 | 5182 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode V0 stable frontend integration, not kept running locally | Local Work Mode V0 completed/stopped UI verification through `18142 -> 8142` |
 | 5184 | Vite frontend temporary dev server with API proxy | `127.0.0.1` | Verified during Work Mode V0.1 Employee frontend integration, not kept running locally | Local Work Mode Employee UI verification through `18143 -> 8143` |
@@ -166,22 +181,22 @@ cd ~/hackson_backend_test/backend
 ## api端口集合
 | Method | API | Auth | Verified Port | Module | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/health` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8141`, `8142`, `8143` | `backend/main.py` | Backend health check |
+| GET | `/health` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143` | `backend/main.py` | Backend health check |
 | GET | `/` | No | `8130` | `backend/main.py` | Production React frontend HTML |
 | GET | `/assets/{asset}` | No | `8130` | `backend/main.py` | Production React frontend assets |
-| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8141`, `8142`, `8143` | `backend/users/` | Register user and return JWT |
+| POST | `/api/users/register` | No | `8100`, `8101`, `8126`, `8130`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143` | `backend/users/` | Register user and return JWT |
 | POST | `/api/users/login` | No | `8100`, `8141`, `8142`, `8143` | `backend/users/` | Login by email or username |
-| GET | `/api/users/me` | Bearer JWT | `8100`, `8126`, `8130`, `8131`, `8132` | `backend/users/` | Read current user, including human profile and two Agent profiles |
-| PATCH | `/api/users/me` | Bearer JWT | `8100`, `8131`, `8132` | `backend/users/` | Update current user settings, including human profile and two Agent profiles |
+| GET | `/api/users/me` | Bearer JWT | `8100`, `8126`, `8130`, `8131`, `8132`, `8133` | `backend/users/` | Read current user, including human profile and two Agent profiles |
+| PATCH | `/api/users/me` | Bearer JWT | `8100`, `8131`, `8132`, `8133` | `backend/users/` | Update current user settings, including human profile and two Agent profiles |
 | POST | `/api/users/logout` | No server state | `8100` | `backend/users/` | Client-side JWT logout placeholder |
 | GET | `/api/agents` | No | `8120`, `8122`, `8130`, `8131` | `backend/agents/` | List fixed V1 Agent display profiles |
-| POST | `/api/conversations` | Bearer JWT | `8100`, `8101`, `8132` | `backend/conversations/` | Create conversation container, including clean idle topics |
-| GET | `/api/conversations` | Bearer JWT | `8100`, `8132` | `backend/conversations/` | List current user's conversations, including idle history |
+| POST | `/api/conversations` | Bearer JWT | `8100`, `8101`, `8132`, `8133` | `backend/conversations/` | Create conversation container, including clean idle topics |
+| GET | `/api/conversations` | Bearer JWT | `8100`, `8132`, `8133` | `backend/conversations/` | List current user's conversations, including idle history |
 | GET | `/api/conversations/{conversationId}` | Bearer JWT | `8100` | `backend/conversations/` | Read one owned conversation |
-| POST | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8131` | `backend/conversations/` | Append raw historical message |
-| GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101`, `8131`, `8132` | `backend/conversations/` | Page conversation messages |
-| GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101`, `8130`, `8131` | `backend/conversations/` | Get or create active idle conversation |
-| POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101`, `8131`, `8132` | `backend/interactions/` | Generate one idle Agent reply; accepts optional `discussionDirection` |
+| POST | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8131`, `8133` | `backend/conversations/` | Append raw historical message; product-approved for Idle Say interjection |
+| GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `8100`, `8101`, `8131`, `8132`, `8133` | `backend/conversations/` | Page conversation messages |
+| GET | `/api/idle/conversation` | Bearer JWT | `8100`, `8101`, `8130`, `8131`, `8133` | `backend/conversations/` | Get or create active idle conversation |
+| POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `8101`, `8131`, `8132`, `8133` | `backend/interactions/` | Generate one idle Agent reply; accepts optional `discussionDirection` |
 | POST | `/api/idle/{conversationId}/join` | Bearer JWT | `8101`, `8122`, `8125`, `8130` | `backend/interactions/` | Create companion_1 from idle and reply |
 | POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `8101`, `8125`, `8130` | `backend/interactions/` | Save companion_1 or companion_2 user message and reply |
 | POST | `/api/tasks` | Bearer JWT | `8124`, `8125`, `8130` | `backend/tasks/` | Create Work Mode task and its `work` conversation |
@@ -247,6 +262,7 @@ Verified checks:
 - Local context-fix UI verification uses Vite port `5179` to local backend `127.0.0.1:8130`
 - Persona/topic UI verification uses SSH tunnel `18131` to target backend `8131`, then Vite port `5180`
 - Agent/Idle history UI verification uses SSH tunnel `18132` to target backend `8132`, then Vite port `5183`
+- Idle Say/topic/speaker UI verification uses SSH tunnel `18133` to target backend `8133`, then Vite port `5185`
 - Production UI E2E uses `http://100.70.248.39:8130/` directly with no Vite proxy.
 - latest `5175` API smoke: `/api/agents` returned `200 OK`; `/api/idle/{conversationId}/join` returned `201 Created`
 
@@ -255,6 +271,7 @@ Notes:
 - V1 product copy is intentionally short per `agents/frontend_restrictions.md`.
 - Current frontend only renders backend-backed surfaces: Auth, Idle, Chat, Work, and Me.
 - Idle uses `/api/conversations?mode=idle`, `/api/conversations` for New topic, message history, `/api/idle/{conversationId}/tick`, and `/api/idle/{conversationId}/join`.
+- Idle Say uses `POST /api/conversations/{conversationId}/messages` to append a visible user interjection while staying in idle; the next Tick or Auto call uses `/api/idle/{conversationId}/tick`.
 - Companion follow-up uses `/api/companion/{conversationId}/messages` for `companion_1` and `companion_2`.
 - Chat uses `companion_2` conversation creation/history and `/api/companion/{conversationId}/messages`.
 - Work uses `/api/tasks`, task history, and `/api/tasks/{taskId}/messages`.
@@ -309,6 +326,7 @@ Latest frontend issue check:
 - Local context-fix UI E2E on `5179 -> 127.0.0.1:8130`: after 45 old idle messages plus one latest "红色按钮" marker, Nora `#47` answered the latest marker; browser console errors and failed requests were empty. Screenshot: `/tmp/hackson-context-fix-user-test.png`.
 - Persona/topic UI E2E on `5180 -> 18131 -> 8131`: Register, Me profile save, Idle Topic entry, and Tick completed with no failed API responses. Screenshot: `/tmp/hackson_persona_topic_ui.png`.
 - Agent/Idle history UI E2E on `5183 -> 18132 -> 8132`: Me rendered two user-owned Agent editors `Mira` and `Rook`; Idle rendered History/New; New opened a topic modal; Tick produced one visible `Mira #1` Agent message; no UI status errors were present. Screenshot: `/tmp/hackson_agent_idle_ui.png`.
+- Idle Say/topic/speaker UI E2E on `5185 -> 18133 -> 8133`: New created a clean idle topic; Say appended `You #1` in the same idle conversation; the page stayed in `IDLE`; Auto remained enabled and active; Auto generated `Mira #2`; the Topic panel retained `只讨论 30 秒产品演示开场，不要回到技术实现`; no UI status errors were present. Screenshot: `/tmp/hackson_idle_say_ui.png`.
 
 ## verified APIs
 
@@ -708,7 +726,7 @@ Status:
 - Ownership is enforced by `userId`.
 
 ### POST /api/conversations/{conversationId}/messages
-Purpose: append a raw message to a conversation.
+Purpose: append a raw message to a conversation. The product frontend may use this endpoint only for Idle `Say`, where the user adds a visible interjection without requesting an immediate companion reply.
 
 Headers:
 
@@ -724,7 +742,10 @@ Verified user message body:
   "sender_type": "user",
   "sender_id": "me",
   "role": "user",
-  "content": "hello"
+  "content": "hello",
+  "metadata": {
+    "source": "idle_say"
+  }
 }
 ```
 
@@ -754,10 +775,18 @@ Verified response shape:
   "role": "user",
   "content": "hello",
   "contentType": "text",
-  "metadata": {},
+  "metadata": {
+    "source": "idle_say"
+  },
   "createdAt": "<iso_datetime>"
 }
 ```
+
+Verified Idle Say values on port `8133`:
+- HTTP status: `201 Created`
+- Follow-up `POST /api/idle/{conversationId}/tick` stayed in `conversation.mode = "idle"`
+- Follow-up `GET /api/conversations/{conversationId}/messages?limit=20` returned message types `["user", "agent"]`
+- No `companion_1` conversation is created by Say.
 
 Notes:
 - Agent messages require `sender_slot`.
@@ -1111,7 +1140,7 @@ Verified `companion_1` continuation values on port `8125`:
 
 Notes:
 - This is the product interaction endpoint for `companion_1` continuation and `companion_2`.
-- `POST /api/conversations/{conversationId}/messages` remains the raw historical append endpoint and should not be used by the frontend for model replies.
+- `POST /api/conversations/{conversationId}/messages` remains the raw historical append endpoint. The frontend may use it for Idle `Say`; it should not be used for model replies.
 
 ### POST /api/tasks
 Purpose: create a Work Mode task and a linked `work` conversation.

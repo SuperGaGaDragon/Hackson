@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -99,10 +99,48 @@ class ContextBuilderTest(TestCase):
         self.assertIn("User profile:", prompt)
         self.assertIn("personality: quiet, direct, product-minded", prompt)
         self.assertIn("story: I am preparing a 30 second demo.", prompt)
-        self.assertIn("User direction:", prompt)
+        self.assertIn("Current idle topic selected by user:", prompt)
         self.assertIn("希望从产品演示怎么讲清楚这个方向展开", prompt)
         self.assertIn("- Beryl: 我们刚才在讨论用户预期。", prompt)
+        self.assertLess(
+            prompt.index("Current idle topic selected by user:"),
+            prompt.index("Recent idle transcript:"),
+        )
+        self.assertIn("If recent transcript drifts, use the selected topic", prompt)
         self.assertNotIn("- Demo: 希望从产品演示怎么讲清楚这个方向展开", prompt)
+
+    def test_idle_context_keeps_user_and_other_agent_speaker_boundaries(self) -> None:
+        package = self.builder.build(
+            ContextBuildInput(
+                mode=ContextMode.IDLE,
+                conversation_id="conv_idle",
+                target_agent_id="agent_a",
+                agents=[self.agent_a, self.agent_b],
+                user_direction="只讨论演示开场，不要回到技术细节",
+                recent_messages=[
+                    ConversationMessage(
+                        id="msg_user",
+                        sender_type=SenderType.USER,
+                        sender_id="user_1",
+                        sender_name="Demo",
+                        content="希望从用户视角讲。",
+                    ),
+                    ConversationMessage(
+                        id="msg_agent",
+                        sender_type=SenderType.AGENT,
+                        sender_id="agent_b",
+                        sender_name="Beryl",
+                        content="那就先讲 30 秒路径。",
+                    ),
+                ],
+            )
+        )
+
+        prompt = _prompt_text(package)
+        self.assertIn("- Demo: 希望从用户视角讲。", prompt)
+        self.assertIn("- Beryl: 那就先讲 30 秒路径。", prompt)
+        self.assertIn("The other Agent is not the User.", prompt)
+        self.assertIn("Speaker labels in Recent idle transcript are authoritative", prompt)
 
     def test_companion_1_context_forces_transition_to_user(self) -> None:
         package = self.builder.build(

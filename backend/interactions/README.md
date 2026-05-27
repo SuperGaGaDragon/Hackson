@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -22,6 +22,8 @@ Last Modified by: Codex
 - Save user messages through `conversations/`.
 - Read recent messages through `conversations/`.
 - Read current user profile through `users/` for context only.
+- Label user messages with the user's display name when building context.
+- Label Agent messages with the user's two Agent profile names when building context.
 - Build deterministic compact summaries when raw history exceeds the recent window.
 - Build context through `context/`.
 - Generate model replies through `model_runtime/`.

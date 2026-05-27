@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -74,7 +74,7 @@ class InteractionRoutesTest(TestCase):
 
         self.assertEqual(response.status_code, 201)
         prompt = "\n".join(message.content for message in self.model_runtime.requests[-1].messages)
-        self.assertIn("User direction:", prompt)
+        self.assertIn("Current idle topic selected by user:", prompt)
         self.assertIn("从用户控制话题方向展开", prompt)
         messages = self.conversation_service.list_messages(
             TEST_USER_ID,
