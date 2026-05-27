@@ -36,6 +36,7 @@ function WorkPage({ agents = [] }) {
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedMission, setSelectedMission] = useState(null);
   const [events, setEvents] = useState([]);
+  const [artifacts, setArtifacts] = useState([]);
   const [projectName, setProjectName] = useState("");
   const [missionLeadId, setMissionLeadId] = useState(defaultLeadId);
   const [missionTitle, setMissionTitle] = useState("");
@@ -61,6 +62,7 @@ function WorkPage({ agents = [] }) {
         setMissions([]);
         setSelectedMission(null);
         setEvents([]);
+        setArtifacts([]);
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -91,6 +93,7 @@ function WorkPage({ agents = [] }) {
           setSelectedMission(detail.mission);
           setMissions((current) => replaceMission(current, detail.mission));
           setEvents((current) => mergeEvents(current, nextEvents));
+          setArtifacts(detail.artifacts || []);
         }
       } catch (err) {
         setError(err.message || "Poll failed");
@@ -138,6 +141,7 @@ function WorkPage({ agents = [] }) {
     setMissions(replaceMission(missionRows, selected));
     setSelectedMission(selected);
     setEvents(detail?.events || []);
+    setArtifacts(detail?.artifacts || []);
   }
 
   function backToWorkspace() {
@@ -147,6 +151,7 @@ function WorkPage({ agents = [] }) {
     setMissions([]);
     setSelectedMission(null);
     setEvents([]);
+    setArtifacts([]);
     setMissionLeadId(defaultLeadId);
     setMissionTitle("");
     setMissionGoal("");
@@ -168,6 +173,7 @@ function WorkPage({ agents = [] }) {
       setMissions((current) => [detail.mission, ...current]);
       setSelectedMission(detail.mission);
       setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
       setMissionTitle("");
       setMissionGoal("");
     } catch (err) {
@@ -186,6 +192,7 @@ function WorkPage({ agents = [] }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
@@ -202,6 +209,7 @@ function WorkPage({ agents = [] }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
     } catch (err) {
       setError(err.message || "Start failed");
     } finally {
@@ -218,6 +226,7 @@ function WorkPage({ agents = [] }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
     } catch (err) {
       setError(err.message || "Stop failed");
     } finally {
@@ -263,7 +272,7 @@ function WorkPage({ agents = [] }) {
         <div className="mission-content">
           <ProgressTimeline events={events} />
           <SummaryCard events={events} />
-          <ProductPanel events={events} />
+          <ProductPanel artifacts={artifacts} events={events} />
           <RawLogPanel events={events} />
         </div>
       </section>

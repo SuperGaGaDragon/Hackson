@@ -13,7 +13,8 @@ from fastapi.testclient import TestClient
 from users.auth import get_current_user_id
 from work_mode.routes import get_user_service, get_work_mode_service, get_work_mode_worker_launcher, router
 from work_mode.service import WorkModeService
-from work_mode.tests.test_work_mode_service import FakeWorkModeRepository
+from work_mode.tests.test_work_mode_service import FakeMissionRunner, FakeWorkModeRepository
+from work_mode.worker import MissionWorker
 
 TEST_USER_ID = "work_route_user"
 
@@ -53,8 +54,15 @@ class WorkModeRoutesTest(TestCase):
         app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
         app.dependency_overrides[get_work_mode_service] = lambda: self.service
         app.dependency_overrides[get_user_service] = lambda: FakeUserService()
-        app.dependency_overrides[get_work_mode_worker_launcher] = lambda: lambda user_id, mission_id, run_id: None
+        app.dependency_overrides[get_work_mode_worker_launcher] = lambda: self.run_worker
         self.client = TestClient(app)
+
+    def run_worker(self, user_id: str, mission_id: str, run_id: str) -> None:
+        MissionWorker(self.service, runner=FakeMissionRunner("Route generated artifact.")).run_v0_mission(
+            user_id,
+            mission_id,
+            run_id,
+        )
 
     def test_project_mission_start_and_events_routes(self) -> None:
         project_response = self.client.post(
@@ -85,7 +93,24 @@ class WorkModeRoutesTest(TestCase):
         events_response = self.client.get(f"/api/work/missions/{mission['id']}/events")
         self.assertEqual(events_response.status_code, 200)
         event_types = [event["type"] for event in events_response.json()]
-        self.assertEqual(event_types, ["MISSION_CREATED", "MISSION_STARTED"])
+        self.assertIn("MISSION_STARTED", event_types)
+        self.assertIn("PRODUCT_UPDATED", event_types)
+        self.assertEqual(event_types[-1], "MISSION_COMPLETED")
+
+        detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
+        self.assertEqual(detail["mission"]["status"], "completed")
+        self.assertEqual(len(detail["artifacts"]), 1)
+        self.assertIn("Route generated artifact.", detail["artifacts"][0]["content"])
+
+    def test_mission_detail_response_includes_artifacts(self) -> None:
+        project = self.client.post("/api/work/projects", json={"name": "Novel"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={"projectId": project["id"], "title": "Draft", "goal": "Write one scene."},
+        ).json()
+        detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
+
+        self.assertEqual(detail["artifacts"], [])
 
     def test_stop_route_requires_running_mission(self) -> None:
         project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
@@ -99,6 +124,7 @@ class WorkModeRoutesTest(TestCase):
         self.assertEqual(response.status_code, 409)
 
     def test_stop_route_records_stop_requested_for_running_mission(self) -> None:
+        self.client.app.dependency_overrides[get_work_mode_worker_launcher] = lambda: lambda user_id, mission_id, run_id: None
         project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
         mission = self.client.post(
             "/api/work/missions",

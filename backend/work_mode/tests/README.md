@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Lst Modified by: Codex
 
 ## brief intro
@@ -10,6 +10,7 @@ Lst Modified by: Codex
 - 架构思路
   - Use in-memory fakes for service and worker unit tests.
   - Use FastAPI dependency overrides for route tests.
+  - V0.5 tests must prove Mission start persists artifacts through public Mission detail, not only internal repositories.
   - MongoDB target-machine smoke belongs in `api.md` only after verification.
 
 ## folder structure

@@ -32,6 +32,7 @@ class FakeWorkModeRepository:
         self.missions: dict[str, dict[str, Any]] = {}
         self.runs: dict[str, dict[str, Any]] = {}
         self.steps: dict[str, dict[str, Any]] = {}
+        self.artifacts: dict[str, dict[str, Any]] = {}
         self.events: list[dict[str, Any]] = []
         self.event_sequences: dict[str, int] = {}
         self.next_id = 1
@@ -151,6 +152,19 @@ class FakeWorkModeRepository:
             return None
         row.update(values)
         return row
+
+    def create_artifact(self, document: dict[str, Any]) -> dict[str, Any]:
+        row = dict(document)
+        row["_id"] = self._id("artifact")
+        self.artifacts[row["_id"]] = row
+        return row
+
+    def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
+        return [
+            row
+            for row in self.artifacts.values()
+            if row["user_id"] == user_id and row["mission_id"] == mission_id
+        ][:limit]
 
     def next_event_sequence(self, mission_id: str) -> int:
         self.event_sequences[mission_id] = self.event_sequences.get(mission_id, 0) + 1
@@ -311,21 +325,50 @@ class WorkModeServiceTest(TestCase):
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
         run_id = detail["activeRun"]["id"]
 
-        MissionWorker(self.service).run_v0_mission("user_1", mission["id"], run_id)
+        MissionWorker(self.service, runner=FakeMissionRunner("Generated result.")).run_v0_mission(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
 
         completed = self.service.get_mission_detail("user_1", mission["id"])
         event_types = [event["type"] for event in completed["events"]]
         self.assertEqual(completed["mission"]["status"], "completed")
-        self.assertIn("SUMMARY", event_types)
         self.assertIn("RAW_LOG", event_types)
         self.assertIn("PRODUCT_UPDATED", event_types)
         self.assertEqual(event_types[-1], "MISSION_COMPLETED")
+
+    def test_worker_persists_text_artifact_from_runner(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+
+        MissionWorker(self.service, runner=FakeMissionRunner("Chapter 1\nA real draft exists.")).run_v0_mission(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        product_events = [event for event in completed["events"] if event["type"] == "PRODUCT_UPDATED"]
+
+        self.assertEqual(completed["mission"]["status"], "completed")
+        self.assertEqual(len(completed["artifacts"]), 1)
+        self.assertEqual(completed["artifacts"][0]["kind"], "text")
+        self.assertIn("A real draft exists.", completed["artifacts"][0]["content"])
+        self.assertEqual(product_events[-1]["payload"]["artifactId"], completed["artifacts"][0]["id"])
+        self.assertNotIn("content", product_events[-1]["payload"])
+        self.assertIn("Chapter 1", product_events[-1]["payload"]["summary"])
 
     def test_event_pagination_uses_after_sequence(self) -> None:
         mission = self._mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
         run_id = detail["activeRun"]["id"]
-        MissionWorker(self.service).run_v0_mission("user_1", mission["id"], run_id)
+        MissionWorker(self.service, runner=FakeMissionRunner("Generated result.")).run_v0_mission(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
 
         events = self.service.list_events("user_1", mission["id"], after_sequence=2)
 
@@ -337,7 +380,11 @@ class WorkModeServiceTest(TestCase):
         run_id = detail["activeRun"]["id"]
 
         stopped_detail = self.service.stop_mission("user_1", mission["id"], MissionStopRequest(reason="Hold"))
-        MissionWorker(self.service).run_v0_mission("user_1", mission["id"], run_id)
+        MissionWorker(self.service, runner=FakeMissionRunner("Generated result.")).run_v0_mission(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
 
         completed = self.service.get_mission_detail("user_1", mission["id"])
         event_types = [event["type"] for event in completed["events"]]
@@ -367,3 +414,16 @@ class WorkModeServiceTest(TestCase):
             "user_1",
             MissionCreateRequest(projectId=project["id"], title="Mission", goal="Run V0."),
         )
+
+
+class FakeMissionRunner:
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+    def run(self, context: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "kind": "text",
+            "title": context["mission"]["title"],
+            "content": self.content,
+            "metadata": {"runner": "fake"},
+        }

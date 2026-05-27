@@ -16,6 +16,7 @@ MissionStatus = Literal["draft", "running", "paused", "stopping", "stopped", "bl
 RunStatus = Literal["running", "stopped", "failed", "completed"]
 StepStatus = Literal["pending", "running", "failed", "completed", "skipped"]
 AutonomyLevel = Literal["supervised"]
+ArtifactKind = Literal["text", "log", "diff", "report", "mission_result"]
 EventType = Literal[
     "MISSION_CREATED",
     "MISSION_STARTED",
@@ -258,6 +259,21 @@ class EventResponse(BaseModel):
     created_at: datetime = Field(alias="createdAt")
 
 
+class ArtifactResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    user_id: str = Field(alias="userId")
+    mission_id: str = Field(alias="missionId")
+    run_id: str = Field(alias="runId")
+    kind: ArtifactKind
+    title: str
+    content: str
+    created_by_employee: dict[str, str] = Field(alias="createdByEmployee")
+    metadata: dict[str, Any]
+    created_at: datetime = Field(alias="createdAt")
+
+
 class MissionDetailResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -266,3 +282,4 @@ class MissionDetailResponse(BaseModel):
     active_run: RunResponse | None = Field(default=None, alias="activeRun")
     latest_run: RunResponse | None = Field(default=None, alias="latestRun")
     events: list[EventResponse]
+    artifacts: list[ArtifactResponse]

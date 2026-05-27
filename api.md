@@ -8,7 +8,8 @@ Last Modified by: Codex
 - This document is the current verified API and port map for Hackson.
 - Public product traffic now uses `https://hackson.catachess.com/`.
 - Public-domain rows describe the currently retained product service.
-- The `8147` rows describe the isolated Idle Auto smoke service used for this fix.
+- The `8147` rows describe the isolated Idle Auto smoke service used for its fix.
+- The `8148` rows describe the isolated Work V0.5 artifact smoke service. It is not the public product service.
 
 ## current environment
 | Item | Value |
@@ -31,6 +32,14 @@ Last Modified by: Codex
 | Idle Auto smoke backend bind | `127.0.0.1:8147` |
 | Idle Auto smoke local check | `127.0.0.1:5187 -> 18147 -> 8147` |
 | Idle Auto smoke MongoDB database | `hackson_idle_auto_8147` |
+| Work V0.5 smoke source path | `~/hackson_work_v05_8148` |
+| Work V0.5 smoke backend path | `~/hackson_work_v05_8148/backend` |
+| Work V0.5 smoke frontend build path | `~/hackson_work_v05_8148/frontend/dist` |
+| Work V0.5 smoke service | `hackson-work-v05-8148.service`, user-level systemd, active |
+| Work V0.5 fake model relay | `hackson-work-v05-fake-model-18148.service`, user-level systemd, active |
+| Work V0.5 smoke backend bind | `127.0.0.1:8148` |
+| Work V0.5 fake model bind | `127.0.0.1:18148` |
+| Work V0.5 smoke database | `hackson_work_v05_8148` |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -42,6 +51,8 @@ Last Modified by: Codex
 | --- | --- | --- | --- | --- |
 | 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service` |
 | 8147 | Hackson Idle Auto smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-idle-auto-8147.service` | Isolated verification for Idle Auto topic, interjection, speaker, and rate-limit behavior |
+| 8148 | Hackson Work V0.5 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v05-8148.service` | Isolated verification for Work Mission artifact persistence and Product UI render |
+| 18148 | Work V0.5 fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-work-v05-fake-model-18148.service` | Test-only model relay for deterministic Work V0.5 success smoke; not a product API |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
@@ -49,6 +60,7 @@ Last Modified by: Codex
 - Stopped Hackson smoke ports: `8101`, `8122`, `8123`, `8124`, `8125`, `8126`, `8131`, `8132`, `8133`, `8141`, `8142`, `8143`, `8144`, `8146`.
 - On 2026-05-27, `8147` was reintroduced as `hackson-idle-auto-8147.service` for isolated Idle Auto verification without touching public `8145`.
 - On 2026-05-27, temporary Orchestrator V1 smoke ports `8148` and `18148` were used for isolated target-machine verification, then stopped.
+- On 2026-05-27, `8148` and `18148` were reintroduced as Work V0.5 isolated smoke services. They are active and intentionally separate from public `8145`.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
@@ -80,8 +92,8 @@ All rows below were verified against `https://hackson.catachess.com/` on 2026-05
 | GET | `/api/work/projects` | Bearer JWT | `backend/work_mode/` | List current-user Work projects |
 | POST | `/api/work/missions` | Bearer JWT | `backend/work_mode/` | Create a Mission with `agent_1` or `agent_2` as lead |
 | GET | `/api/work/projects/{projectId}/missions` | Bearer JWT | `backend/work_mode/` | List Missions in one Project |
-| GET | `/api/work/missions/{missionId}` | Bearer JWT | `backend/work_mode/` | Read Mission detail and current event timeline |
-| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start the V0 deterministic Mission worker |
+| GET | `/api/work/missions/{missionId}` | Bearer JWT | `backend/work_mode/` | Read Mission detail, current event timeline, and persisted artifacts |
+| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start the V0.5 single model-run Mission worker |
 | GET | `/api/work/missions/{missionId}/events` | Bearer JWT | `backend/work_mode/` | Poll Mission events after `afterSequence` |
 
 ## request notes
@@ -215,12 +227,11 @@ POST /api/work/missions/{missionId}/start
 {}
 ```
 
-The V0 worker emits deterministic events:
+The V0.5 worker emits model-backed artifact events:
 
 ```text
 MISSION_STARTED
 STEP_STARTED
-SUMMARY
 RAW_LOG
 PRODUCT_UPDATED
 STEP_COMPLETED
@@ -232,6 +243,40 @@ Poll with:
 ```http
 GET /api/work/missions/{missionId}/events?afterSequence=<last-sequence>
 ```
+
+Read persisted output from:
+
+```http
+GET /api/work/missions/{missionId}
+```
+
+`artifacts` is sorted newest first:
+
+```json
+{
+  "artifacts": [
+    {
+      "id": "<artifact-id>",
+      "missionId": "<mission-id>",
+      "runId": "<run-id>",
+      "kind": "text",
+      "title": "Draft chapter plan",
+      "content": "Full artifact text",
+      "createdByEmployee": {
+        "id": "agent_1",
+        "name": "Nora",
+        "role": "precise"
+      },
+      "metadata": {
+        "runner": "model_runtime"
+      },
+      "createdAt": "2026-05-27T18:00:00Z"
+    }
+  ]
+}
+```
+
+`PRODUCT_UPDATED` carries `artifactId`, `kind`, `summary`, `changedFiles`, and `tests`. The full Artifact content is not duplicated into event payloads.
 
 ## latest verification
 - Local backend tests passed before deployment:
@@ -258,7 +303,17 @@ GET /api/work/missions/{missionId}/events?afterSequence=<last-sequence>
   - Real provider smoke confirmed model-backed idle routes can still return stable `429 {"detail":"model_rate_limited"}`.
   - Fake OpenAI-compatible relay on temporary `18148` verified Responses-mode success path for register, idle tick, idle say, idle join, companion_1 follow-up, and companion_2 message.
   - Verified assistant message metadata contains `orchestration_policy`, `reasoning_effort`, `tool_policy`, `provider`, `provider_response_id`, and `reasoning_summary`.
-  - Temporary `8148` and `18148` processes were stopped after verification; public `8145`, Idle Auto `8147`, and legacy `8130` were not touched.
+- Work V0.5 isolated smoke verification on active `8148`:
+  - Local Work tests passed: `16` tests.
+  - Local model_runtime/interactions regression passed: `38` tests.
+  - Local frontend build passed with assets `/assets/index-BQ4JHagk.js` and `/assets/index-C-nEjYQU.css`.
+  - Target Work tests passed under `~/hackson_work_v05_8148/backend`: `16` tests.
+  - Target frontend build passed with Node `20.19.6`.
+  - Target success smoke on `127.0.0.1:8148` verified register, Project create, Mission create, Start, `MISSION_COMPLETED`, one persisted text Artifact, and `PRODUCT_UPDATED` without full `content` payload.
+  - Target failure smoke on temporary `8149` verified model network failure produces `MISSION_FAILED`, `artifactCount: 0`, and no fake Product result; `8149` was stopped and removed after verification.
+  - Local UI path `5192 -> 18148 -> 8148` verified Work page creates Project/Mission and renders the persisted Artifact in Product with failed resource count `0`.
+  - Screenshot: `/tmp/hackson_work_v05_ui.png`.
+  - `8148` and `18148` remain active as isolated Work V0.5 smoke services; public `8145`, Idle Auto `8147`, and legacy `8130` were not touched.
 - Orchestrator V1 public deployment on `8145`:
   - Local backend full module unittest passed and local frontend build passed before deployment.
   - Target public directory tests passed: orchestration `5`, model_runtime `17`, interactions `21`.

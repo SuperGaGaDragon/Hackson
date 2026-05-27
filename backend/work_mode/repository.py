@@ -23,6 +23,7 @@ class WorkModeRepository:
         self.missions: Collection = database["work_missions"]
         self.runs: Collection = database["work_runs"]
         self.steps: Collection = database["work_steps"]
+        self.artifacts: Collection = database["work_artifacts"]
         self.events: Collection = database["work_events"]
         self.event_counters: Collection = database["work_event_counters"]
 
@@ -46,6 +47,8 @@ class WorkModeRepository:
         self.runs.create_index([("user_id", ASCENDING), ("mission_id", ASCENDING), ("started_at", DESCENDING)])
         self.steps.create_index([("user_id", ASCENDING), ("run_id", ASCENDING), ("sequence", ASCENDING)])
         self.steps.create_index([("user_id", ASCENDING), ("mission_id", ASCENDING), ("sequence", ASCENDING)])
+        self.artifacts.create_index([("user_id", ASCENDING), ("mission_id", ASCENDING), ("created_at", DESCENDING)])
+        self.artifacts.create_index([("user_id", ASCENDING), ("run_id", ASCENDING), ("created_at", DESCENDING)])
         self.events.create_index(
             [("user_id", ASCENDING), ("mission_id", ASCENDING), ("sequence", ASCENDING)],
             unique=True,
@@ -200,6 +203,25 @@ class WorkModeRepository:
             {"_id": query_id, "user_id": user_id},
             {"$set": values},
             return_document=ReturnDocument.AFTER,
+        )
+
+    def create_artifact(self, document: dict[str, Any]) -> dict[str, Any]:
+        document = dict(document)
+        document["mission_id"] = _object_id(document["mission_id"])
+        document["run_id"] = _object_id(document["run_id"])
+        result = self.artifacts.insert_one(document)
+        created = self.artifacts.find_one({"_id": result.inserted_id})
+        assert created is not None
+        return created
+
+    def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
+        query_id = _object_id_or_none(mission_id)
+        if query_id is None:
+            return []
+        return list(
+            self.artifacts.find({"user_id": user_id, "mission_id": query_id})
+            .sort("created_at", DESCENDING)
+            .limit(limit)
         )
 
     def next_event_sequence(self, mission_id: str) -> int:

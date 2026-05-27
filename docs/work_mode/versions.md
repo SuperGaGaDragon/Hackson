@@ -42,7 +42,7 @@ The Lead Agent is the mission driver. The Lead Agent can use three tool classes:
 | V0.1 | Legacy Employee Library | Legacy API can create Employees, add them to a Project team, and choose a Lead Employee for a Mission. | Mission state stores the selected Lead Employee and events show that Employee. | Historical target smoke proved one user-created Employee can lead a Mission. Current UI no longer uses this flow. |
 | V0.1.1 | Workspace UI Cleanup | Work opens to a simple Workspace: existing Projects and New Project. | Mission and console controls are only visible inside a selected Project. | Target-backed browser smoke proves Projects persist on target MongoDB and Project detail opens cleanly. |
 | V0.1.2 | Two Agent Mission Lead | Project detail shows the two user-edited Agents and lets the user choose one as Mission lead. | Mission creation accepts `agent_1` or `agent_2` directly from the authenticated user's Agent profiles. | Target smoke proves `leadEmployeeId: agent_1` works without Employee or Team setup, and browser screenshot shows no Employee create form. |
-| V0.5 | Single Codex Run | User can run one controlled Codex step for a Mission and see logs, summary, and artifacts. | One worker process invokes Codex or a configured command once. | Logs and result artifacts are persisted and visible. |
+| V0.5 | Single Controlled Run | User can run one controlled Mission step and see logs plus a persisted artifact. | First product slice invokes the configured model runtime once; Codex CLI and shell execution stay out of scope until safety gates exist. | Logs and result artifacts are persisted and visible. |
 | V1 | Supervised Mission Loop | Mission repeats controlled iterations until done, stopped, blocked, or limit reached. | Hard-coded supervisor loop controls max iterations, runtime, no-progress, and approval gates. | A coding Mission can run multiple iterations and stop deterministically. |
 | V1.25 | Project Employee Roster | User can add Employees to a Project, edit personality and experience, and choose a Lead Employee for a Mission. | Mission state stores roster selection and lead employee. | A Mission displays which Employee is leading and which Employees are available. |
 | V1.5 | Diff, Tests, Approval | User sees changed files, test results, warnings, and approval cards. | Worker captures diff, command results, and approval-required states. | Dangerous actions block until user approval. |
@@ -236,24 +236,24 @@ Target-machine smoke must verify:
 - Project detail does not show Employee creation, Project Team add, or `Name` / `Role` Employee inputs.
 - Browser screenshot proves the user can understand the sequence: choose Agent, create Mission, then Start.
 
-## 6. V0.5 Single Codex Run
+## 6. V0.5 Single Controlled Run
 
 ### Product Goal
 
-Let the user start one Mission that invokes a controlled code worker once and returns visible logs and result state.
+Let the user start one Mission that produces one real persisted result artifact.
+
+The first V0.5 slice is a single model-backed text artifact run. It intentionally does not call Codex CLI, shell, Git, or deploy actions yet.
 
 ### Runtime Scope
 
 The worker performs one action:
 
 1. Prepare Mission execution context.
-2. Create or select a safe work directory.
-3. Run Codex CLI or a configured V0 runner.
-4. Capture stdout and stderr.
-5. Capture changed files and diff when available.
-6. Save artifacts.
-7. Emit summary, warning, or product events.
-8. Mark step complete or failed.
+2. Invoke the configured model runtime once with Project, Mission, and Lead Agent context.
+3. Persist a `work_artifacts` document.
+4. Emit `RAW_LOG`, `PRODUCT_UPDATED`, `STEP_COMPLETED`, and a terminal Mission event.
+5. Mark the Mission `completed` only after the Artifact is saved.
+6. Mark the Mission `failed` if the model runtime fails; do not emit a fake completed state.
 
 ### Release Gate
 
@@ -263,7 +263,9 @@ Target-machine smoke must verify:
 - `POST /api/work/missions`
 - `POST /api/work/missions/{missionId}/start`
 - `GET /api/work/missions/{missionId}/events`
-- Worker emits at least one `RAW_LOG` and one terminal Mission event.
+- `GET /api/work/missions/{missionId}` returns `artifacts`.
+- Worker emits at least one `RAW_LOG`, one `PRODUCT_UPDATED`, and one terminal Mission event.
+- Rate-limit smoke marks the Mission `failed` without creating an Artifact.
 
 ## 7. V1 Supervised Mission Loop
 

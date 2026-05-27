@@ -12,6 +12,7 @@ Lst Modified by: Codex
   - Project detail renders the two user-owned Agents passed from `App.jsx`; it does not create Work-only Employees.
   - Mission console cards are vertical siblings; cards must not overlap or nest inside each other.
   - `MissionHeader` mirrors the selected Mission status and disables actions that the user should not take from a terminal state.
+  - `ProductPanel` prefers persisted Mission artifacts over event preview text.
   - Components do not parse model text or execute commands.
   - Keep copy short per frontend restrictions.
 

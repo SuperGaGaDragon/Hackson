@@ -1172,6 +1172,10 @@ input:disabled {
   line-height: 1.4;
 }
 
+.artifact-content {
+  white-space: pre-wrap;
+}
+
 .progress-row small {
   color: var(--muted);
   font-size: 11px;

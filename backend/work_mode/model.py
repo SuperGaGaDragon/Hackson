@@ -110,6 +110,22 @@ def public_step(document: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def public_artifact(document: dict[str, Any]) -> dict[str, Any]:
+    """Convert a persisted Artifact document to the public API shape."""
+    return {
+        "id": _public_id(document["_id"]),
+        "userId": document["user_id"],
+        "missionId": _public_id(document["mission_id"]),
+        "runId": _public_id(document["run_id"]),
+        "kind": document["kind"],
+        "title": document["title"],
+        "content": document["content"],
+        "createdByEmployee": document.get("created_by_employee", {}),
+        "metadata": document.get("metadata", {}),
+        "createdAt": document["created_at"],
+    }
+
+
 def public_event(document: dict[str, Any]) -> dict[str, Any]:
     """Convert a persisted Event document to the public API shape."""
     return {

@@ -12,7 +12,9 @@ Lst Modified by: Codex
   - Store Projects, Missions, Runs, Steps, and Events in dedicated MongoDB collections.
   - Current Mission leads come from the authenticated user's two editable Agent profiles, `agent_1` and `agent_2`.
   - Legacy Employee collections and routes remain for compatibility, but the current product UI does not require Work-only Employee or Team setup.
-  - V0 worker is deterministic and only emits structured events; it does not run shell commands or Codex CLI.
+  - V0 worker emitted deterministic structured events only.
+  - V0.5 worker invokes the configured model runtime once, persists a text Artifact, and emits a fixed `PRODUCT_UPDATED` event that points at that Artifact.
+  - The worker does not run shell commands, mutate Git, deploy, or call Codex CLI.
   - Routes expose `/api/work/*` while existing `/api/tasks` remains available until the Mission Runtime is verified.
 
 ## folder structure
@@ -22,7 +24,7 @@ Lst Modified by: Codex
 |-schemas.py Pydantic request and response schemas
 |-repository.py MongoDB persistence adapter
 |-service.py Mission Runtime business rules and state transitions
-|-worker.py deterministic V0 worker implementation
+|-worker.py V0.5 single-run model worker implementation
 |-routes.py FastAPI routes for `/api/work`
 |-tests/ work_mode unit and route tests
 
@@ -31,16 +33,23 @@ Lst Modified by: Codex
 - `running` cannot start again.
 - `running` can move to `stopping` through user stop.
 - `stopping` becomes `stopped` when the worker observes it.
-- V0 worker can move `running` to `completed` or `failed`.
+- V0.5 worker can move `running` to `completed` after persisting an Artifact, or to `failed` if the configured model runner fails.
 - V0 smoke can set `HACKSON_WORK_MODE_V0_EVENT_DELAY_SECONDS` to make stop behavior observable; default is `0`.
 
-## V0 limitations
+## V0.5 result contract
+- `completed` means a runner returned output and `work_artifacts` contains the persisted result.
+- Mission detail returns `artifacts`, sorted newest first.
+- `PRODUCT_UPDATED` event payload contains `artifactId`, `kind`, `summary`, `changedFiles`, and `tests`; full text lives in the Artifact, not in the event payload.
+- If the model provider returns a stable failure such as rate limit, the Mission is marked `failed` and no fake Artifact is created.
+
+## V0.5 limitations
 - No Codex CLI execution.
 - No arbitrary shell commands.
 - No Git mutation.
 - No production deploy actions.
 - No WebSocket requirement; event polling is the first verified interface.
+- No multi-step supervisor loop yet.
 
 ## 代办
 - Replace FastAPI in-process background tasks with a durable worker queue in V1.
-- Add artifacts and approvals after the event stream is verified.
+- Add approvals after artifact generation is verified on the public service.

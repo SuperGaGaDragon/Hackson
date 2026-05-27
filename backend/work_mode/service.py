@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from agents.catalog import normalize_user_agent_profiles
 from conversations.model import now_utc
 from work_mode.model import (
+    public_artifact,
     public_employee,
     public_event,
     public_mission,
@@ -59,6 +60,8 @@ class WorkModeRepositoryProtocol(Protocol):
     def update_run(self, run_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
     def create_step(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def update_step(self, step_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
+    def create_artifact(self, document: dict[str, Any]) -> dict[str, Any]: ...
+    def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
     def next_event_sequence(self, mission_id: str) -> int: ...
     def create_event(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def list_events(self, user_id: str, mission_id: str, after_sequence: int | None, limit: int) -> list[dict[str, Any]]: ...
@@ -196,12 +199,14 @@ class WorkModeService:
         active_run = self.repository.find_active_run(str(mission["_id"]), user_id)
         latest_run = active_run or self.repository.find_latest_run(str(mission["_id"]), user_id)
         events = self.repository.list_events(user_id, str(mission["_id"]), after_sequence=None, limit=100)
+        artifacts = self.repository.list_artifacts(user_id, str(mission["_id"]), limit=20)
         return {
             "project": public_project(project),
             "mission": public_mission(mission),
             "activeRun": public_run(active_run) if active_run is not None else None,
             "latestRun": public_run(latest_run) if latest_run is not None else None,
             "events": [public_event(event) for event in events],
+            "artifacts": [public_artifact(artifact) for artifact in artifacts],
         }
 
     def start_mission(self, user_id: str, mission_id: str, payload: MissionStartRequest) -> dict[str, Any]:
@@ -318,6 +323,30 @@ class WorkModeService:
         if step is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="step_not_found")
         return step
+
+    def create_artifact(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        kind: str,
+        title: str,
+        content: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        document = {
+            "user_id": user_id,
+            "mission_id": mission["_id"],
+            "run_id": run_id,
+            "kind": kind,
+            "title": title,
+            "content": content,
+            "created_by_employee": _employee_payload(mission),
+            "metadata": metadata or {},
+            "created_at": now_utc(),
+        }
+        return public_artifact(self.repository.create_artifact(document))
 
     def mark_mission_completed(self, user_id: str, mission_id: str, run_id: str, step_id: str | None) -> None:
         timestamp = now_utc()
