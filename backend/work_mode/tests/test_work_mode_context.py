@@ -78,6 +78,9 @@ class WorkModeContextTest(TestCase):
 
         self.assertEqual(context["mission"]["goal"], "写一个8000字中文小说，题材自定。")
         self.assertIn("delegate_agent", context["availableTools"])
+        self.assertIn("work_product", context["toolSchemas"])
+        self.assertIn("finishMissionExample", context["toolExamples"])
+        self.assertEqual(context["toolSchemas"]["work_product"]["arguments"]["artifactKind"], "outline|chapter|draft|revision|final|report|notes|other")
         self.assertEqual(context["productManifest"][0]["latestArtifactId"], "artifact_3")
         self.assertEqual(context["workWindowManifest"][0]["resultArtifactId"], "artifact_2")
         self.assertEqual(context["recentEvents"][-1]["type"], "PRODUCT_UPDATED")

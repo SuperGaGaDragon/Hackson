@@ -68,6 +68,8 @@ def _action_request(context: dict[str, Any]) -> ModelGenerateRequest:
                 role="system",
                 content=(
                     "You are the Work Mode Lead Agent runtime. Return exactly one JSON tool action. "
+                    "The JSON must have top-level tool and arguments fields. "
+                    "Use context.toolSchemas and context.toolExamples for exact camelCase argument names. "
                     "Do not return plain assistant text. Do not wrap JSON in markdown. "
                     "Use only the available tools from the context."
                 ),

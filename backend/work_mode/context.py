@@ -39,8 +39,12 @@ def build_lead_context(
         "leadAgent": lead_agent,
         "delegateAgent": delegate_agent,
         "availableTools": list(AVAILABLE_V1_TOOLS),
+        "toolActionEnvelope": {"tool": "one available tool name", "arguments": "object matching toolSchemas[tool]"},
+        "toolSchemas": _tool_schemas(),
+        "toolExamples": _tool_examples(),
         "hardConstraints": [
             "Return exactly one tool action.",
+            "Return valid JSON only, with top-level tool and arguments.",
             "Do not return plain assistant text.",
             "Do not create new tools.",
             "Do not emit React components.",
@@ -131,4 +135,98 @@ def _artifact_context(artifact: dict[str, Any]) -> dict[str, Any]:
         "summary": artifact.get("summary") or artifact.get("metadata", {}).get("summary", ""),
         "content": artifact.get("content", ""),
         "metadata": artifact.get("metadata", {}),
+    }
+
+
+def _tool_schemas() -> dict[str, Any]:
+    return {
+        "mission_plan": {
+            "arguments": {
+                "reason": "string <=240",
+                "planTitle": "string",
+                "steps": [{"title": "string", "status": "pending|in_progress|completed|changed", "notes": "string"}],
+            }
+        },
+        "work_product": {
+            "arguments": {
+                "reason": "string <=240",
+                "operation": "create_product|append_artifact|revise_artifact|finalize_product",
+                "productId": "string|null; null only for create_product",
+                "sourceArtifactIds": ["artifact id strings"],
+                "productTitle": "string",
+                "artifactTitle": "string",
+                "artifactKind": "outline|chapter|draft|revision|final|report|notes|other",
+                "content": "string",
+                "summary": "string",
+            }
+        },
+        "inspect_product": {
+            "arguments": {
+                "reason": "string <=240",
+                "productIds": ["product id strings"],
+                "artifactIds": ["artifact id strings"],
+                "focus": "string",
+            }
+        },
+        "delegate_agent": {
+            "arguments": {
+                "reason": "string <=240",
+                "agentSlot": "non-lead agent_1 or agent_2",
+                "windowTitle": "string",
+                "brief": "string",
+                "expectedOutput": "outline|chapter|review|revision|summary|other",
+                "targetProductId": "string|null",
+                "sourceArtifactIds": ["artifact id strings"],
+            }
+        },
+        "ask_user": {
+            "arguments": {"reason": "string <=240", "question": "string", "suggestedOptions": ["strings"]}
+        },
+        "finish_mission": {
+            "arguments": {
+                "reason": "string <=240",
+                "summary": "string",
+                "finalProductIds": ["existing product id strings"],
+                "finalArtifactIds": ["existing artifact id strings"],
+            }
+        },
+        "block_mission": {
+            "arguments": {"reason": "string <=240", "blockedReason": "string", "neededFromUser": "string"}
+        },
+    }
+
+
+def _tool_examples() -> dict[str, Any]:
+    return {
+        "missionPlanExample": {
+            "tool": "mission_plan",
+            "arguments": {
+                "reason": "先规划任务。",
+                "planTitle": "执行计划",
+                "steps": [{"title": "创建产品", "status": "pending", "notes": ""}],
+            },
+        },
+        "workProductExample": {
+            "tool": "work_product",
+            "arguments": {
+                "reason": "创建第一版产品。",
+                "operation": "create_product",
+                "productId": None,
+                "sourceArtifactIds": [],
+                "productTitle": "长篇小说",
+                "artifactTitle": "故事大纲",
+                "artifactKind": "outline",
+                "content": "正文内容",
+                "summary": "完成大纲。",
+            },
+        },
+        "finishMissionExample": {
+            "tool": "finish_mission",
+            "arguments": {
+                "reason": "最终产品已完成。",
+                "summary": "任务完成。",
+                "finalProductIds": ["product_id_from_productManifest"],
+                "finalArtifactIds": ["latestArtifactId_from_productManifest"],
+            },
+        },
     }

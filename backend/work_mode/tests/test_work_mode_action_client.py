@@ -33,6 +33,7 @@ class WorkModeActionClientTest(TestCase):
         self.assertEqual(action.tool, "mission_plan")
         self.assertEqual(runtime.last_request.reasoning_effort, "low")
         self.assertIn("Return exactly one JSON tool action", runtime.last_request.messages[0].content)
+        self.assertIn("toolSchemas", runtime.last_request.messages[0].content)
 
     def test_invalid_model_text_raises_client_error(self) -> None:
         client = ToolActionClient(FakeModelRuntime("我先写一个大纲。"))
