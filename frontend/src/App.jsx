@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 import { Activity, BriefcaseBusiness, MessageSquare, Sparkles, UserRound } from "lucide-react";
@@ -75,14 +75,16 @@ function App() {
     return <AuthPage onAuthed={(nextUser) => handleAuthed(nextUser, setUser, setAgents, setError)} />;
   }
 
+  const visibleAgents = normalizeAgents(user.agentProfiles || agents);
+
   return (
     <main className="app-shell">
       <Sidebar setView={setView} user={user} view={view} />
       <section className="workspace">
         <Topbar error={error} view={view} />
-        {view === "idle" && <IdlePage agents={agents} />}
-        {view === "chat" && <ChatPage agents={agents} />}
-        {view === "work" && <WorkPage agents={agents} />}
+        {view === "idle" && <IdlePage agents={visibleAgents} user={user} />}
+        {view === "chat" && <ChatPage agents={visibleAgents} user={user} />}
+        {view === "work" && <WorkPage agents={visibleAgents} />}
         {view === "me" && (
           <MePage
             onLogout={() => {

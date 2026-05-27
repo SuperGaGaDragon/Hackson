@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 export const FALLBACK_AGENT_BY_SLOT = {
@@ -28,6 +28,14 @@ export function normalizeAgents(agents) {
   return source.map(normalizeAgent);
 }
 
+export function normalizeUserAgentProfiles(user) {
+  return normalizeAgents(user?.agentProfiles || FALLBACK_AGENTS).map((agent) => ({
+    ...agent,
+    personality: agent.personality || fallbackCorePersona(agent.slot),
+    story: agent.story || "",
+  }));
+}
+
 export function agentsToMap(agents) {
   return Object.fromEntries(normalizeAgents(agents).map((agent) => [agent.slot, agent]));
 }
@@ -51,5 +59,12 @@ function normalizeAgent(agent) {
     name: agent?.name || fallback.name || "Agent",
     color: agent?.color || fallback.color || "teal",
     voice: agent?.voice || fallback.voice || "ready",
+    personality: agent?.personality || "",
+    story: agent?.story || "",
   };
+}
+
+function fallbackCorePersona(slot) {
+  if (slot === "agent_2") return "务实、直接、擅长把想法变成计划的 Agent。";
+  return "冷静、会追问概念的哲学型 Agent。";
 }

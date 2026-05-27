@@ -61,6 +61,31 @@ class InteractionRoutesTest(TestCase):
         self.assertEqual(body["context"]["modelName"], "fake-model")
         self.assertIn("promptHash", body["context"])
 
+    def test_idle_tick_route_accepts_discussion_direction_without_saving_user_message(self) -> None:
+        idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)
+
+        response = self.client.post(
+            f"/api/idle/{idle['id']}/tick",
+            json={
+                "targetAgentId": "agent_2",
+                "discussionDirection": "从用户控制话题方向展开",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        prompt = "\n".join(message.content for message in self.model_runtime.requests[-1].messages)
+        self.assertIn("User direction:", prompt)
+        self.assertIn("从用户控制话题方向展开", prompt)
+        messages = self.conversation_service.list_messages(
+            TEST_USER_ID,
+            idle["id"],
+            after_sequence=0,
+            created_after=None,
+            created_before=None,
+            limit=10,
+        )
+        self.assertEqual([message["senderType"] for message in messages["messages"]], ["agent"])
+
     def test_idle_join_route_creates_companion_1_child(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)
 

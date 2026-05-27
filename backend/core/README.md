@@ -9,7 +9,7 @@ Lst Modified by: Codex
   - Shared backend runtime utilities that are not owned by a single product module.
 - 架构思路
   - `config.py` reads platform-side backend configuration.
-  - `database.py` owns MongoDB connection lifecycle.
+  - `database.py` owns MongoDB connection lifecycle and the `mongomock://` in-memory test URI.
   - `security.py` owns password hashing and JWT primitives.
   - Production static frontend hosting is controlled by `HACKSON_STATIC_FRONTEND_DIR`.
   - User-selected model endpoint configuration is intentionally absent from user-facing settings in V1.

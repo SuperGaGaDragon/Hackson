@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -108,6 +108,8 @@ class UserProfileSnapshot(BaseModel):
     username: str | None = None
     display_name: str | None = None
     language_preference: str | None = "zh"
+    personality: str | None = None
+    story: str | None = None
 
 
 class ContextBuildInput(BaseModel):
@@ -119,6 +121,7 @@ class ContextBuildInput(BaseModel):
     summary: ConversationSummary | None = None
     user_message: str | None = None
     user_profile: UserProfileSnapshot | None = None
+    user_direction: str | None = None
     idle_seed: str | None = None
     idle_recent_messages: list[ConversationMessage] = Field(default_factory=list)
     idle_summary: ConversationSummary | None = None

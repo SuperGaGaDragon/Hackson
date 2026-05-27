@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -10,7 +10,12 @@ from unittest import TestCase
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from agents.catalog import default_agent_snapshots, list_agent_display_profiles
+from agents.catalog import (
+    default_agent_snapshots,
+    default_user_agent_profiles,
+    list_agent_display_profiles,
+    user_agent_snapshots,
+)
 from agents.routes import router
 
 
@@ -36,3 +41,27 @@ class AgentCatalogTest(TestCase):
         self.assertEqual(body[0]["name"], "Nora")
         self.assertNotIn("core_persona", body[0])
 
+    def test_user_agent_profiles_seed_two_editable_profiles(self) -> None:
+        profiles = default_user_agent_profiles()
+        snapshots = user_agent_snapshots(
+            [
+                {
+                    "slot": "agent_1",
+                    "name": "Mira",
+                    "voice": "careful",
+                    "personality": "Custom careful skeptic.",
+                    "story": "Tracks product risk.",
+                },
+                {
+                    "slot": "agent_2",
+                    "name": "Rook",
+                    "voice": "builder",
+                    "personality": "Custom practical builder.",
+                    "story": "",
+                },
+            ]
+        )
+
+        self.assertEqual([profile["slot"] for profile in profiles], ["agent_1", "agent_2"])
+        self.assertEqual([snapshot.name for snapshot in snapshots], ["Mira", "Rook"])
+        self.assertEqual(snapshots[0].core_persona, "Custom careful skeptic.")

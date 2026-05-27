@@ -1,19 +1,19 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Lst Modified by: Codex
 
 ## brief intro
 - goal for this folder.
   - Own current user settings backed by verified user APIs.
 - 架构思路
-  - Only expose display name, idle toggle, and language preference.
+  - Expose display name, idle toggle, language preference, human profile, and the user's two Agent profiles.
   - Never expose model runtime settings.
 
 ## folder structure
 |-README.md me feature guide
-|-MePage.jsx current user settings page
+|-MePage.jsx current user settings and two-Agent profile editor
 
 ## 代办
-- Add richer profile settings only after backend support exists.
+- Move Agent editing to a dedicated page if profile editing becomes too dense.

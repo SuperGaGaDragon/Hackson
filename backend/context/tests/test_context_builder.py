@@ -67,6 +67,43 @@ class ContextBuilderTest(TestCase):
         self.assertIn("agent_a", package.included_agent_ids)
         self.assertIn("msg_1", package.included_message_ids)
 
+    def test_idle_context_separates_user_profile_and_direction_from_transcript(self) -> None:
+        package = self.builder.build(
+            ContextBuildInput(
+                mode=ContextMode.IDLE,
+                conversation_id="conv_idle",
+                target_agent_id="agent_a",
+                agents=[self.agent_a, self.agent_b],
+                user_profile=UserProfileSnapshot(
+                    id="user_1",
+                    username="demo_user",
+                    display_name="Demo",
+                    language_preference="zh",
+                    personality="quiet, direct, product-minded",
+                    story="I am preparing a 30 second demo.",
+                ),
+                user_direction="希望从产品演示怎么讲清楚这个方向展开",
+                recent_messages=[
+                    ConversationMessage(
+                        id="msg_1",
+                        sender_type=SenderType.AGENT,
+                        sender_id="agent_b",
+                        sender_name="Beryl",
+                        content="我们刚才在讨论用户预期。",
+                    )
+                ],
+            )
+        )
+
+        prompt = _prompt_text(package)
+        self.assertIn("User profile:", prompt)
+        self.assertIn("personality: quiet, direct, product-minded", prompt)
+        self.assertIn("story: I am preparing a 30 second demo.", prompt)
+        self.assertIn("User direction:", prompt)
+        self.assertIn("希望从产品演示怎么讲清楚这个方向展开", prompt)
+        self.assertIn("- Beryl: 我们刚才在讨论用户预期。", prompt)
+        self.assertNotIn("- Demo: 希望从产品演示怎么讲清楚这个方向展开", prompt)
+
     def test_companion_1_context_forces_transition_to_user(self) -> None:
         package = self.builder.build(
             ContextBuildInput(

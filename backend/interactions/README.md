@@ -21,6 +21,8 @@ Last Modified by: Codex
 - Run companion_2 user-message generation.
 - Save user messages through `conversations/`.
 - Read recent messages through `conversations/`.
+- Read current user profile through `users/` for context only.
+- Build deterministic compact summaries when raw history exceeds the recent window.
 - Build context through `context/`.
 - Generate model replies through `model_runtime/`.
 - Save Agent replies through `conversations/`.
@@ -41,10 +43,11 @@ Last Modified by: Codex
 |-tests/ interaction tests
 
 ## route plan
-|-POST /api/idle/{conversation_id}/tick generate one idle Agent reply
+|-POST /api/idle/{conversation_id}/tick generate one idle Agent reply; accepts optional `discussionDirection`
 |-POST /api/idle/{conversation_id}/join create companion_1 turn from idle
 |-POST /api/companion/{conversation_id}/messages append a companion_1 or companion_2 user message and generate Agent reply
 
 ## 代办
 - Add speaker selection policy instead of fixed target Agent defaults.
 - Add streaming support after the frontend is ready.
+- Replace deterministic compact summaries with persisted worker summaries when summary worker is ready.

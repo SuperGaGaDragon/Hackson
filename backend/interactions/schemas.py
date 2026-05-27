@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Last Modified by: Codex
 """
 
@@ -21,6 +21,7 @@ class InteractionUserMessageRequest(BaseModel):
 class IdleTickRequest(BaseModel):
     target_agent_id: str | None = Field(default=None, alias="targetAgentId")
     idle_seed: str | None = Field(default=None, alias="idleSeed", max_length=1000)
+    discussion_direction: str | None = Field(default=None, alias="discussionDirection", max_length=1000)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

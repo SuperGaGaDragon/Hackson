@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-26
 Lst Modified by: Codex
 
 ## brief intro
@@ -18,10 +18,11 @@ Lst Modified by: Codex
 |-context-requirements-for-hackson.md Hackson-specific context requirements
 |-context-innovation-proposal.md Context OS innovation proposal
 |-plan.md product-level context system implementation plan
+|-persona-topic-compact.md implementation blueprint for user profile, idle topic direction, speaker boundary, and compact
 
 ## related documents
 - ../backend-architecture.md explains where backend modules such as `context/`, `model_runtime/`, `conversations/`, and `workers/` should live.
 - `plan.md` explains what the context system should do by product version.
 
 ## 代办
-- Update this folder when agents, conversations, messages, summaries, and context builder modules are implemented.
+- Keep `persona-topic-compact.md` synchronized while the V1 compact and profile path stabilizes.

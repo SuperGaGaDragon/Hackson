@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -10,6 +10,7 @@ from typing import Any, Protocol
 from fastapi import HTTPException, status
 from pymongo.errors import DuplicateKeyError
 
+from agents.catalog import default_user_agent_profiles, normalize_user_agent_profiles
 from core.security import create_access_token, hash_password, verify_password
 from users.model import now_utc, public_user
 from users.schemas import UserLoginRequest, UserRegisterRequest, UserUpdateRequest
@@ -42,6 +43,9 @@ class UserService:
             "password_hash": hash_password(payload.password),
             "idle_on": True,
             "language_preference": "zh",
+            "personality": "",
+            "story": "",
+            "agent_profiles": default_user_agent_profiles(),
             "created_at": timestamp,
             "updated_at": timestamp,
         }
@@ -77,6 +81,14 @@ class UserService:
             changes["idle_on"] = payload.idle_on
         if payload.language_preference is not None:
             changes["language_preference"] = payload.language_preference
+        if payload.personality is not None:
+            changes["personality"] = payload.personality.strip()
+        if payload.story is not None:
+            changes["story"] = payload.story.strip()
+        if payload.agent_profiles is not None:
+            changes["agent_profiles"] = normalize_user_agent_profiles(
+                [profile.model_dump() for profile in payload.agent_profiles]
+            )
 
         user = self.repository.update(user_id, changes)
         if user is None:

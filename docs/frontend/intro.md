@@ -23,6 +23,8 @@ Supported:
 - Companion message history.
 - Work tasks.
 - Work task messages.
+- User personality and story settings after the matching backend slice is verified.
+- Idle topic direction after the matching backend slice is verified.
 
 Not supported in this pass:
 
@@ -71,6 +73,7 @@ UI:
 - `Idle`
 - `Tick`
 - `Auto`
+- `Topic`
 - `Join`
 - timeline sorted by `sequence`
 
@@ -80,6 +83,7 @@ Behavior:
 - Load message history.
 - `Tick` creates one Agent message.
 - `Auto` drives repeated `Tick` calls while the page is open.
+- `Topic` sends `discussionDirection` to the backend. It is a steering instruction, not a saved message.
 - Auto mode alternates `agent_1` and `agent_2` so idle looks like two Agents taking turns.
 - `Join` creates a `companion_1` child and freezes the parent idle transcript as transition context.
 - After `Join`, the UI enters `Companion` mode and sends later turns to the child conversation through `/api/companion/{conversationId}/messages`.
@@ -128,7 +132,7 @@ Backend note:
 
 ### Me
 
-Purpose: show and edit only verified user settings.
+Purpose: show and edit verified user settings and the human user's bounded profile.
 
 Uses:
 
@@ -142,8 +146,16 @@ UI:
 - `Name`
 - `Idle`
 - `Lang`
+- `Personality`
+- `Story`
 - `Save`
 - `Logout`
+
+Behavior:
+
+- Save `personality` and `story` through `PATCH /api/users/me`.
+- Enforce frontend character limits that match backend validation.
+- Never expose model endpoint or provider settings.
 
 ### Work
 
@@ -249,6 +261,7 @@ Messages:
 - The full page must also scroll when the viewport is too short for all panels.
 - New messages should scroll the timeline to the latest item.
 - Responsive layouts must not let timeline content expand the page infinitely; the page scroll and timeline scroll are separate.
+- Idle topic direction must never render as a transcript message unless the backend returns it as a message.
 
 Auth:
 

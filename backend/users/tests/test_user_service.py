@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -63,6 +63,10 @@ class UserServiceTest(TestCase):
         self.assertEqual(user["username"], "demo_user")
         self.assertEqual(user["email"], "demo@example.com")
         self.assertTrue(user["idleOn"])
+        self.assertEqual(user["personality"], "")
+        self.assertEqual(user["story"], "")
+        self.assertEqual([agent["slot"] for agent in user["agentProfiles"]], ["agent_1", "agent_2"])
+        self.assertEqual([agent["name"] for agent in user["agentProfiles"]], ["Nora", "Vale"])
         self.assertNotIn("password_hash", user)
         self.assertNotIn("endpoint", user)
 
@@ -78,9 +82,38 @@ class UserServiceTest(TestCase):
 
         updated = service.update_user(
             registered["user"]["id"],
-            UserUpdateRequest(display_name="Demo", idle_on=False, language_preference="en"),
+            UserUpdateRequest(
+                display_name="Demo",
+                idle_on=False,
+                language_preference="en",
+                personality="quiet, direct, product-minded",
+                story="I am building a demo and want concise practical help.",
+                agentProfiles=[
+                    {
+                        "slot": "agent_1",
+                        "name": "Mira",
+                        "voice": "soft skeptic",
+                        "personality": "A careful skeptic who notices missing assumptions.",
+                        "story": "Grew from Nora but now tracks product risk.",
+                    },
+                    {
+                        "slot": "agent_2",
+                        "name": "Rook",
+                        "voice": "direct builder",
+                        "personality": "A builder who turns vague ideas into shipped steps.",
+                        "story": "",
+                    },
+                ],
+            ),
         )
 
         self.assertEqual(updated["displayName"], "Demo")
         self.assertFalse(updated["idleOn"])
         self.assertEqual(updated["languagePreference"], "en")
+        self.assertEqual(updated["personality"], "quiet, direct, product-minded")
+        self.assertEqual(updated["story"], "I am building a demo and want concise practical help.")
+        self.assertEqual(updated["agentProfiles"][0]["name"], "Mira")
+        self.assertEqual(updated["agentProfiles"][0]["short"], "A1")
+        self.assertEqual(updated["agentProfiles"][0]["color"], "teal")
+        self.assertEqual(updated["agentProfiles"][0]["personality"], "A careful skeptic who notices missing assumptions.")
+        self.assertEqual(updated["agentProfiles"][1]["name"], "Rook")

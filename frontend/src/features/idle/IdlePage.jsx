@@ -1,12 +1,12 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 import { Send } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { getConversationMessages, getIdleConversation } from "../../api/conversations";
+import { createConversation, getConversationMessages, getIdleConversation, listConversations } from "../../api/conversations";
 import { joinIdle, sendCompanionMessage, tickIdle } from "../../api/interactions";
 import { FALLBACK_AGENTS, nextAgentSlot, normalizeAgents } from "../../domain/agents";
 import { makePendingUserMessage, makeSystemMessage, sortMessages, uniqueMessages } from "../../domain/messages";
@@ -16,11 +16,15 @@ import Timeline from "../../shared/components/Timeline";
 
 function IdlePage({ agents = FALLBACK_AGENTS }) {
   const agentProfiles = normalizeAgents(agents);
+  const [idleConversations, setIdleConversations] = useState([]);
   const [conversation, setConversation] = useState(null);
   const [idleConversation, setIdleConversation] = useState(null);
   const [idleMessages, setIdleMessages] = useState([]);
   const [companionMessages, setCompanionMessages] = useState([]);
   const [draft, setDraft] = useState("");
+  const [topic, setTopic] = useState("");
+  const [newTopic, setNewTopic] = useState("");
+  const [showNewTopic, setShowNewTopic] = useState(false);
   const [targetAgentId, setTargetAgentId] = useState("agent_1");
   const [mode, setMode] = useState("idle");
   const [loading, setLoading] = useState(true);
@@ -38,11 +42,14 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
       setLoading(true);
       setError("");
       try {
-        const idle = await getIdleConversation();
+        const rows = await listConversations("idle");
+        const idle = rows[0] || (await getIdleConversation());
         const history = await getConversationMessages(idle.id);
         if (!mounted) return;
+        setIdleConversations(localizeIdleTitles(rows.length ? rows : [idle]));
         setIdleConversation(idle);
         setConversation(idle);
+        setTopic(topicFromConversation(idle));
         setIdleMessages(sortMessages(history.messages || []));
         setCompanionMessages([]);
       } catch (err) {
@@ -76,19 +83,86 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     setBusy(true);
     setError("");
     const activeTarget = targetAgentId;
+    const direction = topic.trim();
     try {
       const data = await tickIdle(idleConversation.id, {
         targetAgentId: activeTarget,
+        discussionDirection: direction || undefined,
         idleSeed: "继续 idle 对话，保持自然、简短、有生活感。",
         metadata: {},
       });
       setConversation((current) => ({ ...current, ...data.conversation }));
+      setIdleConversation((current) => ({ ...current, ...data.conversation }));
+      setIdleConversations((current) =>
+        localizeIdleTitles(
+          current.map((item) =>
+            item.id === data.conversation.id
+              ? {
+                  ...item,
+                  ...data.conversation,
+                }
+              : item,
+          ),
+        ),
+      );
       setIdleMessages((current) => uniqueMessages([...current, data.agentMessage]));
       setTargetAgentId(nextAgentSlot(activeTarget, agentProfiles));
     } catch (err) {
       setError(err.message || "Tick failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function startNewIdle(event) {
+    event.preventDefault();
+    const direction = newTopic.trim();
+    if (!direction || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const idle = await createConversation({
+        mode: "idle",
+        title: makeIdleTitle(direction),
+        metadata: { topicDirection: direction },
+      });
+      const item = { ...idle, localTitle: makeIdleTitle(direction) };
+      setIdleConversations((current) => localizeIdleTitles([item, ...current]));
+      setIdleConversation(idle);
+      setConversation(idle);
+      setIdleMessages([]);
+      setCompanionMessages([]);
+      setTopic(direction);
+      setDraft("");
+      setMode("idle");
+      setAutoIdle(false);
+      setShowNewTopic(false);
+      setNewTopic("");
+    } catch (err) {
+      setError(err.message || "New failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function selectIdle(nextConversation) {
+    if (busy || nextConversation.id === idleConversation?.id) return;
+    setLoading(true);
+    setError("");
+    try {
+      const history = await getConversationMessages(nextConversation.id);
+      setIdleConversation(nextConversation);
+      setConversation(nextConversation);
+      setIdleMessages(sortMessages(history.messages || []));
+      setCompanionMessages([]);
+      setTopic(topicFromConversation(nextConversation));
+      setDraft("");
+      setMode("idle");
+      setAutoIdle(false);
+    } catch (err) {
+      setError(err.message || "Load failed");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -159,26 +233,40 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
 
   return (
     <div className="idle-grid">
-      <aside className="agent-rail">
-        {agentProfiles.map((agent) => (
-          <AgentSlot agent={agent} key={agent.slot} state={targetAgentId === agent.slot ? "Target" : "Ready"} />
-        ))}
-        <section className="mini-panel">
-          <p className="eyebrow">Target</p>
-          <select onChange={(event) => setTargetAgentId(event.target.value)} value={targetAgentId}>
-            {agentProfiles.map((agent) => (
-              <option key={agent.slot} value={agent.slot}>
-                {agent.name}
-              </option>
-            ))}
-          </select>
-        </section>
+      <aside className="history-rail">
+        <div className="panel-head compact">
+          <div>
+            <p className="eyebrow">Idle</p>
+            <h2>History</h2>
+          </div>
+        </div>
+        <button
+          className="secondary-button history-new"
+          disabled={busy || loading}
+          onClick={() => setShowNewTopic(true)}
+          type="button"
+        >
+          New
+        </button>
+        <div className="history-list">
+          {idleConversations.map((item) => (
+            <button
+              className={`history-item ${item.id === idleConversation?.id ? "active" : ""}`}
+              key={item.id}
+              onClick={() => selectIdle(item)}
+              type="button"
+            >
+              <strong>{item.localTitle || item.title || "Idle"}</strong>
+              <span>{item.messageCount || 0}</span>
+            </button>
+          ))}
+        </div>
       </aside>
       <section className="timeline-panel">
         <div className="panel-head">
           <div>
             <p className="eyebrow">{isIdle ? "Idle" : "Companion"}</p>
-            <h2>Timeline</h2>
+            <h2>{isIdle ? idleTitle(idleConversation) : "Companion"}</h2>
           </div>
           <div className="panel-actions">
             <button
@@ -214,10 +302,24 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
       <aside className="context-rail">
         <div className="panel-head compact">
           <div>
-            <p className="eyebrow">State</p>
-            <h2>{isIdle ? "Idle" : "Companion"}</h2>
+            <p className="eyebrow">Target</p>
+            <h2>Agent</h2>
           </div>
         </div>
+        {agentProfiles.map((agent) => (
+          <button
+            className={`agent-target ${targetAgentId === agent.slot ? "active" : ""}`}
+            key={agent.slot}
+            onClick={() => setTargetAgentId(agent.slot)}
+            type="button"
+          >
+            <AgentSlot agent={agent} state={targetAgentId === agent.slot ? "On" : "Off"} />
+          </button>
+        ))}
+        <section className="context-item">
+          <span>Topic</span>
+          <p>{topic.trim() || "none"}</p>
+        </section>
         <section className="context-item">
           <span>ID</span>
           <p>{conversation?.id || "none"}</p>
@@ -238,8 +340,66 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
         </section>
         <StatusLine error={error} loading={loading} text={busy ? "Working" : ""} />
       </aside>
+      {showNewTopic && (
+        <div className="modal-layer" role="presentation">
+          <form className="topic-modal" onSubmit={startNewIdle}>
+            <div className="panel-head compact">
+              <div>
+                <p className="eyebrow">Idle</p>
+                <h2>New topic</h2>
+              </div>
+            </div>
+            <label>
+              <span>Topic · {newTopic.length}/1000</span>
+              <textarea
+                autoFocus
+                maxLength={1000}
+                onChange={(event) => setNewTopic(event.target.value)}
+                rows={6}
+                value={newTopic}
+              />
+            </label>
+            <div className="modal-actions">
+              <button className="secondary-button" onClick={() => setShowNewTopic(false)} type="button">
+                Cancel
+              </button>
+              <button className="primary-button" disabled={!newTopic.trim() || busy} type="submit">
+                Create
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
+}
+
+function localizeIdleTitles(conversations) {
+  return conversations.map((conversation) => ({
+    ...conversation,
+    localTitle: idleTitle(conversation),
+  }));
+}
+
+function idleTitle(conversation) {
+  if (!conversation) return "Idle";
+  const topic = topicFromConversation(conversation);
+  if (topic) return makeIdleTitle(topic);
+  if (conversation.title && conversation.title !== "Idle") return conversation.title;
+  if (conversation.lastMessageAt) {
+    return `Idle ${new Date(conversation.lastMessageAt).toLocaleDateString([], { month: "short", day: "numeric" })}`;
+  }
+  return "Untitled";
+}
+
+function topicFromConversation(conversation) {
+  return conversation?.metadata?.topicDirection || conversation?.metadata?.discussionDirection || "";
+}
+
+function makeIdleTitle(content) {
+  const trimmed = content.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= 18) return trimmed || "Idle";
+  return `${trimmed.slice(0, 18)}...`;
 }
 
 export default IdlePage;

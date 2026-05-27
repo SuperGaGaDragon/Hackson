@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Lst Modified by: Codex
 
 ## brief intro
@@ -13,8 +13,10 @@ Lst Modified by: Codex
   - Keep business rules in `service.py`.
   - Keep MongoDB access in `repository.py`.
   - Keep route dependencies in `auth.py`.
-  - Users own later agents, conversations, memory, diary, and relationship state through `user_id`.
-  - Users do not own model endpoint, API key, provider, Claude/OpenAI key, or local model path in V1.
+- Users own later agents, conversations, memory, diary, and relationship state through `user_id`.
+- Users do not own model endpoint, API key, provider, Claude/OpenAI key, or local model path in V1.
+- Users own a bounded human profile: `personality` and `story`.
+- Users own exactly two editable Agent profiles seeded from Nora and Vale.
 
 ## folder structure
 |-README.md users module guide
@@ -26,6 +28,23 @@ Lst Modified by: Codex
 |-schemas.py request and response schemas
 |-service.py user business logic
 |-tests/ user module tests
+
+## current profile fields
+- `display_name`: public display name.
+- `idle_on`: whether Idle should be enabled in product UI.
+- `language_preference`: lightweight language preference.
+- `personality`: bounded human personality note for context.
+- `story`: bounded human background story for context.
+- `agent_profiles`: the user's two editable Agent profiles for `agent_1` and `agent_2`.
+
+## current Agent profile fields
+- `slot`: fixed slot, `agent_1` or `agent_2`.
+- `name`: visible Agent name.
+- `short`: backend-controlled short label.
+- `color`: backend-controlled display color.
+- `voice`: visible voice label and speaking style.
+- `personality`: Agent core persona.
+- `story`: Agent background or episode state.
 
 ## 代办
 - Add email verification if the demo needs public signup.

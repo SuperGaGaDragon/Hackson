@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -11,13 +11,13 @@ Last Modified by: Codex
   - `agents/` stores what an Agent is.
   - It does not build prompts, call models, or save conversation messages.
   - `interactions/` reads Agent persona records from this module, then passes snapshots into `context/`.
-  - V1 keeps two backend-owned fixed Agent slots so frontend display names and prompt persona names cannot drift.
+  - V1 keeps two backend-owned fixed Agent slots and uses the catalog to seed each user's editable Agent profiles.
 
 ## responsibilities
-- Store Agent name, color, short label, voice label, core persona, speaking style, and episode state.
+- Store default Agent name, color, short label, voice label, core persona, speaking style, and episode state.
 - Provide stable Agent records to conversations and context.
 - Provide frontend-safe display profiles without exposing hidden prompt-only fields.
-- Keep fixed V1 demo Agent identities under backend control.
+- Seed and normalize user-owned Agent profiles without allowing extra slots.
 
 ## not responsible for
 - Model provider calls.
@@ -46,7 +46,8 @@ Last Modified by: Codex
 
 ## version plan
 - v1.0: List the backend-owned two fixed demo Agents.
-- v1.2: Move fixed catalog records into MongoDB while keeping the same route contract.
+- v1.1: Seed and normalize each user's two editable Agent profiles.
+- v1.2: Move profile persistence into a dedicated Agent module while keeping the same route contract.
 - v1.4: Expose diary and relationship-derived state without overwriting core persona.
 
 ## interface expectation

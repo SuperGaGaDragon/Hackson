@@ -1,17 +1,25 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from conversations.schemas import ConversationCreateRequest, MessageAppendRequest
 from conversations.service import ConversationService
 from context.builder import ContextBuilder
-from context.schemas import ContextBuildInput, ContextMode, ConversationMessage, SenderType, UserProfileSnapshot
-from agents.catalog import default_agent_snapshots, ensure_agent_id
+from context.schemas import (
+    ContextBuildInput,
+    ContextMode,
+    ConversationMessage,
+    ConversationSummary,
+    SenderType,
+    UserProfileSnapshot,
+)
+from agents.catalog import default_agent_snapshots, ensure_agent_id, user_agent_snapshots
 from interactions.schemas import IdleTickRequest, InteractionUserMessageRequest
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, RuntimeMessage
 from workers.derived_jobs import DerivedJobCreateRequest, DerivedJobService
@@ -19,6 +27,17 @@ from workers.derived_jobs import DerivedJobCreateRequest, DerivedJobService
 
 class ModelRuntimeProtocol(Protocol):
     def generate(self, request: ModelGenerateRequest) -> ModelGenerateResponse: ...
+
+
+class UserServiceProtocol(Protocol):
+    def get_user(self, user_id: str) -> dict: ...
+
+
+@dataclass(frozen=True)
+class _ContextWindow:
+    recent_messages: list[ConversationMessage]
+    summary: ConversationSummary | None
+    speaker_names: dict[str, str]
 
 
 class InteractionService:
@@ -30,23 +49,28 @@ class InteractionService:
         context_builder: ContextBuilder,
         model_runtime: ModelRuntimeProtocol,
         derived_jobs: DerivedJobService | None = None,
+        user_service: UserServiceProtocol | None = None,
     ):
         self.conversation_service = conversation_service
         self.context_builder = context_builder
         self.model_runtime = model_runtime
         self.derived_jobs = derived_jobs
+        self.user_service = user_service
 
     def run_idle_tick(self, user_id: str, conversation_id: str, payload: IdleTickRequest) -> dict:
         conversation = self.conversation_service.get_conversation(user_id, conversation_id)
-        recent = self._recent_context_messages(user_id, conversation_id)
+        context_window = self._context_window(user_id, conversation_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
         package = self.context_builder.build(
             ContextBuildInput(
                 mode=ContextMode.IDLE,
                 conversation_id=conversation_id,
                 target_agent_id=target_agent_id,
-                agents=default_agent_snapshots(),
-                recent_messages=recent,
+                agents=self._agent_snapshots(user_id),
+                recent_messages=context_window.recent_messages,
+                summary=context_window.summary,
+                user_profile=self._user_profile(user_id),
+                user_direction=payload.discussion_direction,
                 idle_seed=payload.idle_seed or "继续 idle 对话，保持自然、简短、有生活感。",
                 token_budget=6000,
             )
@@ -91,16 +115,18 @@ class InteractionService:
                 metadata=payload.metadata,
             ),
         )
-        idle_recent = self._recent_context_messages(user_id, idle_conversation_id)
+        idle_window = self._context_window(user_id, idle_conversation_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
         package = self.context_builder.build(
             ContextBuildInput(
                 mode=ContextMode.COMPANION_1,
                 conversation_id=companion["id"],
                 target_agent_id=target_agent_id,
-                agents=default_agent_snapshots(),
+                agents=self._agent_snapshots(user_id),
                 user_message=payload.content,
-                idle_recent_messages=idle_recent,
+                idle_recent_messages=idle_window.recent_messages,
+                idle_summary=idle_window.summary,
+                user_profile=self._user_profile(user_id),
                 token_budget=6000,
             )
         )
@@ -158,17 +184,18 @@ class InteractionService:
                 metadata=payload.metadata,
             ),
         )
-        recent = self._recent_context_messages(user_id, conversation_id)
+        context_window = self._context_window(user_id, conversation_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
         package = self.context_builder.build(
             ContextBuildInput(
                 mode=ContextMode.COMPANION_2,
                 conversation_id=conversation_id,
                 target_agent_id=target_agent_id,
-                agents=default_agent_snapshots(),
+                agents=self._agent_snapshots(user_id),
                 user_message=payload.content,
-                recent_messages=recent,
-                user_profile=UserProfileSnapshot(id=user_id, language_preference="zh"),
+                recent_messages=context_window.recent_messages,
+                summary=context_window.summary,
+                user_profile=self._user_profile(user_id),
                 token_budget=6000,
             )
         )
@@ -208,22 +235,24 @@ class InteractionService:
                 metadata=payload.metadata,
             ),
         )
-        recent = self._recent_context_messages(user_id, conversation_id)
-        idle_recent = []
+        context_window = self._context_window(user_id, conversation_id)
+        idle_window = _ContextWindow(recent_messages=[], summary=None, speaker_names={})
         parent_id = conversation.get("parentConversationId")
         if parent_id:
-            idle_recent = self._recent_context_messages(user_id, parent_id)
+            idle_window = self._context_window(user_id, parent_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
         package = self.context_builder.build(
             ContextBuildInput(
                 mode=ContextMode.COMPANION_1,
                 conversation_id=conversation_id,
                 target_agent_id=target_agent_id,
-                agents=default_agent_snapshots(),
+                agents=self._agent_snapshots(user_id),
                 user_message=payload.content,
-                recent_messages=recent,
-                idle_recent_messages=idle_recent,
-                user_profile=UserProfileSnapshot(id=user_id, language_preference="zh"),
+                recent_messages=context_window.recent_messages,
+                summary=context_window.summary,
+                idle_recent_messages=idle_window.recent_messages,
+                idle_summary=idle_window.summary,
+                user_profile=self._user_profile(user_id),
                 token_budget=6000,
             )
         )
@@ -271,16 +300,18 @@ class InteractionService:
                 metadata=payload.metadata,
             ),
         )
-        recent = self._recent_context_messages(user_id, conversation_id)
+        context_window = self._context_window(user_id, conversation_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
         package = self.context_builder.build(
             ContextBuildInput(
                 mode=ContextMode.WORK,
                 conversation_id=conversation_id,
                 target_agent_id=target_agent_id,
-                agents=default_agent_snapshots(),
+                agents=self._agent_snapshots(user_id),
                 user_message=payload.content,
-                recent_messages=recent,
+                recent_messages=context_window.recent_messages,
+                summary=context_window.summary,
+                user_profile=self._user_profile(user_id),
                 task_state=task_state,
                 token_budget=6000,
             )
@@ -304,8 +335,12 @@ class InteractionService:
         return self._response(updated_conversation, user_message, agent_message, package, model_response)
 
     def _recent_context_messages(self, user_id: str, conversation_id: str) -> list[ConversationMessage]:
+        return self._context_window(user_id, conversation_id).recent_messages
+
+    def _context_window(self, user_id: str, conversation_id: str) -> "_ContextWindow":
         conversation = self.conversation_service.get_conversation(user_id, conversation_id)
-        after_sequence = max((conversation.get("messageCount") or 0) - 20, 0)
+        message_count = conversation.get("messageCount") or 0
+        after_sequence = max(message_count - 20, 0)
         page = self.conversation_service.list_messages(
             user_id,
             conversation_id,
@@ -314,7 +349,67 @@ class InteractionService:
             created_before=None,
             limit=20,
         )
-        return [_context_message(row) for row in page["messages"]]
+        speaker_names = self._agent_names(user_id)
+        recent = [_context_message(row, speaker_names) for row in page["messages"]]
+        return _ContextWindow(
+            recent_messages=recent,
+            summary=self._compact_summary(user_id, conversation_id, after_sequence, speaker_names),
+            speaker_names=speaker_names,
+        )
+
+    def _compact_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        before_or_at_sequence: int,
+        speaker_names: dict[str, str],
+    ) -> ConversationSummary | None:
+        if before_or_at_sequence <= 0:
+            return None
+        page = self.conversation_service.list_messages(
+            user_id,
+            conversation_id,
+            after_sequence=0,
+            created_after=None,
+            created_before=None,
+            limit=min(before_or_at_sequence, 100),
+        )
+        older_rows = [row for row in page["messages"] if row["sequence"] <= before_or_at_sequence]
+        if not older_rows:
+            return None
+        selected_rows = older_rows[:4]
+        if len(older_rows) > 8:
+            selected_rows = older_rows[:4] + older_rows[-4:]
+        lines = [f"{len(older_rows)} older messages compacted."]
+        for row in selected_rows:
+            lines.append(f"- {_speaker_name(row, speaker_names) or row.get('senderType')}: {row['content']}")
+        return ConversationSummary(
+            id=f"compact-{conversation_id}-{before_or_at_sequence}",
+            summary_type="compact_context",
+            content="\n".join(lines),
+        )
+
+    def _user_profile(self, user_id: str) -> UserProfileSnapshot | None:
+        if self.user_service is None:
+            return None
+        user = self.user_service.get_user(user_id)
+        return UserProfileSnapshot(
+            id=user["id"],
+            username=user.get("username"),
+            display_name=user.get("displayName"),
+            language_preference=user.get("languagePreference") or "zh",
+            personality=user.get("personality") or None,
+            story=user.get("story") or None,
+        )
+
+    def _agent_snapshots(self, user_id: str):
+        if self.user_service is None:
+            return default_agent_snapshots()
+        user = self.user_service.get_user(user_id)
+        return user_agent_snapshots(user.get("agentProfiles"))
+
+    def _agent_names(self, user_id: str) -> dict[str, str]:
+        return {agent.id: agent.name for agent in self._agent_snapshots(user_id)}
 
     def _generate(self, package) -> ModelGenerateResponse:
         return self.model_runtime.generate(
@@ -389,20 +484,22 @@ class InteractionService:
         }
 
 
-def _context_message(row: dict) -> ConversationMessage:
+def _context_message(row: dict, speaker_names: dict[str, str] | None = None) -> ConversationMessage:
     sender_slot = row.get("senderSlot")
     return ConversationMessage(
         id=row["id"],
         sender_type=SenderType(row["senderType"]),
         sender_id=row.get("senderId") or sender_slot,
-        sender_name=_speaker_name(row),
+        sender_name=_speaker_name(row, speaker_names),
         content=row["content"],
         metadata=row.get("metadata", {}),
     )
 
 
-def _speaker_name(row: dict) -> str | None:
+def _speaker_name(row: dict, speaker_names: dict[str, str] | None = None) -> str | None:
     sender_slot = row.get("senderSlot")
+    if speaker_names and sender_slot in speaker_names:
+        return speaker_names[sender_slot]
     if sender_slot == "agent_1":
         return "Nora"
     if sender_slot == "agent_2":

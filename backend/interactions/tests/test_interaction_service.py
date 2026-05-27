@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -33,6 +33,25 @@ class FakeModelRuntime:
         else:
             text = "那我们继续把这个 idle 想法讲清楚。"
         return ModelGenerateResponse(text=text, model_name="fake-model", provider="fake")
+
+
+class FakeUserService:
+    def __init__(self, users: dict[str, dict[str, Any]] | None = None) -> None:
+        self.users = users or {}
+
+    def get_user(self, user_id: str) -> dict[str, Any]:
+        return self.users.get(
+            user_id,
+            {
+                "id": user_id,
+                "username": "demo_user",
+                "displayName": "Demo",
+                "languagePreference": "zh",
+                "personality": "",
+                "story": "",
+                "agentProfiles": [],
+            },
+        )
 
 
 class InteractionServiceTest(TestCase):
@@ -97,8 +116,101 @@ class InteractionServiceTest(TestCase):
 
         prompt = _prompt_text(self.model_runtime.requests[-1])
         self.assertIn("fresh anti-repeat marker", prompt)
-        self.assertNotIn("old loop marker 0", prompt)
+        recent_section = prompt.split("Recent Nora/Vale idle messages:", maxsplit=1)[1]
+        self.assertNotIn("old loop marker 0", recent_section)
         self.assertIn("Vale:", prompt)
+
+    def test_idle_tick_passes_user_profile_direction_and_compact_summary(self) -> None:
+        user_service = FakeUserService(
+            {
+                "user_1": {
+                    "id": "user_1",
+                    "username": "demo_user",
+                    "displayName": "Demo",
+                    "languagePreference": "zh",
+                    "personality": "quiet, direct, product-minded",
+                    "story": "I am preparing a 30 second demo.",
+                    "agentProfiles": [
+                        {
+                            "slot": "agent_1",
+                            "name": "Mira",
+                            "short": "A1",
+                            "color": "teal",
+                            "voice": "soft skeptic",
+                            "personality": "A careful skeptic who spots demo risk.",
+                            "story": "Used to be Nora, now focused on launch narrative.",
+                        },
+                        {
+                            "slot": "agent_2",
+                            "name": "Rook",
+                            "short": "A2",
+                            "color": "amber",
+                            "voice": "direct builder",
+                            "personality": "A builder who converts ideas into next steps.",
+                            "story": "",
+                        },
+                    ],
+                }
+            }
+        )
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=self.model_runtime,
+            user_service=user_service,
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        for index in range(30):
+            slot = "agent_1" if index % 2 == 0 else "agent_2"
+            self.conversation_service.append_message(
+                "user_1",
+                idle["id"],
+                MessageAppendRequest(
+                    sender_type="agent",
+                    sender_slot=slot,
+                    role="assistant",
+                    content=f"older context marker {index}",
+                ),
+            )
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_2",
+                role="assistant",
+                content="latest visible topic marker",
+            ),
+        )
+
+        response = service.run_idle_tick(
+            "user_1",
+            idle["id"],
+            IdleTickRequest(targetAgentId="agent_1", discussionDirection="希望从 demo 讲解节奏展开"),
+        )
+
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("User profile:", prompt)
+        self.assertIn("name: Mira", prompt)
+        self.assertIn("core_persona: A careful skeptic who spots demo risk.", prompt)
+        self.assertIn("- Rook: A builder who converts ideas into next steps.", prompt)
+        self.assertIn("personality: quiet, direct, product-minded", prompt)
+        self.assertIn("story: I am preparing a 30 second demo.", prompt)
+        self.assertIn("User direction:", prompt)
+        self.assertIn("希望从 demo 讲解节奏展开", prompt)
+        self.assertIn("compact_context summary:", prompt)
+        self.assertIn("older context marker 0", prompt)
+        self.assertIn("latest visible topic marker", prompt)
+        self.assertEqual(response["conversation"]["messageCount"], 32)
+        page = self.conversation_service.list_messages(
+            "user_1",
+            idle["id"],
+            after_sequence=0,
+            created_after=None,
+            created_before=None,
+            limit=100,
+        )
+        self.assertFalse(any(message["senderType"] == "user" for message in page["messages"]))
 
     def test_companion_1_join_creates_child_conversation_and_transition_reply(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle("user_1")
@@ -174,6 +286,61 @@ class InteractionServiceTest(TestCase):
         self.assertIn("一句话说 V1 目标", prompt)
         self.assertIn("name: Vale", prompt)
         self.assertNotIn("name: Beryl", prompt)
+
+    def test_companion_2_context_uses_current_user_profile(self) -> None:
+        user_service = FakeUserService(
+            {
+                "user_1": {
+                    "id": "user_1",
+                    "username": "demo_user",
+                    "displayName": "Demo",
+                    "languagePreference": "zh",
+                    "personality": "skeptical but fast-moving",
+                    "story": "I am testing whether the product respects user background.",
+                    "agentProfiles": [
+                        {
+                            "slot": "agent_1",
+                            "name": "Mira",
+                            "short": "A1",
+                            "color": "teal",
+                            "voice": "careful",
+                            "personality": "A careful skeptic.",
+                            "story": "",
+                        },
+                        {
+                            "slot": "agent_2",
+                            "name": "Rook",
+                            "short": "A2",
+                            "color": "amber",
+                            "voice": "builder",
+                            "personality": "A product builder.",
+                            "story": "Works fast.",
+                        },
+                    ],
+                }
+            }
+        )
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=self.model_runtime,
+            user_service=user_service,
+        )
+        companion = self.conversation_service.create_conversation(
+            "user_1",
+            ConversationCreateRequest(mode="companion_2"),
+        )
+
+        service.run_companion_2_message(
+            "user_1",
+            companion["id"],
+            InteractionUserMessageRequest(content="按我的背景回复。"),
+        )
+
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("personality: skeptical but fast-moving", prompt)
+        self.assertIn("story: I am testing whether the product respects user background.", prompt)
+        self.assertIn("name: Mira", prompt)
 
     def test_companion_2_enqueues_summary_and_memory_jobs_after_reply(self) -> None:
         derived_repository = FakeDerivedJobRepository()

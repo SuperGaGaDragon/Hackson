@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -17,6 +17,9 @@ Last Modified by: Codex
 - Implement idle, companion_1, companion_2, and work recipes.
 - Generate Transition Context for users joining idle.
 - Combine recent messages with summaries once compaction exists.
+- Keep human user profile separate from Agent persona.
+- Use user-specific Agent profiles when the interaction layer provides them.
+- Keep idle user topic direction separate from visible transcript messages.
 - Record context package metadata for debugging.
 
 ## not responsible for
@@ -45,8 +48,8 @@ conversations decides: how does the product flow proceed?
 ```
 
 ## recipe plan
-- `idle`: strong Agent persona, recent idle messages, idle seed, optional summary.
-- `companion_1`: Transition Context on join, user message, recent child companion messages, recent idle messages, idle summary, Agent persona.
+- `idle`: strong Agent persona, user profile, user direction, recent idle messages, idle seed, optional compact summary.
+- `companion_1`: Transition Context on join, user message, recent child companion messages, recent idle messages, idle summary, Agent persona, user profile.
 - `companion_2`: user message, current chat recent messages, Agent persona, lightweight profile.
 - `work`: user objective, task state, tool traces, role instructions.
 
@@ -61,5 +64,6 @@ conversations decides: how does the product flow proceed?
 - This module does not call model providers.
 - This module does not save messages.
 - This module does not mutate Agent source records.
-- Callers must pass Agent persona snapshots from `agents/`.
+- Callers must pass Agent persona snapshots from user-owned Agent profiles or the `agents/` fallback catalog.
 - Callers must pass recent messages and summaries from conversation storage.
+- Callers should pass `UserProfileSnapshot` when a route is user-facing.
