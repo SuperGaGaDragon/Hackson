@@ -17,6 +17,28 @@ export function listProjects() {
   return apiRequest("/api/work/projects");
 }
 
+export function createEmployee(payload) {
+  return apiRequest("/api/work/employees", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listEmployees() {
+  return apiRequest("/api/work/employees");
+}
+
+export function addProjectEmployee(projectId, payload) {
+  return apiRequest(`/api/work/projects/${projectId}/employees`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listProjectEmployees(projectId) {
+  return apiRequest(`/api/work/projects/${projectId}/employees`);
+}
+
 export function createMission(payload) {
   return apiRequest("/api/work/missions", {
     method: "POST",

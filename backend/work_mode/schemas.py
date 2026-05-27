@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -11,6 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 ProjectStatus = Literal["active", "archived"]
+EmployeeStatus = Literal["active", "archived"]
 MissionStatus = Literal["draft", "running", "paused", "stopping", "stopped", "blocked", "failed", "completed"]
 RunStatus = Literal["running", "stopped", "failed", "completed"]
 StepStatus = Literal["pending", "running", "failed", "completed", "skipped"]
@@ -39,6 +40,54 @@ class ProjectCreateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("name", "repo_path")
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("required_text_empty")
+        return value
+
+
+class EmployeeCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    role: str = Field(min_length=1, max_length=120)
+    personality: str = Field(default="", max_length=2000)
+    experience: list[str] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+    permissions: dict[str, bool] = Field(default_factory=dict)
+    default_output_style: str = Field(default="structured_summary", max_length=120, alias="defaultOutputStyle")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("name", "role", "default_output_style")
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("required_text_empty")
+        return value
+
+    @field_validator("personality")
+    @classmethod
+    def strip_optional_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("experience", "skills")
+    @classmethod
+    def strip_text_list(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
+
+
+class ProjectEmployeeAddRequest(BaseModel):
+    employee_id: str = Field(min_length=1, alias="employeeId")
+    role_on_project: str = Field(default="Member", min_length=1, max_length=120, alias="roleOnProject")
+    is_lead_default: bool = Field(default=False, alias="isLeadDefault")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("employee_id", "role_on_project")
     @classmethod
     def strip_required_text(cls, value: str) -> str:
         value = value.strip()
@@ -102,6 +151,39 @@ class ProjectResponse(BaseModel):
     updated_at: datetime = Field(alias="updatedAt")
 
 
+class EmployeeResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    user_id: str = Field(alias="userId")
+    name: str
+    role: str
+    personality: str
+    experience: list[str]
+    skills: list[str]
+    permissions: dict[str, bool]
+    default_output_style: str = Field(alias="defaultOutputStyle")
+    status: EmployeeStatus
+    metadata: dict[str, Any]
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
+class ProjectEmployeeResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    user_id: str = Field(alias="userId")
+    project_id: str = Field(alias="projectId")
+    employee_id: str = Field(alias="employeeId")
+    employee: EmployeeResponse
+    role_on_project: str = Field(alias="roleOnProject")
+    is_lead_default: bool = Field(alias="isLeadDefault")
+    metadata: dict[str, Any]
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
 class MissionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -115,6 +197,7 @@ class MissionResponse(BaseModel):
     max_iterations: int = Field(alias="maxIterations")
     lead_employee_id: str = Field(alias="leadEmployeeId")
     lead_employee_name: str = Field(alias="leadEmployeeName")
+    lead_employee_role: str = Field(alias="leadEmployeeRole")
     supporting_employee_ids: list[str] = Field(alias="supportingEmployeeIds")
     current_step: str | None = Field(default=None, alias="currentStep")
     last_error: str | None = Field(default=None, alias="lastError")

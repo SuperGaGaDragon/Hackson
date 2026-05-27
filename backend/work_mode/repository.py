@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -18,6 +18,8 @@ class WorkModeRepository:
 
     def __init__(self, database: Database):
         self.projects: Collection = database["work_projects"]
+        self.employees: Collection = database["work_employees"]
+        self.project_employees: Collection = database["work_project_employees"]
         self.missions: Collection = database["work_missions"]
         self.runs: Collection = database["work_runs"]
         self.steps: Collection = database["work_steps"]
@@ -27,6 +29,15 @@ class WorkModeRepository:
     def ensure_indexes(self) -> None:
         self.projects.create_index([("user_id", ASCENDING), ("status", ASCENDING), ("updated_at", DESCENDING)])
         self.projects.create_index([("user_id", ASCENDING), ("name", ASCENDING)])
+        self.employees.create_index([("user_id", ASCENDING), ("status", ASCENDING), ("updated_at", DESCENDING)])
+        self.employees.create_index([("user_id", ASCENDING), ("name", ASCENDING)])
+        self.project_employees.create_index(
+            [("user_id", ASCENDING), ("project_id", ASCENDING), ("employee_id", ASCENDING)],
+            unique=True,
+        )
+        self.project_employees.create_index(
+            [("user_id", ASCENDING), ("project_id", ASCENDING), ("updated_at", DESCENDING)]
+        )
         self.missions.create_index(
             [("user_id", ASCENDING), ("project_id", ASCENDING), ("status", ASCENDING), ("updated_at", DESCENDING)]
         )
@@ -57,6 +68,49 @@ class WorkModeRepository:
 
     def list_projects(self, user_id: str, limit: int) -> list[dict[str, Any]]:
         return list(self.projects.find({"user_id": user_id}).sort("updated_at", DESCENDING).limit(limit))
+
+    def create_employee(self, document: dict[str, Any]) -> dict[str, Any]:
+        result = self.employees.insert_one(document)
+        created = self.employees.find_one({"_id": result.inserted_id})
+        assert created is not None
+        return created
+
+    def find_employee(self, employee_id: str, user_id: str) -> dict[str, Any] | None:
+        query_id = _object_id_or_none(employee_id)
+        if query_id is None:
+            return None
+        return self.employees.find_one({"_id": query_id, "user_id": user_id})
+
+    def list_employees(self, user_id: str, limit: int) -> list[dict[str, Any]]:
+        return list(self.employees.find({"user_id": user_id}).sort("updated_at", DESCENDING).limit(limit))
+
+    def add_project_employee(self, document: dict[str, Any]) -> dict[str, Any]:
+        document = dict(document)
+        document["project_id"] = _object_id(document["project_id"])
+        document["employee_id"] = _object_id(document["employee_id"])
+        result = self.project_employees.insert_one(document)
+        created = self.project_employees.find_one({"_id": result.inserted_id})
+        assert created is not None
+        return created
+
+    def find_project_employee(self, project_id: str, employee_id: str, user_id: str) -> dict[str, Any] | None:
+        project_query_id = _object_id_or_none(project_id)
+        employee_query_id = _object_id_or_none(employee_id)
+        if project_query_id is None or employee_query_id is None:
+            return None
+        return self.project_employees.find_one(
+            {"project_id": project_query_id, "employee_id": employee_query_id, "user_id": user_id}
+        )
+
+    def list_project_employees(self, user_id: str, project_id: str, limit: int) -> list[dict[str, Any]]:
+        query_id = _object_id_or_none(project_id)
+        if query_id is None:
+            return []
+        return list(
+            self.project_employees.find({"user_id": user_id, "project_id": query_id})
+            .sort("updated_at", DESCENDING)
+            .limit(limit)
+        )
 
     def create_mission(self, document: dict[str, Any]) -> dict[str, Any]:
         document = dict(document)

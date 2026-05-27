@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -35,9 +35,45 @@ def public_mission(document: dict[str, Any]) -> dict[str, Any]:
         "maxIterations": document.get("max_iterations", 1),
         "leadEmployeeId": document.get("lead_employee_id", "employee_default_lead"),
         "leadEmployeeName": document.get("lead_employee_name", "Lead"),
+        "leadEmployeeRole": document.get("lead_employee_role", "Mission lead"),
         "supportingEmployeeIds": document.get("supporting_employee_ids", []),
         "currentStep": document.get("current_step"),
         "lastError": document.get("last_error"),
+        "metadata": document.get("metadata", {}),
+        "createdAt": document["created_at"],
+        "updatedAt": document["updated_at"],
+    }
+
+
+def public_employee(document: dict[str, Any]) -> dict[str, Any]:
+    """Convert a persisted Employee document to the public API shape."""
+    return {
+        "id": _public_id(document["_id"]),
+        "userId": document["user_id"],
+        "name": document["name"],
+        "role": document["role"],
+        "personality": document.get("personality", ""),
+        "experience": document.get("experience", []),
+        "skills": document.get("skills", []),
+        "permissions": document.get("permissions", {}),
+        "defaultOutputStyle": document.get("default_output_style", "structured_summary"),
+        "status": document.get("status", "active"),
+        "metadata": document.get("metadata", {}),
+        "createdAt": document["created_at"],
+        "updatedAt": document["updated_at"],
+    }
+
+
+def public_project_employee(document: dict[str, Any], employee: dict[str, Any]) -> dict[str, Any]:
+    """Convert a Project Employee membership to the public API shape."""
+    return {
+        "id": _public_id(document["_id"]),
+        "userId": document["user_id"],
+        "projectId": _public_id(document["project_id"]),
+        "employeeId": _public_id(document["employee_id"]),
+        "employee": public_employee(employee),
+        "roleOnProject": document.get("role_on_project", "Member"),
+        "isLeadDefault": bool(document.get("is_lead_default", False)),
         "metadata": document.get("metadata", {}),
         "createdAt": document["created_at"],
         "updatedAt": document["updated_at"],

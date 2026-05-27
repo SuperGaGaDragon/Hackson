@@ -1,12 +1,12 @@
 /*
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 */
 import StatusLine from "../../../shared/components/StatusLine";
 
-function InspectorPanel({ busy, error, mission, project }) {
+function InspectorPanel({ busy, error, mission, project, teamCount = 0 }) {
   return (
     <aside className="context-rail inspector-rail">
       <div className="panel-head compact">
@@ -22,6 +22,10 @@ function InspectorPanel({ busy, error, mission, project }) {
       <div className="context-item">
         <span>Lead</span>
         <p>{mission?.leadEmployeeName || "Lead"}</p>
+      </div>
+      <div className="context-item">
+        <span>Team</span>
+        <p>{teamCount}</p>
       </div>
       <div className="context-item">
         <span>Step</span>

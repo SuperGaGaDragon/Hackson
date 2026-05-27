@@ -993,6 +993,106 @@ Target smoke:
 
 ## 12. Migration Strategy
 
+## 13. V0.1 Employee Library Implementation Plan
+
+### 13.1 Goal
+
+Implement the smallest product-grade Employee loop from `brainstorm2.md`:
+
+```text
+Create Employee
+  -> Add Employee to Project team
+  -> Create Mission with that Employee as Lead
+  -> Start Mission
+  -> Mission UI and event payload show selected Lead
+```
+
+### 13.2 Product Rules
+
+- Employee personality and permissions are separate.
+- V0.1 stores permissions but does not execute tools from them.
+- Project team membership controls which Employees can be selected as Mission Lead.
+- Default `Lead` remains available for existing Projects and old Missions.
+- Do not implement brainstorm, Codex delegation, reviewer loop, or employee memory growth in V0.1.
+
+### 13.3 Backend Additions
+
+Collections:
+
+- `work_employees`
+- `work_project_employees`
+
+Employee fields:
+
+- `name`
+- `role`
+- `personality`
+- `experience`
+- `skills`
+- `permissions`
+- `default_output_style`
+- `status`
+
+Project membership fields:
+
+- `project_id`
+- `employee_id`
+- `role_on_project`
+- `is_lead_default`
+
+Routes:
+
+- `POST /api/work/employees`
+- `GET /api/work/employees`
+- `POST /api/work/projects/{projectId}/employees`
+- `GET /api/work/projects/{projectId}/employees`
+
+Mission creation:
+
+- If `leadEmployeeId` is `employee_default_lead`, use the default Lead.
+- Otherwise require that the Employee belongs to the same Project team.
+- Persist `lead_employee_name` from the Employee profile.
+- Event payload must include selected Employee.
+
+### 13.4 Frontend Additions
+
+Work page left rail:
+
+- Compact Employee create form.
+- Team list for selected Project.
+- Add Employee to Project.
+- Mission create form includes Lead selector.
+
+Inspector:
+
+- Show selected Lead.
+- Show Project Team count.
+
+Copy must stay short:
+
+- `Employees`
+- `Team`
+- `Lead`
+- `Role`
+- `Add`
+
+### 13.5 Verification
+
+Local:
+
+- `python -m unittest discover -s work_mode/tests -p 'test*.py'`
+- `npm run build`
+
+Target:
+
+- New target-machine port only.
+- New MongoDB database.
+- Verify Employee API.
+- Verify Project Team API.
+- Verify Mission created with selected Lead.
+- Verify Mission events contain selected Lead.
+- Browser screenshot desktop and mobile.
+
 V0 can coexist with old Work tasks.
 
 During V0:

@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -13,6 +13,8 @@ from core.database import get_database
 from users.auth import get_current_user_id
 from work_mode.repository import WorkModeRepository
 from work_mode.schemas import (
+    EmployeeCreateRequest,
+    EmployeeResponse,
     EventResponse,
     MissionCreateRequest,
     MissionDetailResponse,
@@ -20,6 +22,8 @@ from work_mode.schemas import (
     MissionStartRequest,
     MissionStopRequest,
     ProjectCreateRequest,
+    ProjectEmployeeAddRequest,
+    ProjectEmployeeResponse,
     ProjectResponse,
 )
 from work_mode.service import WorkModeService
@@ -52,6 +56,48 @@ def list_projects(
     service: WorkModeService = Depends(get_work_mode_service),
 ) -> list[dict]:
     return service.list_projects(current_user_id, limit)
+
+
+@router.post("/employees", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
+def create_employee(
+    payload: EmployeeCreateRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.create_employee(current_user_id, payload)
+
+
+@router.get("/employees", response_model=list[EmployeeResponse])
+def list_employees(
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> list[dict]:
+    return service.list_employees(current_user_id, limit)
+
+
+@router.post(
+    "/projects/{project_id}/employees",
+    response_model=ProjectEmployeeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_project_employee(
+    project_id: str,
+    payload: ProjectEmployeeAddRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.add_project_employee(current_user_id, project_id, payload)
+
+
+@router.get("/projects/{project_id}/employees", response_model=list[ProjectEmployeeResponse])
+def list_project_employees(
+    project_id: str,
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> list[dict]:
+    return service.list_project_employees(current_user_id, project_id, limit)
 
 
 @router.post("/missions", response_model=MissionResponse, status_code=status.HTTP_201_CREATED)

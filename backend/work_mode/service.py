@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
@@ -10,8 +10,23 @@ from typing import Any, Protocol
 from fastapi import HTTPException, status
 
 from conversations.model import now_utc
-from work_mode.model import public_event, public_mission, public_project, public_run, public_step
-from work_mode.schemas import MissionCreateRequest, MissionStartRequest, MissionStopRequest, ProjectCreateRequest
+from work_mode.model import (
+    public_employee,
+    public_event,
+    public_mission,
+    public_project,
+    public_project_employee,
+    public_run,
+    public_step,
+)
+from work_mode.schemas import (
+    EmployeeCreateRequest,
+    MissionCreateRequest,
+    MissionStartRequest,
+    MissionStopRequest,
+    ProjectCreateRequest,
+    ProjectEmployeeAddRequest,
+)
 
 DEFAULT_LEAD_EMPLOYEE = {
     "id": "employee_default_lead",
@@ -25,6 +40,12 @@ class WorkModeRepositoryProtocol(Protocol):
     def create_project(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def find_project(self, project_id: str, user_id: str) -> dict[str, Any] | None: ...
     def list_projects(self, user_id: str, limit: int) -> list[dict[str, Any]]: ...
+    def create_employee(self, document: dict[str, Any]) -> dict[str, Any]: ...
+    def find_employee(self, employee_id: str, user_id: str) -> dict[str, Any] | None: ...
+    def list_employees(self, user_id: str, limit: int) -> list[dict[str, Any]]: ...
+    def add_project_employee(self, document: dict[str, Any]) -> dict[str, Any]: ...
+    def find_project_employee(self, project_id: str, employee_id: str, user_id: str) -> dict[str, Any] | None: ...
+    def list_project_employees(self, user_id: str, project_id: str, limit: int) -> list[dict[str, Any]]: ...
     def create_mission(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def find_mission(self, mission_id: str, user_id: str) -> dict[str, Any] | None: ...
     def list_missions(self, user_id: str, project_id: str, limit: int) -> list[dict[str, Any]]: ...
@@ -64,8 +85,61 @@ class WorkModeService:
         safe_limit = min(max(limit, 1), 100)
         return [public_project(row) for row in self.repository.list_projects(user_id, safe_limit)]
 
+    def create_employee(self, user_id: str, payload: EmployeeCreateRequest) -> dict[str, Any]:
+        timestamp = now_utc()
+        document = {
+            "user_id": user_id,
+            "name": payload.name,
+            "role": payload.role,
+            "personality": payload.personality,
+            "experience": payload.experience,
+            "skills": payload.skills,
+            "permissions": payload.permissions,
+            "default_output_style": payload.default_output_style,
+            "status": "active",
+            "metadata": payload.metadata,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        return public_employee(self.repository.create_employee(document))
+
+    def list_employees(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        safe_limit = min(max(limit, 1), 100)
+        return [public_employee(row) for row in self.repository.list_employees(user_id, safe_limit)]
+
+    def add_project_employee(self, user_id: str, project_id: str, payload: ProjectEmployeeAddRequest) -> dict[str, Any]:
+        project = self._require_project(user_id, project_id)
+        employee = self._require_employee(user_id, payload.employee_id)
+        existing = self.repository.find_project_employee(str(project["_id"]), str(employee["_id"]), user_id)
+        if existing is not None:
+            return public_project_employee(existing, employee)
+        timestamp = now_utc()
+        document = {
+            "user_id": user_id,
+            "project_id": project["_id"],
+            "employee_id": employee["_id"],
+            "role_on_project": payload.role_on_project,
+            "is_lead_default": payload.is_lead_default,
+            "metadata": payload.metadata,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        return public_project_employee(self.repository.add_project_employee(document), employee)
+
+    def list_project_employees(self, user_id: str, project_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        project = self._require_project(user_id, project_id)
+        safe_limit = min(max(limit, 1), 100)
+        rows = self.repository.list_project_employees(user_id, str(project["_id"]), safe_limit)
+        employees = {str(row["_id"]): row for row in self.repository.list_employees(user_id, 500)}
+        return [
+            public_project_employee(row, employees[str(row["employee_id"])])
+            for row in rows
+            if str(row["employee_id"]) in employees
+        ]
+
     def create_mission(self, user_id: str, payload: MissionCreateRequest) -> dict[str, Any]:
         project = self._require_project(user_id, payload.project_id)
+        lead_employee = self._mission_lead_employee(user_id, str(project["_id"]), payload.lead_employee_id)
         timestamp = now_utc()
         document = {
             "user_id": user_id,
@@ -75,8 +149,9 @@ class WorkModeService:
             "status": "draft",
             "autonomy_level": payload.autonomy_level,
             "max_iterations": payload.max_iterations,
-            "lead_employee_id": payload.lead_employee_id,
-            "lead_employee_name": _employee_name(payload.lead_employee_id),
+            "lead_employee_id": lead_employee["id"],
+            "lead_employee_name": lead_employee["name"],
+            "lead_employee_role": lead_employee["role"],
             "supporting_employee_ids": payload.supporting_employee_ids,
             "current_step": None,
             "last_error": None,
@@ -330,6 +405,21 @@ class WorkModeService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="project_not_found")
         return project
 
+    def _require_employee(self, user_id: str, employee_id: str) -> dict[str, Any]:
+        employee = self.repository.find_employee(employee_id, user_id)
+        if employee is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="employee_not_found")
+        return employee
+
+    def _mission_lead_employee(self, user_id: str, project_id: str, employee_id: str) -> dict[str, str]:
+        if employee_id == DEFAULT_LEAD_EMPLOYEE["id"]:
+            return DEFAULT_LEAD_EMPLOYEE
+        employee = self._require_employee(user_id, employee_id)
+        membership = self.repository.find_project_employee(project_id, str(employee["_id"]), user_id)
+        if membership is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="employee_not_on_project")
+        return {"id": str(employee["_id"]), "name": employee["name"], "role": employee["role"]}
+
     def _require_mission(self, user_id: str, mission_id: str) -> dict[str, Any]:
         mission = self.repository.find_mission(mission_id, user_id)
         if mission is None:
@@ -349,15 +439,9 @@ class WorkModeService:
         return run
 
 
-def _employee_name(employee_id: str) -> str:
-    if employee_id == DEFAULT_LEAD_EMPLOYEE["id"]:
-        return DEFAULT_LEAD_EMPLOYEE["name"]
-    return employee_id
-
-
 def _employee_payload(mission: dict[str, Any]) -> dict[str, str]:
     return {
         "id": mission.get("lead_employee_id", DEFAULT_LEAD_EMPLOYEE["id"]),
         "name": mission.get("lead_employee_name", DEFAULT_LEAD_EMPLOYEE["name"]),
-        "role": DEFAULT_LEAD_EMPLOYEE["role"],
+        "role": mission.get("lead_employee_role", DEFAULT_LEAD_EMPLOYEE["role"]),
     }

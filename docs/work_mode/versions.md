@@ -38,6 +38,7 @@ The Lead Employee is the mission driver. The Lead Employee can use three tool cl
 | Version | Name | Product result | Runtime result | Release gate |
 | --- | --- | --- | --- | --- |
 | V0 | Mission Event Console | User can create a Project and Mission, start/stop it, and watch live structured events. | No autonomous code edits required. Worker can run a safe stub or read-only command. | Event stream works end to end on target machine. |
+| V0.1 | Employee Library | User can create Employees, add them to a Project team, and choose a Lead Employee for a Mission. | Mission state stores the selected Lead Employee and events show that Employee. | Target smoke proves one user-created Employee can lead a Mission. |
 | V0.5 | Single Codex Run | User can run one controlled Codex step for a Mission and see logs, summary, and artifacts. | One worker process invokes Codex or a configured command once. | Logs and result artifacts are persisted and visible. |
 | V1 | Supervised Mission Loop | Mission repeats controlled iterations until done, stopped, blocked, or limit reached. | Hard-coded supervisor loop controls max iterations, runtime, no-progress, and approval gates. | A coding Mission can run multiple iterations and stop deterministically. |
 | V1.25 | Project Employee Roster | User can add Employees to a Project, edit personality and experience, and choose a Lead Employee for a Mission. | Mission state stores roster selection and lead employee. | A Mission displays which Employee is leading and which Employees are available. |
@@ -119,6 +120,44 @@ Optional in V0:
 
 ## 5. V0.5 Single Codex Run
 
+## 5. V0.1 Employee Library
+
+### Product Goal
+
+Convert Work Mode language from generic Agents to a project team.
+
+The user can:
+
+- Create an Employee profile.
+- Add that Employee to a Project team.
+- Choose the Employee as Mission Lead.
+- See the Lead Employee on the Mission page and in Mission events.
+
+### Runtime Scope
+
+V0.1 only persists Employee profiles and membership.
+
+Do not implement:
+
+- Employee-to-Employee brainstorm.
+- Codex delegation.
+- Reviewer loop.
+- Employee memory growth.
+- Permission-enforced tool execution.
+
+### Release Gate
+
+Target-machine smoke must verify:
+
+- `POST /api/work/employees`
+- `GET /api/work/employees`
+- `POST /api/work/projects/{projectId}/employees`
+- `GET /api/work/projects/{projectId}/employees`
+- `POST /api/work/missions` with `leadEmployeeId`
+- Mission event payload includes the selected Employee.
+
+## 6. V0.5 Single Codex Run
+
 ### Product Goal
 
 Let the user start one Mission that invokes a controlled code worker once and returns visible logs and result state.
@@ -146,7 +185,7 @@ Target-machine smoke must verify:
 - `GET /api/work/missions/{missionId}/events`
 - Worker emits at least one `RAW_LOG` and one terminal Mission event.
 
-## 6. V1 Supervised Mission Loop
+## 7. V1 Supervised Mission Loop
 
 ### Product Goal
 
@@ -169,7 +208,7 @@ The model may request `loop.continue`, but the supervisor decides whether to con
 
 The supervisor must be deterministic. It uses persisted Mission state, run state, safety policy, iteration counters, timestamps, and approval status.
 
-## 7. V1.5 Diff, Tests, Approval
+## 8. V1.5 Diff, Tests, Approval
 
 ### Product Goal
 
@@ -196,7 +235,7 @@ Require approval before:
 - Deploying.
 - Running commands outside the allowlist.
 
-## 8. V1.25 Project Employee Roster
+## 9. V1.25 Project Employee Roster
 
 ### Product Goal
 
@@ -230,7 +269,7 @@ It must persist roster data and show which Employee is responsible for the Missi
 - User can choose a Lead Employee when creating a Mission.
 - Mission events show the Lead Employee.
 
-## 9. V2 Lead + Supporting Employees
+## 10. V2 Lead + Supporting Employees
 
 ### Product Goal
 
@@ -261,7 +300,7 @@ These tools write structured `EMPLOYEE_MESSAGE` or `BRAINSTORM_SUMMARY` events.
 
 A Mission can show a folded brainstorm thread and a concise Lead Employee decision in the main timeline.
 
-## 10. V3 Multi Project Runtime
+## 11. V3 Multi Project Runtime
 
 ### Product Goal
 
@@ -280,7 +319,7 @@ Run multiple independent Projects and Missions.
 
 Two Missions for two Projects can run without shared logs, shared worktrees, shared approval states, or crossed UI streams.
 
-## 11. V4 Custom Agent Graph
+## 12. V4 Custom Agent Graph
 
 ### Product Goal
 
@@ -298,7 +337,7 @@ Custom graphs cannot bypass:
 - Workspace isolation.
 - Event persistence.
 
-## 12. Current Repository Position
+## 13. Current Repository Position
 
 The repository currently has:
 

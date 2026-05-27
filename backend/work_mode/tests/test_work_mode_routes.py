@@ -87,3 +87,41 @@ class WorkModeRoutesTest(TestCase):
             [event["type"] for event in detail["events"]],
             ["MISSION_CREATED", "MISSION_STARTED", "MISSION_STOP_REQUESTED"],
         )
+
+    def test_employee_routes_allow_project_lead_selection(self) -> None:
+        project = self.client.post("/api/work/projects", json={"name": "Demo", "repoPath": "/repos/demo"}).json()
+        employee_response = self.client.post(
+            "/api/work/employees",
+            json={
+                "name": "Mira",
+                "role": "Designer",
+                "personality": "Calm",
+                "experience": ["Dashboards"],
+                "skills": ["ux"],
+                "permissions": {"can_edit_files": False},
+            },
+        )
+        self.assertEqual(employee_response.status_code, 201)
+        employee = employee_response.json()
+
+        add_response = self.client.post(
+            f"/api/work/projects/{project['id']}/employees",
+            json={"employeeId": employee["id"], "roleOnProject": "Lead"},
+        )
+        self.assertEqual(add_response.status_code, 201)
+
+        mission_response = self.client.post(
+            "/api/work/missions",
+            json={
+                "projectId": project["id"],
+                "title": "Mission",
+                "goal": "Run V0.",
+                "leadEmployeeId": employee["id"],
+            },
+        )
+
+        self.assertEqual(mission_response.status_code, 201)
+        mission = mission_response.json()
+        self.assertEqual(mission["leadEmployeeName"], "Mira")
+        detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
+        self.assertEqual(detail["events"][0]["payload"]["employee"]["name"], "Mira")

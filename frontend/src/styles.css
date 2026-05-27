@@ -879,6 +879,7 @@ input:disabled {
 }
 
 .work-create input,
+.work-create select,
 .work-create textarea {
   width: 100%;
   border: 1px solid #303941;
@@ -895,6 +896,7 @@ input:disabled {
 }
 
 .work-create input:focus,
+.work-create select:focus,
 .work-create textarea:focus {
   border-color: var(--teal);
 }
@@ -922,6 +924,35 @@ input:disabled {
 
 .rail-section {
   margin-top: 6px;
+}
+
+.team-list {
+  display: grid;
+  gap: 6px;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  padding: 8px;
+  background: #0c1115;
+}
+
+.team-row strong,
+.team-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.team-row span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .mission-content {

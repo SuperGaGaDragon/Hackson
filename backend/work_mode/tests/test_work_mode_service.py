@@ -11,7 +11,14 @@ from unittest import TestCase
 
 from fastapi import HTTPException
 
-from work_mode.schemas import MissionCreateRequest, MissionStartRequest, MissionStopRequest, ProjectCreateRequest
+from work_mode.schemas import (
+    EmployeeCreateRequest,
+    MissionCreateRequest,
+    MissionStartRequest,
+    MissionStopRequest,
+    ProjectCreateRequest,
+    ProjectEmployeeAddRequest,
+)
 from work_mode.service import WorkModeService
 from work_mode.worker import MissionWorker, _event_delay_seconds
 
@@ -20,6 +27,8 @@ class FakeWorkModeRepository:
     def __init__(self) -> None:
         self.indexes_ready = False
         self.projects: dict[str, dict[str, Any]] = {}
+        self.employees: dict[str, dict[str, Any]] = {}
+        self.project_employees: dict[str, dict[str, Any]] = {}
         self.missions: dict[str, dict[str, Any]] = {}
         self.runs: dict[str, dict[str, Any]] = {}
         self.steps: dict[str, dict[str, Any]] = {}
@@ -47,6 +56,38 @@ class FakeWorkModeRepository:
 
     def list_projects(self, user_id: str, limit: int) -> list[dict[str, Any]]:
         return [row for row in self.projects.values() if row["user_id"] == user_id][:limit]
+
+    def create_employee(self, document: dict[str, Any]) -> dict[str, Any]:
+        row = dict(document)
+        row["_id"] = self._id("employee")
+        self.employees[row["_id"]] = row
+        return row
+
+    def find_employee(self, employee_id: str, user_id: str) -> dict[str, Any] | None:
+        row = self.employees.get(employee_id)
+        return row if row is not None and row["user_id"] == user_id else None
+
+    def list_employees(self, user_id: str, limit: int) -> list[dict[str, Any]]:
+        return [row for row in self.employees.values() if row["user_id"] == user_id][:limit]
+
+    def add_project_employee(self, document: dict[str, Any]) -> dict[str, Any]:
+        row = dict(document)
+        row["_id"] = self._id("project_employee")
+        self.project_employees[row["_id"]] = row
+        return row
+
+    def find_project_employee(self, project_id: str, employee_id: str, user_id: str) -> dict[str, Any] | None:
+        for row in self.project_employees.values():
+            if row["project_id"] == project_id and row["employee_id"] == employee_id and row["user_id"] == user_id:
+                return row
+        return None
+
+    def list_project_employees(self, user_id: str, project_id: str, limit: int) -> list[dict[str, Any]]:
+        return [
+            row
+            for row in self.project_employees.values()
+            if row["user_id"] == user_id and row["project_id"] == project_id
+        ][:limit]
 
     def create_mission(self, document: dict[str, Any]) -> dict[str, Any]:
         row = dict(document)
@@ -153,6 +194,69 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(mission["leadEmployeeName"], "Lead")
         self.assertEqual(events[0]["type"], "MISSION_CREATED")
         self.assertEqual(events[0]["payload"]["employee"]["id"], "employee_default_lead")
+
+    def test_employee_can_join_project_and_lead_mission(self) -> None:
+        project = self.service.create_project(
+            "user_1",
+            ProjectCreateRequest(name="Cyber1924", repoPath="/repos/cyber1924"),
+        )
+        employee = self.service.create_employee(
+            "user_1",
+            EmployeeCreateRequest(
+                name="Mira",
+                role="Product Designer",
+                personality="Calm and visual.",
+                experience=["SaaS dashboards"],
+                skills=["ux_flow"],
+                permissions={"can_edit_files": False, "can_run_codex": False},
+            ),
+        )
+        self.service.add_project_employee(
+            "user_1",
+            project["id"],
+            ProjectEmployeeAddRequest(employeeId=employee["id"], roleOnProject="Lead"),
+        )
+
+        mission = self.service.create_mission(
+            "user_1",
+            MissionCreateRequest(
+                projectId=project["id"],
+                title="Design dashboard",
+                goal="Draft the Work dashboard.",
+                leadEmployeeId=employee["id"],
+            ),
+        )
+        events = self.service.list_events("user_1", mission["id"])
+
+        self.assertEqual(employee["name"], "Mira")
+        self.assertEqual(mission["leadEmployeeId"], employee["id"])
+        self.assertEqual(mission["leadEmployeeName"], "Mira")
+        self.assertEqual(mission["leadEmployeeRole"], "Product Designer")
+        self.assertEqual(events[0]["payload"]["employee"]["name"], "Mira")
+        self.assertEqual(events[0]["payload"]["employee"]["role"], "Product Designer")
+
+    def test_employee_must_join_project_before_leading_mission(self) -> None:
+        project = self.service.create_project(
+            "user_1",
+            ProjectCreateRequest(name="Cyber1924", repoPath="/repos/cyber1924"),
+        )
+        employee = self.service.create_employee(
+            "user_1",
+            EmployeeCreateRequest(name="Naomi", role="Reviewer"),
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.service.create_mission(
+                "user_1",
+                MissionCreateRequest(
+                    projectId=project["id"],
+                    title="Review",
+                    goal="Review the UI.",
+                    leadEmployeeId=employee["id"],
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
 
     def test_start_rejects_double_start(self) -> None:
         mission = self._mission()
