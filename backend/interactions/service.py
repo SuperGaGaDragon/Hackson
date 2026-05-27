@@ -304,10 +304,12 @@ class InteractionService:
         return self._response(updated_conversation, user_message, agent_message, package, model_response)
 
     def _recent_context_messages(self, user_id: str, conversation_id: str) -> list[ConversationMessage]:
+        conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        after_sequence = max((conversation.get("messageCount") or 0) - 20, 0)
         page = self.conversation_service.list_messages(
             user_id,
             conversation_id,
-            after_sequence=None,
+            after_sequence=after_sequence,
             created_after=None,
             created_before=None,
             limit=20,
@@ -393,10 +395,19 @@ def _context_message(row: dict) -> ConversationMessage:
         id=row["id"],
         sender_type=SenderType(row["senderType"]),
         sender_id=row.get("senderId") or sender_slot,
-        sender_name=row.get("senderId") or sender_slot,
+        sender_name=_speaker_name(row),
         content=row["content"],
         metadata=row.get("metadata", {}),
     )
+
+
+def _speaker_name(row: dict) -> str | None:
+    sender_slot = row.get("senderSlot")
+    if sender_slot == "agent_1":
+        return "Nora"
+    if sender_slot == "agent_2":
+        return "Vale"
+    return row.get("senderId") or sender_slot
 
 
 def _agent_slot(agent_id: str) -> str:

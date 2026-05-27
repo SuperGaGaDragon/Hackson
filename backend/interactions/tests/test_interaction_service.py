@@ -68,6 +68,38 @@ class InteractionServiceTest(TestCase):
         self.assertIn("promptHash", response["context"])
         self.assertEqual(len(self.model_runtime.requests), 1)
 
+    def test_idle_tick_uses_latest_recent_messages_after_long_history(self) -> None:
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        for index in range(25):
+            slot = "agent_1" if index % 2 == 0 else "agent_2"
+            self.conversation_service.append_message(
+                "user_1",
+                idle["id"],
+                MessageAppendRequest(
+                    sender_type="agent",
+                    sender_slot=slot,
+                    role="assistant",
+                    content=f"old loop marker {index}",
+                ),
+            )
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_2",
+                role="assistant",
+                content="fresh anti-repeat marker",
+            ),
+        )
+
+        self.service.run_idle_tick("user_1", idle["id"], IdleTickRequest(targetAgentId="agent_1"))
+
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("fresh anti-repeat marker", prompt)
+        self.assertNotIn("old loop marker 0", prompt)
+        self.assertIn("Vale:", prompt)
+
     def test_companion_1_join_creates_child_conversation_and_transition_reply(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle("user_1")
         self.conversation_service.append_message(
