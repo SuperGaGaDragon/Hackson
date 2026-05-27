@@ -58,16 +58,27 @@ Lst Modified by: Codex
   - 目标机后端 `ModelRuntime.generate` 直接验证返回 `HACKSON_OK`，provider 为 `codex_cli`。
   - 目标机 public `8145` API smoke 通过：`register`、`conversation`、`idle tick`、`companion_1 join` 均成功，assistant metadata 中 `provider=codex_cli`。
   - Public service 已恢复并运行：`hackson-domain-8145.service` active，`127.0.0.1:8145/health` 与 `https://hackson.catachess.com/health` 均正常。
+- 修复 Work Mode Codex 链路：
+  - 复现用户失败：旧 Mission 报 `model_codex_cli_unavailable`，而 idle/comp 正常。
+  - 根因：idle/comp 的 `interactions` 已注入 `CodexCliClient`；Work Mode 的 `ModelMissionRunner` 只注入 OpenAI-compatible client，provider 配成 `codex_cli` 时找不到客户端。
+  - 第一次修复后继续 smoke，错误变为 `model_timeout`，说明已进入真实 Codex 调用，但 8000 字小说单次生成超过 180 秒。
+  - 产品级收束：V0.5 Work Mission 定义为单次有界 first-pass artifact。长篇任务先生成可用样章/大纲，不在一个后台请求里写完整 8000 字。
+  - 工程修复：Work Mode 注入 `CodexCliClient`；V0.5 prompt 限定 600-1200 中文字；Codex reasoning effort 降到 `low`；模型失败时同时把 active Step 标记为 `failed`。
+  - 本地测试通过：逐个运行 backend 所有 `*/tests` 目录；Work Mode `18`、model_runtime `23`、interactions `21` 均通过。
+  - 目标机 public `8145` 测试通过：Work Mode `18`、model_runtime `23`、interactions `21`。
+  - 目标机 public smoke 通过：`撰写一个8000字小说` Mission `6a17428e1c922129e72e8968` 完成，事件链到 `MISSION_COMPLETED`，生成 1 个 text Artifact，长度 `1055`，metadata 为 `provider=codex_cli`、`modelName=gpt-5.4`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
 - V1 不做 streaming，不做搜索 UI，不做文件工具，不做代码沙盒，不展示原始 thinking。
 - 先用 fake runtime 和 fixture JSON 做单元测试，再接真实 Responses API。
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
+- Work V0.5 只保证单次有界产物；完整 8000 字长文需要后续 V1 supervisor loop 拆成多步生成、续写、合并、验收。
 
 ### 下一步
 - 继续观察 `codex_cli` 冷启动延迟；如需要，再做常驻 worker 或队列化。
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
+- Work V1 增加 durable queue 和多步 supervisor，让长篇任务可以分章节完成，而不是依赖单次模型调用。
 
 ### 风险
 - 如果一次性加入 streaming、web search、memory、citation，问题会混在一起，难以定位。

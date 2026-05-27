@@ -274,7 +274,9 @@ GET /api/work/missions/{missionId}
         "role": "precise"
       },
       "metadata": {
-        "runner": "model_runtime"
+        "runner": "model_runtime",
+        "modelName": "gpt-5.4",
+        "provider": "codex_cli"
       },
       "createdAt": "2026-05-27T18:00:00Z"
     }
@@ -283,6 +285,8 @@ GET /api/work/missions/{missionId}
 ```
 
 `PRODUCT_UPDATED` carries `artifactId`, `kind`, `summary`, `changedFiles`, and `tests`. The full Artifact content is not duplicated into event payloads.
+
+V0.5 Work Mission generation is intentionally bounded to one model pass. Long requests such as an 8000-character story return a usable first draft, sample, or outline artifact; a later supervisor loop should expand it across multiple runs.
 
 ## latest verification
 - Local backend tests passed before deployment:
@@ -328,6 +332,13 @@ GET /api/work/missions/{missionId}
   - Public domain `https://hackson.catachess.com/health` returned `{"status":"ok"}` and `GET /` returned the React HTML.
   - Public API smoke verified register and conversation creation. Model-backed idle and companion routes returned stable `429 {"detail":"model_rate_limited"}` from the current upstream provider limit, not a backend crash.
   - Public backend code now routes model-backed idle and companion generation through `backend/orchestration/` and stores orchestration metadata when the provider succeeds.
+- Work Mode Codex public fix on `8145`:
+  - Root cause confirmed: idle and companion already injected `CodexCliClient`; Work Mode runner only built `ModelRuntime` with the OpenAI-compatible client, so `HACKSON_MODEL_PROVIDER=codex_cli` produced `model_codex_cli_unavailable`.
+  - Public backend now injects `CodexCliClient` in Work Mode and bounds V0.5 generation to a single first-pass artifact with low reasoning effort.
+  - Local tests passed: all backend `*/tests` directories, including Work Mode `18`, model_runtime `23`, and interactions `21`.
+  - Target public tests passed under `~/hackson_domain_8145/backend`: Work Mode `18`, model_runtime `23`, interactions `21`.
+  - `hackson-domain-8145.service` was restarted and returned `active` plus `{"status":"ok"}` on `127.0.0.1:8145/health`.
+  - Target public API smoke on `127.0.0.1:8145` completed Mission `6a17428e1c922129e72e8968` titled `撰写一个8000字小说`; events reached `MISSION_COMPLETED`, one text Artifact was persisted, artifact length was `1055`, and metadata was `{"runner":"model_runtime","modelName":"gpt-5.4","provider":"codex_cli"}`.
 - Public browser smoke verified Register/Login, Agent editing, Workspace Project creation, Project detail, Mission creation, Start, completion timeline, desktop screenshot, and mobile screenshot with `0` failed API responses.
 - Screenshots:
   - `/tmp/hackson_public_work_agents_desktop.png`
