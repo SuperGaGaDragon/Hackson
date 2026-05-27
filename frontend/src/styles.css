@@ -842,8 +842,7 @@ input:disabled {
   background: rgba(16, 20, 24, 0.9);
 }
 
-.workspace-headline span,
-.rail-project-path {
+.workspace-headline span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -889,7 +888,8 @@ input:disabled {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
-  min-height: 104px;
+  align-items: center;
+  min-height: 76px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
@@ -898,8 +898,7 @@ input:disabled {
   text-align: left;
 }
 
-.workspace-project-card strong,
-.workspace-project-card small {
+.workspace-project-card strong {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -912,13 +911,6 @@ input:disabled {
   padding: 4px 7px;
   color: var(--muted);
   font-size: 11px;
-}
-
-.workspace-project-card small {
-  grid-column: 1 / -1;
-  align-self: end;
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .workspace-project-card:hover,
@@ -947,11 +939,6 @@ input:disabled {
 
 .work-rail {
   gap: 10px;
-}
-
-.rail-project-path {
-  margin: -4px 0 2px;
-  overflow-wrap: anywhere;
 }
 
 .work-side {

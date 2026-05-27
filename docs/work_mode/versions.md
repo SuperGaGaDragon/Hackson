@@ -178,9 +178,9 @@ The user must open a Project before seeing:
 
 ### Runtime Scope
 
-This is a frontend-only layout cleanup on top of verified V0.1 APIs.
+This is a small product cleanup on top of verified V0.1 APIs. The frontend hides `repoPath`, and the backend accepts Project creation with `name` only while returning an empty `repoPath` for compatibility.
 
-No backend route, schema, or worker behavior changes are required.
+No route or worker behavior changes are required.
 
 ### Release Gate
 
@@ -189,9 +189,11 @@ Target-backed smoke must verify:
 - Backend is the target-machine port `8143`.
 - MongoDB database is `hackson_work_mode_v01_employees`.
 - Existing Projects render on the Workspace screen.
-- New Project creates a real Project and opens Project detail.
+- New Project creates a real Project with name only and opens Project detail.
+- `POST /api/work/projects` accepts `{ "name": "novel" }` without `repoPath`.
 - Project detail shows Team, Employees, Missions, and Mission console.
 - Workspace screen does not show Mission or Employee controls before a Project is opened.
+- Workspace screen does not expose `repoPath`.
 
 ## 6. V0.5 Single Codex Run
 

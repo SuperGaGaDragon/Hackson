@@ -40,7 +40,6 @@ function WorkPage() {
   const [selectedMission, setSelectedMission] = useState(null);
   const [events, setEvents] = useState([]);
   const [projectName, setProjectName] = useState("");
-  const [projectRepoPath, setProjectRepoPath] = useState("");
   const [employeeName, setEmployeeName] = useState("");
   const [employeeRole, setEmployeeRole] = useState("");
   const [teamEmployeeId, setTeamEmployeeId] = useState("");
@@ -105,14 +104,13 @@ function WorkPage() {
   }, [afterSequence, selectedMission]);
 
   async function addProject() {
-    if (!projectName.trim() || !projectRepoPath.trim() || busy) return;
+    if (!projectName.trim() || busy) return;
     setBusy(true);
     setError("");
     try {
-      const project = await createProject({ name: projectName, repoPath: projectRepoPath });
+      const project = await createProject({ name: projectName });
       setProjects((current) => [project, ...current]);
       setProjectName("");
-      setProjectRepoPath("");
       await loadProject(project);
     } catch (err) {
       setError(err.message || "Create failed");
@@ -283,10 +281,8 @@ function WorkPage() {
         loading={loading}
         onCreateProject={addProject}
         onProjectNameChange={setProjectName}
-        onProjectRepoPathChange={setProjectRepoPath}
         onSelectProject={selectProject}
         projectName={projectName}
-        projectRepoPath={projectRepoPath}
         projects={projects}
       />
     );

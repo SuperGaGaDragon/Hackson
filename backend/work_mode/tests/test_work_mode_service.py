@@ -181,7 +181,7 @@ class WorkModeServiceTest(TestCase):
     def test_create_project_and_mission_records_creation_event(self) -> None:
         project = self.service.create_project(
             "user_1",
-            ProjectCreateRequest(name="Cyber1924", repoPath="/repos/cyber1924"),
+            ProjectCreateRequest(name="Cyber1924"),
         )
         mission = self.service.create_mission(
             "user_1",
@@ -190,6 +190,7 @@ class WorkModeServiceTest(TestCase):
         events = self.service.list_events("user_1", mission["id"])
 
         self.assertTrue(self.repository.indexes_ready)
+        self.assertEqual(project["repoPath"], "")
         self.assertEqual(mission["status"], "draft")
         self.assertEqual(mission["leadEmployeeName"], "Lead")
         self.assertEqual(events[0]["type"], "MISSION_CREATED")
@@ -198,7 +199,7 @@ class WorkModeServiceTest(TestCase):
     def test_employee_can_join_project_and_lead_mission(self) -> None:
         project = self.service.create_project(
             "user_1",
-            ProjectCreateRequest(name="Cyber1924", repoPath="/repos/cyber1924"),
+            ProjectCreateRequest(name="Cyber1924"),
         )
         employee = self.service.create_employee(
             "user_1",
@@ -238,7 +239,7 @@ class WorkModeServiceTest(TestCase):
     def test_employee_must_join_project_before_leading_mission(self) -> None:
         project = self.service.create_project(
             "user_1",
-            ProjectCreateRequest(name="Cyber1924", repoPath="/repos/cyber1924"),
+            ProjectCreateRequest(name="Cyber1924"),
         )
         employee = self.service.create_employee(
             "user_1",
@@ -321,7 +322,7 @@ class WorkModeServiceTest(TestCase):
     def _mission(self) -> dict[str, Any]:
         project = self.service.create_project(
             "user_1",
-            ProjectCreateRequest(name="Demo", repoPath="/repos/demo"),
+            ProjectCreateRequest(name="Demo"),
         )
         return self.service.create_mission(
             "user_1",

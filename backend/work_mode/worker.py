@@ -56,7 +56,6 @@ class MissionWorker:
                 "employee": DEFAULT_LEAD_EMPLOYEE,
                 "items": [
                     f"Project: {project['name']}",
-                    f"Repo: {project['repoPath']}",
                     f"Goal: {mission['goal']}",
                 ]
             },

@@ -43,7 +43,6 @@ function ProjectMissionRail({
           <ArrowLeft size={16} />
         </button>
       </div>
-      {selectedProject?.repoPath && <p className="rail-project-path">{selectedProject.repoPath}</p>}
       <div className="panel-head compact rail-section">
         <div>
           <p className="eyebrow">Crew</p>

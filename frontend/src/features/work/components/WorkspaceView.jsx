@@ -12,10 +12,8 @@ function WorkspaceView({
   loading,
   onCreateProject,
   onProjectNameChange,
-  onProjectRepoPathChange,
   onSelectProject,
   projectName,
-  projectRepoPath,
   projects,
 }) {
   return (
@@ -52,7 +50,6 @@ function WorkspaceView({
                 >
                   <strong>{project.name}</strong>
                   <span>{project.status}</span>
-                  <small>{project.repoPath}</small>
                 </button>
               ))}
             </div>
@@ -74,14 +71,7 @@ function WorkspaceView({
               placeholder="Project"
               value={projectName}
             />
-            <input
-              aria-label="Repo path"
-              disabled={busy}
-              onChange={(event) => onProjectRepoPathChange(event.target.value)}
-              placeholder="Repo path"
-              value={projectRepoPath}
-            />
-            <button disabled={busy || !projectName.trim() || !projectRepoPath.trim()} onClick={onCreateProject} type="button">
+            <button disabled={busy || !projectName.trim()} onClick={onCreateProject} type="button">
               <Plus size={16} />
               <span>Create</span>
             </button>

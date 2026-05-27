@@ -31,10 +31,11 @@ class WorkModeRoutesTest(TestCase):
     def test_project_mission_start_and_events_routes(self) -> None:
         project_response = self.client.post(
             "/api/work/projects",
-            json={"name": "Cyber1924", "repoPath": "/repos/cyber1924"},
+            json={"name": "Cyber1924"},
         )
         self.assertEqual(project_response.status_code, 201)
         project = project_response.json()
+        self.assertEqual(project["repoPath"], "")
 
         mission_response = self.client.post(
             "/api/work/missions",
@@ -59,7 +60,7 @@ class WorkModeRoutesTest(TestCase):
         self.assertEqual(event_types, ["MISSION_CREATED", "MISSION_STARTED"])
 
     def test_stop_route_requires_running_mission(self) -> None:
-        project = self.client.post("/api/work/projects", json={"name": "Demo", "repoPath": "/repos/demo"}).json()
+        project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
         mission = self.client.post(
             "/api/work/missions",
             json={"projectId": project["id"], "title": "Mission", "goal": "Run V0."},
@@ -70,7 +71,7 @@ class WorkModeRoutesTest(TestCase):
         self.assertEqual(response.status_code, 409)
 
     def test_stop_route_records_stop_requested_for_running_mission(self) -> None:
-        project = self.client.post("/api/work/projects", json={"name": "Demo", "repoPath": "/repos/demo"}).json()
+        project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
         mission = self.client.post(
             "/api/work/missions",
             json={"projectId": project["id"], "title": "Mission", "goal": "Run V0."},
@@ -89,7 +90,7 @@ class WorkModeRoutesTest(TestCase):
         )
 
     def test_employee_routes_allow_project_lead_selection(self) -> None:
-        project = self.client.post("/api/work/projects", json={"name": "Demo", "repoPath": "/repos/demo"}).json()
+        project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
         employee_response = self.client.post(
             "/api/work/employees",
             json={

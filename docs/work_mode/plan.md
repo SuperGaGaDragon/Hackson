@@ -81,7 +81,7 @@ Use these product terms consistently:
 ### 4.2 V0 User Flow
 
 1. User opens Work.
-2. User creates a Project with name and repo path.
+2. User creates a Project with name only.
 3. User creates a Mission under that Project with a goal.
 4. System assigns a default Lead Employee label for V0.
 5. User opens Mission detail.
@@ -92,13 +92,20 @@ Use these product terms consistently:
 10. User can click Stop.
 11. Mission ends as completed, failed, or stopped.
 
+Project creation rule:
+
+- `name` is required.
+- `repoPath` is optional runtime metadata and must not block creating a workspace Project.
+- The frontend New Project form only asks for `Project`.
+- Backend responses keep `repoPath` as an empty string when no path is provided, for compatibility with existing response shapes.
+
 ### 4.3 V0 UI Must Show
 
 Left:
 
-- Project list.
+- Workspace project list.
+- New Project with name only.
 - Mission list for selected Project.
-- Create Project.
 - Create Mission.
 
 Center:
@@ -281,7 +288,7 @@ Required request models:
 
 - `ProjectCreateRequest`
   - `name`: 1 to 120 chars
-  - `repo_path`: 1 to 2000 chars, alias `repoPath`
+  - `repo_path`: optional internal field, alias `repoPath`
   - `metadata`: dict
 
 - `MissionCreateRequest`
@@ -669,7 +676,7 @@ V0 payload examples:
   },
   "items": [
     "Mission loaded",
-    "Repo path recorded",
+    "Project state loaded",
     "V0 worker completed"
   ]
 }
@@ -1159,6 +1166,8 @@ Project
 - Project cards must be directly clickable.
 - New Project must persist through the target-machine API before opening Project detail.
 - Project detail must have a clear Back to Workspace action.
+- New Project must not ask the user for `repoPath`.
+- `repoPath` is an internal runtime field for later worker execution, not a Workspace creation field.
 
 ### 14.3 Frontend Files
 
@@ -1183,6 +1192,8 @@ Add:
 6. Keep Employee, Team, Mission, and Mission list inside `ProjectMissionRail`.
 7. Add a Back button and selected Project header to `ProjectMissionRail`.
 8. Add responsive Workspace styles.
+9. Hide `repoPath` from Workspace and Project detail UI.
+10. Make backend Project creation accept name-only payloads.
 
 ### 14.5 Verification
 
@@ -1197,7 +1208,7 @@ Target-backed browser:
 - Login with a target-machine user that already has Projects.
 - Verify Workspace shows existing Projects and New Project only.
 - Open a Project and verify Project detail shows Team, Employees, Missions, Console, Inspector.
-- Create a Project and verify it appears through the target-backed API.
+- Create a Project with name only and verify it appears through the target-backed API.
 - Capture desktop and mobile screenshots.
 
 No `api.md` route changes are required unless a new API is added or a verified port record changes.

@@ -33,6 +33,7 @@ DEFAULT_LEAD_EMPLOYEE = {
     "name": "Lead",
     "role": "Mission lead",
 }
+DEFAULT_PROJECT_REPO_PATH = ""
 
 
 class WorkModeRepositoryProtocol(Protocol):
@@ -73,7 +74,7 @@ class WorkModeService:
         document = {
             "user_id": user_id,
             "name": payload.name,
-            "repo_path": payload.repo_path,
+            "repo_path": payload.repo_path or DEFAULT_PROJECT_REPO_PATH,
             "status": "active",
             "metadata": payload.metadata,
             "created_at": timestamp,
