@@ -21,6 +21,8 @@ Lst Modified by: Codex
 |-test_work_mode_tool_protocol.py V1.0 tool action parser and validator tests
 |-test_work_mode_context.py V1.0 Lead and Delegate Agent context builder tests
 |-test_work_mode_action_client.py V1.0 JSON Action model adapter tests
+|-test_work_mode_tool_executor.py V1.0 visible tool execution behavior tests
+|-test_work_mode_loop.py V1.0 Mission loop tests
 
 ## 代办
 - Add MongoDB repository integration tests after V0 target smoke is stable.

@@ -27,6 +27,8 @@ Lst Modified by: Codex
 |-tool_protocol.py V1.0 model-visible tool action schemas and validation helpers
 |-context.py V1.0 Lead and Delegate Agent context builders
 |-action_client.py V1.0 JSON Action adapter around `model_runtime`
+|-tool_executor.py V1.0 backend executor for validated model tool actions
+|-loop.py V1.0 Lead Agent Mission loop runner
 |-repository.py MongoDB persistence adapter
 |-service.py Mission Runtime business rules and state transitions
 |-worker.py V0.5 single-run model worker implementation

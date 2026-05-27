@@ -504,6 +504,95 @@ class WorkModeService:
             payload={"status": "completed", "employee": _employee_payload(mission)},
         )
 
+    def mark_product_final(self, user_id: str, product_id: str) -> dict[str, Any]:
+        product = self.repository.update_product(
+            product_id,
+            user_id,
+            {"status": "final", "updated_at": now_utc()},
+        )
+        if product is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="product_not_found")
+        return public_product(product)
+
+    def mark_mission_waiting_input(
+        self,
+        user_id: str,
+        mission_id: str,
+        question: str,
+    ) -> dict[str, Any]:
+        return self._update_mission(
+            user_id,
+            mission_id,
+            {"status": "waiting_input", "current_step": "Waiting for input", "last_error": question, "updated_at": now_utc()},
+        )
+
+    def mark_mission_blocked(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        blocked_reason: str,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        timestamp = now_utc()
+        mission = self._update_mission(
+            user_id,
+            mission_id,
+            {
+                "status": "blocked",
+                "current_step": "Blocked",
+                "last_error": blocked_reason,
+                "updated_at": timestamp,
+            },
+        )
+        run = self._update_run(user_id, run_id, {"status": "blocked", "ended_at": timestamp})
+        return mission, run
+
+    def mark_mission_paused_retryable(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        error: str,
+    ) -> None:
+        timestamp = now_utc()
+        mission = self._update_mission(
+            user_id,
+            mission_id,
+            {
+                "status": "paused_retryable",
+                "current_step": "Paused",
+                "last_error": error,
+                "updated_at": timestamp,
+            },
+        )
+        run = self._update_run(user_id, run_id, {"status": "paused_retryable", "ended_at": timestamp})
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="MISSION_PAUSED_RETRYABLE",
+            title="Paused",
+            message=error,
+            payload={"error": error, "employee": _employee_payload(mission)},
+        )
+
+    def mark_work_window_blocked(
+        self,
+        user_id: str,
+        window_id: str,
+        summary: str,
+    ) -> dict[str, Any]:
+        timestamp = now_utc()
+        window = self.repository.update_work_window(
+            window_id,
+            user_id,
+            {"status": "blocked", "summary": summary, "updated_at": timestamp},
+        )
+        if window is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="work_window_not_found")
+        return public_work_window(window)
+
     def fail_step(self, user_id: str, step_id: str) -> dict[str, Any]:
         timestamp = now_utc()
         step = self.repository.update_step(

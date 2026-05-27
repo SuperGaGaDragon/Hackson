@@ -12,11 +12,35 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 ProjectStatus = Literal["active", "archived"]
 EmployeeStatus = Literal["active", "archived"]
-MissionStatus = Literal["draft", "running", "paused", "stopping", "stopped", "blocked", "failed", "completed"]
-RunStatus = Literal["running", "stopped", "failed", "completed"]
+MissionStatus = Literal[
+    "draft",
+    "running",
+    "paused",
+    "waiting_input",
+    "paused_retryable",
+    "stopping",
+    "stopped",
+    "blocked",
+    "failed",
+    "completed",
+]
+RunStatus = Literal["running", "paused_retryable", "stopped", "failed", "completed", "blocked"]
 StepStatus = Literal["pending", "running", "failed", "completed", "skipped"]
 AutonomyLevel = Literal["supervised"]
-ArtifactKind = Literal["text", "log", "diff", "report", "mission_result"]
+ArtifactKind = Literal[
+    "text",
+    "log",
+    "diff",
+    "outline",
+    "chapter",
+    "draft",
+    "revision",
+    "final",
+    "report",
+    "notes",
+    "other",
+    "mission_result",
+]
 ProductStatus = Literal["active", "final_candidate", "final", "archived"]
 WorkWindowStatus = Literal["queued", "running", "completed", "blocked", "failed", "cancelled"]
 EventType = Literal[
@@ -26,7 +50,16 @@ EventType = Literal[
     "SUMMARY",
     "WARNING",
     "RAW_LOG",
+    "MISSION_PLAN_UPDATED",
+    "TOOL_CALLED",
     "PRODUCT_UPDATED",
+    "PRODUCT_INSPECTED",
+    "WORK_WINDOW_OPENED",
+    "WORK_WINDOW_COMPLETED",
+    "WORK_WINDOW_BLOCKED",
+    "USER_INPUT_REQUESTED",
+    "MISSION_PAUSED_RETRYABLE",
+    "MISSION_BLOCKED",
     "STEP_COMPLETED",
     "MISSION_STOP_REQUESTED",
     "MISSION_STOPPED",
