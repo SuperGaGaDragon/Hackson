@@ -37,7 +37,7 @@ function InspectorPanel({ agentCount = 0, busy, error, mission, project }) {
       </div>
       <div className="context-item">
         <span>Approval</span>
-        <p>V0 off</p>
+        <p>V1 text</p>
       </div>
       <StatusLine error={error} loading={busy} text={busy ? "Working" : ""} />
     </aside>

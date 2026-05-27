@@ -1140,10 +1140,19 @@ input:disabled {
 }
 
 .progress-list,
+.window-list,
 .summary-block,
 .product-body {
   display: grid;
   gap: 8px;
+}
+
+.progress-row,
+.window-row {
+  min-width: 0;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  background: #0c1115;
 }
 
 .progress-row {
@@ -1152,9 +1161,57 @@ input:disabled {
   gap: 10px;
   align-items: start;
   padding: 9px;
+}
+
+.window-row summary {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 9px;
+  cursor: pointer;
+}
+
+.window-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.window-row[open] summary svg {
+  transform: rotate(90deg);
+}
+
+.window-row strong,
+.window-row small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.window-row small,
+.window-row em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.window-row p {
+  padding: 0 10px 9px 35px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.window-row pre {
+  max-height: 260px;
+  margin: 0 10px 10px 35px;
+  overflow: auto;
   border: 1px solid #263039;
   border-radius: 8px;
-  background: #0c1115;
+  padding: 10px;
+  background: #080c0f;
+  color: #d8e0e8;
+  font: inherit;
+  line-height: 1.55;
+  white-space: pre-wrap;
 }
 
 .progress-dot {
@@ -1173,6 +1230,9 @@ input:disabled {
 }
 
 .artifact-content {
+  max-height: min(62vh, 760px);
+  overflow: auto;
+  line-height: 1.65;
   white-space: pre-wrap;
 }
 

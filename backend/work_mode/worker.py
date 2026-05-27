@@ -14,8 +14,11 @@ from model_runtime.client import CodexCliClient, OpenAICompatibleClient, OpenAIR
 from model_runtime.config_repository import ModelRuntimeConfigRepository
 from model_runtime.orchestrator import ModelRuntime
 from model_runtime.schemas import ModelGenerateRequest, RuntimeMessage
+from work_mode.action_client import DelegateResultClient, ToolActionClient
+from work_mode.loop import MissionLoopRunner
 from work_mode.repository import WorkModeRepository
 from work_mode.service import WorkModeService
+from work_mode.tool_executor import WorkModeToolExecutor
 
 
 class MissionRunnerProtocol(Protocol):
@@ -238,9 +241,48 @@ def run_v0_mission_from_database(user_id: str, mission_id: str, run_id: str) -> 
     MissionWorker(service, event_delay_seconds=_event_delay_seconds()).run_v0_mission(user_id, mission_id, run_id)
 
 
+def run_v1_mission_from_database(user_id: str, mission_id: str, run_id: str) -> None:
+    """Run the V1 model-selected tool loop using the configured MongoDB database."""
+    service = WorkModeService(WorkModeRepository(get_database()))
+    model_runtime = _model_runtime()
+    executor = WorkModeToolExecutor(service, delegate_client=DelegateResultClient(model_runtime))
+    MissionLoopRunner(
+        service,
+        action_client=ToolActionClient(model_runtime),
+        executor=executor,
+        max_turns=_v1_max_turns(),
+        max_invalid_turns=_v1_max_invalid_turns(),
+    ).run(user_id, mission_id, run_id)
+
+
+def _model_runtime() -> ModelRuntime:
+    return ModelRuntime(
+        config_repository=ModelRuntimeConfigRepository(),
+        client=OpenAICompatibleClient(),
+        responses_client=OpenAIResponsesClient(),
+        codex_cli_client=CodexCliClient(),
+    )
+
+
 def _event_delay_seconds() -> float:
     raw_value = os.getenv("HACKSON_WORK_MODE_V0_EVENT_DELAY_SECONDS", "0")
     try:
         return max(float(raw_value), 0.0)
     except ValueError:
         return 0.0
+
+
+def _v1_max_turns() -> int:
+    return _positive_int_env("HACKSON_WORK_MODE_V1_MAX_TURNS", 24)
+
+
+def _v1_max_invalid_turns() -> int:
+    return _positive_int_env("HACKSON_WORK_MODE_V1_MAX_INVALID_TURNS", 2)
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    raw_value = os.getenv(name, str(default))
+    try:
+        return max(int(raw_value), 1)
+    except ValueError:
+        return default

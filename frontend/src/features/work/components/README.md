@@ -12,7 +12,8 @@ Lst Modified by: Codex
   - Project detail renders the two user-owned Agents passed from `App.jsx`; it does not create Work-only Employees.
   - Mission console cards are vertical siblings; cards must not overlap or nest inside each other.
   - `MissionHeader` mirrors the selected Mission status and disables actions that the user should not take from a terminal state.
-  - `ProductPanel` prefers persisted Mission artifacts over event preview text.
+  - `ProductPanel` uses persisted Products and Artifacts as the source of truth.
+  - `WorkWindowPanel` renders persisted Delegate windows collapsed by default.
   - Components do not parse model text or execute commands.
   - Keep copy short per frontend restrictions.
 
@@ -22,9 +23,10 @@ Lst Modified by: Codex
 |-ProjectMissionRail.jsx project detail rail with user Agents and missions
 |-MissionHeader.jsx selected mission title, status, and controls
 |-ProgressTimeline.jsx mission event timeline
+|-WorkWindowPanel.jsx delegate work window list
 |-SummaryCard.jsx summary event card
 |-WarningCard.jsx warning event card
-|-ProductPanel.jsx product event panel
+|-ProductPanel.jsx product and artifact reader
 |-RawLogPanel.jsx raw log event panel
 |-InspectorPanel.jsx status and lead Agent inspector
 

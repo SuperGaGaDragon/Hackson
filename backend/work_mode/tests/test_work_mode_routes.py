@@ -11,10 +11,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from users.auth import get_current_user_id
+from work_mode.loop import MissionLoopRunner
 from work_mode.routes import get_user_service, get_work_mode_service, get_work_mode_worker_launcher, router
 from work_mode.service import WorkModeService
-from work_mode.tests.test_work_mode_service import FakeMissionRunner, FakeWorkModeRepository
-from work_mode.worker import MissionWorker
+from work_mode.tests.test_work_mode_service import FakeWorkModeRepository
+from work_mode.tool_protocol import parse_tool_action
 
 TEST_USER_ID = "work_route_user"
 
@@ -46,6 +47,65 @@ class FakeUserService:
         }
 
 
+class ScriptedRouteActionClient:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.product_id: str | None = None
+        self.artifact_id: str | None = None
+
+    def generate_action(self, context: dict):
+        self.calls += 1
+        products = context.get("productManifest") or []
+        if products:
+            self.product_id = products[0]["id"]
+            self.artifact_id = products[0]["latestArtifactId"]
+        if self.calls == 1:
+            return parse_tool_action(
+                """
+                {
+                  "tool": "mission_plan",
+                  "arguments": {
+                    "reason": "先规划。",
+                    "planTitle": "Route plan",
+                    "steps": [{"title": "写正文", "status": "pending", "notes": ""}]
+                  }
+                }
+                """
+            )
+        if self.calls == 2:
+            return parse_tool_action(
+                """
+                {
+                  "tool": "work_product",
+                  "arguments": {
+                    "reason": "写入产品。",
+                    "operation": "create_product",
+                    "productId": null,
+                    "sourceArtifactIds": [],
+                    "productTitle": "Route product",
+                    "artifactTitle": "Route artifact",
+                    "artifactKind": "draft",
+                    "content": "Route generated artifact.",
+                    "summary": "Route generated artifact."
+                  }
+                }
+                """
+            )
+        return parse_tool_action(
+            f"""
+            {{
+              "tool": "finish_mission",
+              "arguments": {{
+                "reason": "产品已完成。",
+                "summary": "Route mission complete.",
+                "finalProductIds": ["{self.product_id}"],
+                "finalArtifactIds": ["{self.artifact_id}"]
+              }}
+            }}
+            """
+        )
+
+
 class WorkModeRoutesTest(TestCase):
     def setUp(self) -> None:
         self.service = WorkModeService(FakeWorkModeRepository())
@@ -58,11 +118,7 @@ class WorkModeRoutesTest(TestCase):
         self.client = TestClient(app)
 
     def run_worker(self, user_id: str, mission_id: str, run_id: str) -> None:
-        MissionWorker(self.service, runner=FakeMissionRunner("Route generated artifact.")).run_v0_mission(
-            user_id,
-            mission_id,
-            run_id,
-        )
+        MissionLoopRunner(self.service, ScriptedRouteActionClient(), max_turns=5).run(user_id, mission_id, run_id)
 
     def test_project_mission_start_and_events_routes(self) -> None:
         project_response = self.client.post(
@@ -94,12 +150,14 @@ class WorkModeRoutesTest(TestCase):
         self.assertEqual(events_response.status_code, 200)
         event_types = [event["type"] for event in events_response.json()]
         self.assertIn("MISSION_STARTED", event_types)
+        self.assertIn("MISSION_PLAN_UPDATED", event_types)
         self.assertIn("PRODUCT_UPDATED", event_types)
         self.assertEqual(event_types[-1], "MISSION_COMPLETED")
 
         detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
         self.assertEqual(detail["mission"]["status"], "completed")
         self.assertEqual(len(detail["artifacts"]), 1)
+        self.assertEqual(len(detail["products"]), 1)
         self.assertIn("Route generated artifact.", detail["artifacts"][0]["content"])
 
     def test_mission_detail_response_includes_artifacts(self) -> None:

@@ -5,7 +5,11 @@ Last Modified at: 2026-05-26
 Last Modified by: Codex
 */
 function WarningCard({ events }) {
-  const warnings = events.filter((event) => event.type === "WARNING" || event.type === "MISSION_FAILED");
+  const warnings = events.filter((event) =>
+    ["WARNING", "MISSION_FAILED", "MISSION_BLOCKED", "MISSION_PAUSED_RETRYABLE", "USER_INPUT_REQUESTED"].includes(
+      event.type,
+    ),
+  );
   return (
     <div className="work-card warning-panel">
       <div className="card-head">

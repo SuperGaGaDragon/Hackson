@@ -9,7 +9,7 @@ from unittest import TestCase
 
 from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse
-from work_mode.action_client import ToolActionClient, ToolActionClientError
+from work_mode.action_client import DelegateResultClient, ToolActionClient, ToolActionClientError
 
 
 class WorkModeActionClientTest(TestCase):
@@ -50,6 +50,30 @@ class WorkModeActionClientTest(TestCase):
 
         self.assertEqual(error.exception.code, "model_timeout")
         self.assertTrue(error.exception.retryable)
+
+    def test_http_429_maps_to_retryable_error(self) -> None:
+        client = ToolActionClient(FakeModelRuntime(error=ModelRuntimeError("model_http_error:429", http_status=429)))
+
+        with self.assertRaises(ToolActionClientError) as error:
+            client.generate_action({"mission": {"goal": "写小说"}})
+
+        self.assertEqual(error.exception.code, "model_http_error:429")
+        self.assertTrue(error.exception.retryable)
+
+    def test_delegate_result_client_requests_structured_json(self) -> None:
+        runtime = FakeModelRuntime(
+            """
+            {"status":"completed","title":"第一章","summary":"完成。","content":"正文","reason":"按 brief 完成。"}
+            """
+        )
+        client = DelegateResultClient(runtime)
+
+        result = client.generate_delegate_result({"brief": "写第一章。"})
+
+        self.assertIn('"status":"completed"', result)
+        self.assertEqual(runtime.last_request.max_output_tokens, 3000)
+        self.assertIn("Return exactly one JSON object", runtime.last_request.messages[0].content)
+        self.assertIn("Do not call tools", runtime.last_request.messages[0].content)
 
 
 class FakeModelRuntime:

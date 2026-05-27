@@ -29,7 +29,7 @@ from work_mode.schemas import (
     ProjectResponse,
 )
 from work_mode.service import WorkModeService
-from work_mode.worker import run_v0_mission_from_database
+from work_mode.worker import run_v1_mission_from_database
 
 router = APIRouter()
 
@@ -43,7 +43,7 @@ def get_user_service() -> UserService:
 
 
 def get_work_mode_worker_launcher() -> Callable[[str, str, str], None]:
-    return run_v0_mission_from_database
+    return run_v1_mission_from_database
 
 
 @router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)

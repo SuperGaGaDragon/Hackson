@@ -24,6 +24,7 @@ import ProjectMissionRail from "./components/ProjectMissionRail";
 import RawLogPanel from "./components/RawLogPanel";
 import SummaryCard from "./components/SummaryCard";
 import WarningCard from "./components/WarningCard";
+import WorkWindowPanel from "./components/WorkWindowPanel";
 import WorkspaceView from "./components/WorkspaceView";
 
 const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked"]);
@@ -37,6 +38,8 @@ function WorkPage({ agents = [] }) {
   const [selectedMission, setSelectedMission] = useState(null);
   const [events, setEvents] = useState([]);
   const [artifacts, setArtifacts] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [workWindows, setWorkWindows] = useState([]);
   const [projectName, setProjectName] = useState("");
   const [missionLeadId, setMissionLeadId] = useState(defaultLeadId);
   const [missionTitle, setMissionTitle] = useState("");
@@ -63,6 +66,8 @@ function WorkPage({ agents = [] }) {
         setSelectedMission(null);
         setEvents([]);
         setArtifacts([]);
+        setProducts([]);
+        setWorkWindows([]);
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -94,6 +99,8 @@ function WorkPage({ agents = [] }) {
           setMissions((current) => replaceMission(current, detail.mission));
           setEvents((current) => mergeEvents(current, nextEvents));
           setArtifacts(detail.artifacts || []);
+          setProducts(detail.products || []);
+          setWorkWindows(detail.workWindows || []);
         }
       } catch (err) {
         setError(err.message || "Poll failed");
@@ -142,6 +149,8 @@ function WorkPage({ agents = [] }) {
     setSelectedMission(selected);
     setEvents(detail?.events || []);
     setArtifacts(detail?.artifacts || []);
+    setProducts(detail?.products || []);
+    setWorkWindows(detail?.workWindows || []);
   }
 
   function backToWorkspace() {
@@ -152,6 +161,8 @@ function WorkPage({ agents = [] }) {
     setSelectedMission(null);
     setEvents([]);
     setArtifacts([]);
+    setProducts([]);
+    setWorkWindows([]);
     setMissionLeadId(defaultLeadId);
     setMissionTitle("");
     setMissionGoal("");
@@ -174,6 +185,8 @@ function WorkPage({ agents = [] }) {
       setSelectedMission(detail.mission);
       setEvents(detail.events || []);
       setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
       setMissionTitle("");
       setMissionGoal("");
     } catch (err) {
@@ -193,6 +206,8 @@ function WorkPage({ agents = [] }) {
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
       setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
@@ -210,6 +225,8 @@ function WorkPage({ agents = [] }) {
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
       setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
     } catch (err) {
       setError(err.message || "Start failed");
     } finally {
@@ -227,6 +244,8 @@ function WorkPage({ agents = [] }) {
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
       setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
     } catch (err) {
       setError(err.message || "Stop failed");
     } finally {
@@ -271,8 +290,9 @@ function WorkPage({ agents = [] }) {
         <MissionHeader busy={busy || loading} mission={selectedMission} onStart={start} onStop={stop} />
         <div className="mission-content">
           <ProgressTimeline events={events} />
+          <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
           <SummaryCard events={events} />
-          <ProductPanel artifacts={artifacts} events={events} />
+          <ProductPanel artifacts={artifacts} products={products} />
           <RawLogPanel events={events} />
         </div>
       </section>
