@@ -25,6 +25,8 @@ Lst Modified by: Codex
 |-model.py public response conversion helpers
 |-schemas.py Pydantic request and response schemas
 |-tool_protocol.py V1.0 model-visible tool action schemas and validation helpers
+|-context.py V1.0 Lead and Delegate Agent context builders
+|-action_client.py V1.0 JSON Action adapter around `model_runtime`
 |-repository.py MongoDB persistence adapter
 |-service.py Mission Runtime business rules and state transitions
 |-worker.py V0.5 single-run model worker implementation
