@@ -34,6 +34,15 @@ Lst Modified by: Codex
   - `backend/interactions/tests`: 21 passed.
   - backend 全模块逐目录 unittest: all passed.
   - `npm --prefix frontend run build`: passed.
+- 目标机 smoke 通过：
+  - 新目录：`~/hackson_orchestrator_v1_8148`。
+  - 新端口：`127.0.0.1:8148`。
+  - 新数据库：`hackson_orchestrator_v1_8148_fake`。
+  - Fake OpenAI-compatible relay：`127.0.0.1:18148`。
+  - 验证 `register`、`idle tick`、`idle say`、`idle join`、`companion_1 follow-up`、`companion_2 message`。
+  - 验证 Responses mode 下 assistant message metadata 包含 `orchestration_policy`、`reasoning_effort`、`tool_policy`、`provider`、`provider_response_id`、`reasoning_summary`。
+  - 上游真实 provider smoke 遇到稳定 `429 {"detail":"model_rate_limited"}`，后端未崩溃。
+  - 临时 `8148` 和 `18148` 进程已清理，未触碰 `8145`、`8147`、`8130`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -42,10 +51,9 @@ Lst Modified by: Codex
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
 
 ### 下一步
-- 目标机开新端口和新数据库做 smoke。
-- 验证 register/login、idle tick、idle say、join companion_1、companion_1 follow-up、companion_2 message。
-- 验证保存的 assistant message metadata 包含 orchestration 字段。
-- 目标机 smoke 通过后再更新 `api.md`。
+- 决定是否推广到 public `8145`。
+- 推广前建议先保留 `HACKSON_MODEL_API_MODE=chat_completions`，确认线上行为稳定后再切 `responses`。
+- V1.1 再做 streaming、Thinking/Search 状态、citation UI。
 
 ### 风险
 - 如果一次性加入 streaming、web search、memory、citation，问题会混在一起，难以定位。
