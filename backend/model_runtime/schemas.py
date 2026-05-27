@@ -16,14 +16,16 @@ class RuntimeMessage(BaseModel):
 
 
 class ModelRuntimeConfig(BaseModel):
-    provider: Literal["openai_compatible"] = "openai_compatible"
+    provider: Literal["openai_compatible", "codex_cli"] = "openai_compatible"
     base_url: str = "https://api.openai.com/v1"
     model_name: str
-    api_key: str = Field(repr=False)
+    api_key: str = Field(repr=False, exclude=True)
     api_mode: Literal["chat_completions", "responses"] = "chat_completions"
     timeout_seconds: float = 60.0
     max_output_tokens: int = 1024
     temperature: float = 0.7
+    codex_command: str = "codex"
+    codex_home: str | None = None
 
 
 class ModelGenerateRequest(BaseModel):

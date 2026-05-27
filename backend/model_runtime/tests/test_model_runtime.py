@@ -12,8 +12,12 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from model_runtime.client import (
+    CodexCliClient,
     OpenAICompatibleClient,
     OpenAIResponsesClient,
+    _codex_command,
+    _codex_prompt,
+    _codex_reasoning_effort,
     _chat_completions_url,
     _extract_reasoning_summary,
     _extract_response_text,
@@ -76,6 +80,22 @@ class ModelRuntimeTest(TestCase):
 
         self.assertEqual(config.api_mode, "responses")
 
+    def test_config_can_enable_codex_cli_provider_without_openai_key(self) -> None:
+        env = {
+            "HACKSON_MODEL_PROVIDER": "codex_cli",
+            "HACKSON_MODEL_NAME": "gpt-5.4",
+            "HACKSON_MODEL_CODEX_COMMAND": "/usr/local/bin/codex",
+            "HACKSON_MODEL_CODEX_HOME": "/home/catadragon/.codex",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = ModelRuntimeConfigRepository(env_file=None).get_enabled_config()
+
+        self.assertEqual(config.provider, "codex_cli")
+        self.assertEqual(config.model_name, "gpt-5.4")
+        self.assertEqual(config.codex_command, "/usr/local/bin/codex")
+        self.assertEqual(config.codex_home, "/home/catadragon/.codex")
+        self.assertNotIn("codex-cli-auth", config.model_dump_json())
+
     def test_config_reads_explicit_env_file(self) -> None:
         with TemporaryDirectory() as directory:
             env_file = Path(directory) / "model.env"
@@ -127,6 +147,21 @@ class ModelRuntimeTest(TestCase):
 
         self.assertIsNone(chat_client.last_request)
         self.assertIsNotNone(responses_client.last_request)
+
+    def test_orchestrator_uses_codex_cli_client_when_provider_enabled(self) -> None:
+        chat_client = FakeClient()
+        codex_client = FakeClient()
+        runtime = ModelRuntime(
+            config_repository=StaticConfigRepository(provider="codex_cli"),
+            client=chat_client,
+            codex_cli_client=codex_client,
+        )
+
+        response = runtime.generate(ModelGenerateRequest(messages=[RuntimeMessage(role="user", content="hello")]))
+
+        self.assertEqual(response.provider, "codex_cli")
+        self.assertIsNone(chat_client.last_request)
+        self.assertIsNotNone(codex_client.last_request)
 
     def test_request_can_force_responses_client(self) -> None:
         chat_client = FakeClient()
@@ -257,6 +292,56 @@ class ModelRuntimeTest(TestCase):
         self.assertEqual(response.provider_response_id, "resp_123")
         self.assertEqual(response.reasoning_summary, "safe summary")
 
+    def test_codex_cli_command_is_ephemeral_read_only_and_non_interactive(self) -> None:
+        request = ModelGenerateRequest(
+            messages=[RuntimeMessage(role="user", content="hello")],
+            reasoning_effort="minimal",
+        )
+        config = StaticConfigRepository(provider="codex_cli").get_enabled_config()
+
+        command = _codex_command(config, request, "/tmp/work", "/tmp/out")
+
+        self.assertIn("exec", command)
+        self.assertIn("--ephemeral", command)
+        self.assertIn("--ignore-rules", command)
+        self.assertIn("approval_policy=never", command)
+        self.assertIn("model_reasoning_effort=low", command)
+        self.assertIn("-", command)
+
+    def test_codex_prompt_preserves_runtime_messages(self) -> None:
+        prompt = _codex_prompt(
+            ModelGenerateRequest(
+                messages=[
+                    RuntimeMessage(role="system", content="system prompt"),
+                    RuntimeMessage(role="user", content="hello"),
+                ]
+            )
+        )
+
+        self.assertIn("[system]\nsystem prompt", prompt)
+        self.assertIn("[user]\nhello", prompt)
+
+    def test_codex_client_normalizes_last_message_output(self) -> None:
+        config = StaticConfigRepository(provider="codex_cli").get_enabled_config()
+        request = ModelGenerateRequest(messages=[RuntimeMessage(role="user", content="hello")])
+
+        def fake_run(command, input, text, capture_output, timeout, check, env):
+            output_path = command[command.index("-o") + 1]
+            Path(output_path).write_text("codex reply\n", encoding="utf-8")
+            return FakeCompletedProcess(returncode=0, stdout="ignored stdout")
+
+        with patch("model_runtime.client.subprocess.run", side_effect=fake_run):
+            response = CodexCliClient().generate(config, request)
+
+        self.assertEqual(response.text, "codex reply")
+        self.assertEqual(response.model_name, "codex-test-model")
+        self.assertEqual(response.provider, "codex_cli")
+
+    def test_codex_reasoning_maps_minimal_to_low(self) -> None:
+        self.assertEqual(_codex_reasoning_effort("minimal"), "low")
+        self.assertEqual(_codex_reasoning_effort("high"), "high")
+        self.assertEqual(_codex_reasoning_effort(None), "medium")
+
 
 class FakeHTTPXResponse:
     def __init__(self, payload: dict):
@@ -269,14 +354,24 @@ class FakeHTTPXResponse:
         return self.payload
 
 
+class FakeCompletedProcess:
+    def __init__(self, returncode: int, stdout: str = ""):
+        self.returncode = returncode
+        self.stdout = stdout
+
+
 class StaticConfigRepository:
-    def __init__(self, api_mode: str = "chat_completions"):
+    def __init__(self, api_mode: str = "chat_completions", provider: str = "openai_compatible"):
         self.api_mode = api_mode
+        self.provider = provider
 
     def get_enabled_config(self) -> ModelRuntimeConfig:
         return ModelRuntimeConfig(
+            provider=self.provider,
             base_url="https://relay.example.com/v1",
             model_name="codex-test-model",
             api_key="secret-token",
             api_mode=self.api_mode,
+            codex_command="/usr/local/bin/codex",
+            codex_home="/home/catadragon/.codex",
         )

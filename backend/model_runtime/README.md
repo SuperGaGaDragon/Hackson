@@ -31,7 +31,7 @@ Last Modified by: Codex
 ## files
 |-README.md module guide
 |-__init__.py Python package marker
-|-client.py low-level provider HTTP or SDK calls
+|-client.py low-level provider HTTP, SDK, or Codex CLI calls
 |-errors.py structured runtime error types safe for API-layer mapping
 |-orchestrator.py timeout, retry, streaming, and concurrency orchestration
 |-config_repository.py model_runtime_configs persistence
@@ -42,10 +42,13 @@ Last Modified by: Codex
 - Users do not configure endpoint, provider, API key, Claude/OpenAI key, or local model path in V1.
 - Platform API keys should live in secret refs or environment variables.
 - `model_runtime_configs` may store `api_key_secret_ref`, never raw user-facing secrets.
-- MVP supports one platform-managed OpenAI-compatible Codex relay.
+- MVP supports one platform-managed OpenAI-compatible Codex relay, or an explicitly configured Codex CLI provider on the target machine.
 - MVP reads `HACKSON_MODEL_*` env vars first, then falls back to local Codex/OpenAI-compatible env vars such as `OPENAI_API_KEY` and `STYLE_REPORT_MODEL`.
 - `HACKSON_MODEL_API_MODE=responses` enables the Responses API path; default remains `chat_completions`.
 - `HACKSON_MODEL_RESPONSES_ENABLED=true` can also enable Responses mode when no explicit API mode is set.
+- `HACKSON_MODEL_PROVIDER=codex_cli` routes generation through `codex exec` and uses the target machine's `CODEX_HOME` auth/config.
+- `HACKSON_MODEL_CODEX_COMMAND` can point at the installed Codex executable when it is not on the systemd PATH.
+- `HACKSON_MODEL_CODEX_HOME` can point at the target machine Codex home; default is the service user's `~/.codex`.
 - Runtime config reads process env first, then `.env`, `../.env`, and `~/.env` so target-machine secrets can stay outside the synced backend folder.
 
 ## version plan
@@ -54,9 +57,11 @@ Last Modified by: Codex
 - v1.2: Add token budget awareness and better timeout handling.
 - v1.5: Support work-mode tool-call-oriented prompts if needed.
 - v1.6: Add non-streaming Responses API mode for Hackson Orchestrator V1. Implemented with chat-completions fallback.
+- v1.7: Add Codex CLI provider for target-machine ChatGPT/Codex auth. Implemented behind explicit env.
 
 ## implementation notes
 - This module does not know idle, companion_1, companion_2, or work prompt rules.
 - This module accepts generic model messages and returns normalized text.
 - This module does not persist messages or context packages.
 - This module must not expose raw auth tokens in response objects, errors, or logs.
+- The Codex CLI provider runs in an ephemeral empty workdir, with read-only sandbox and `approval_policy=never`.

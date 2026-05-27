@@ -24,6 +24,7 @@ class ModelEnvSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="HACKSON_MODEL_", extra="ignore")
 
+    provider: str | None = None
     api_key: str | None = None
     base_url: str | None = None
     name: str | None = None
@@ -32,6 +33,8 @@ class ModelEnvSettings(BaseSettings):
     timeout_seconds: float | None = None
     max_output_tokens: int | None = None
     temperature: float | None = None
+    codex_command: str | None = None
+    codex_home: str | None = None
 
 
 class ModelRuntimeConfigRepository:
@@ -44,11 +47,29 @@ class ModelRuntimeConfigRepository:
         env_file = _resolve_env_file(self.env_file)
         env_values = _env_file_values(env_file)
         settings = ModelEnvSettings(_env_file=env_file)
+        provider = _provider(settings, env_values)
+        if provider == "codex_cli":
+            return ModelRuntimeConfig(
+                provider="codex_cli",
+                base_url="codex-cli",
+                model_name=settings.name or _first_config_value(env_values, "HACKSON_MODEL_NAME") or DEFAULT_MODEL_NAME,
+                api_key="codex-cli-auth",
+                api_mode="chat_completions",
+                timeout_seconds=settings.timeout_seconds or 120,
+                max_output_tokens=settings.max_output_tokens or 1024,
+                temperature=settings.temperature or 0.7,
+                codex_command=settings.codex_command
+                or _first_config_value(env_values, "HACKSON_MODEL_CODEX_COMMAND")
+                or "codex",
+                codex_home=settings.codex_home or _first_config_value(env_values, "HACKSON_MODEL_CODEX_HOME"),
+            )
+
         api_key = settings.api_key or _first_config_value(env_values, "OPENAI_API_KEY")
         if not api_key:
             raise ModelRuntimeError("model_api_key_missing")
 
         return ModelRuntimeConfig(
+            provider="openai_compatible",
             base_url=settings.base_url
             or _first_config_value(env_values, "OPENAI_BASE_URL")
             or DEFAULT_OPENAI_COMPATIBLE_BASE_URL,
@@ -75,6 +96,16 @@ def _first_config_value(env_values: dict[str, str | None], *names: str) -> str |
         if value:
             return value
     return None
+
+
+def _provider(settings: ModelEnvSettings, env_values: dict[str, str | None]) -> str:
+    raw_provider = settings.provider or _first_config_value(env_values, "HACKSON_MODEL_PROVIDER")
+    if not raw_provider:
+        return "openai_compatible"
+    provider = raw_provider.strip().lower()
+    if provider in {"openai_compatible", "codex_cli"}:
+        return provider
+    raise ModelRuntimeError("model_provider_unsupported")
 
 
 def _env_file_values(env_file: str | tuple[str, ...] | None) -> dict[str, str | None]:
