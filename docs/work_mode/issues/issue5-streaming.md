@@ -16,6 +16,8 @@ V1.0 MUST use event polling only.
 
 V1.2 SHOULD add streaming progress without changing the tool protocol.
 
+The executable V1.2 transport and implementation contract is `issue21-v12-streaming-execution-spec.md`.
+
 ## Risks
 
 - Streaming partial JSON can be hard to validate.

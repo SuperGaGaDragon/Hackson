@@ -199,10 +199,15 @@ Required order:
 2. V1.0.2 deterministic Product checks.
 3. V1.0.3 Lead review and Delegate discussion tools.
 4. V1.0.4 immutable revision lineage.
+5. V1.0.5 controlled Web Search tool.
 
 The quality track MUST preserve the core rule that the model chooses tools. It adds better tools, checks, and UI surfaces; it does not hard-code a writing workflow.
 
-See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, and `issues/issue13-revision-lineage.md`.
+V1.0.x read-only cognition tools, including `discuss_with_delegate` and `web_search`, MUST NOT directly mutate Product content or complete a Mission. They only create visible observations, windows, events, or reference Artifacts that the Lead may use on a later tool turn.
+
+`web_search` is not a browser, shell, Codex CLI, or computer-control tool. It is a backend-owned search provider wrapper with bounded results and visible source links.
+
+See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, `issues/issue13-revision-lineage.md`, and `issues/issue16-web-search-tool.md`.
 
 ## 9. Failure And Resume Strategy
 

@@ -104,8 +104,8 @@ Last Modified by: Codex
 - Public backend binds to `127.0.0.1:8145`.
 - Public MongoDB database is `hackson_domain_8145`.
 - Latest verified public frontend asset:
-  - `/assets/index-O85af_uy.js`
-  - `/assets/index-BNnrJWzs.css`
+  - `/assets/index-CTj8ztQu.js`
+  - `/assets/index-DTBHuMeq.css`
 - Latest public API smoke verified:
   - `GET /health`
   - `GET /`
@@ -115,6 +115,8 @@ Last Modified by: Codex
   - `POST /api/users/login`
   - `GET /api/users/me`
   - `PATCH /api/users/me`
+  - `POST /api/users/desktop-handoff`
+  - `POST /api/users/desktop-handoff/claim`
   - `GET /api/agents`
   - `GET /api/idle/conversation`
   - `POST /api/idle/{conversationId}/tick`
@@ -130,6 +132,7 @@ Last Modified by: Codex
   - `GET /api/work/projects/{projectId}/missions`
   - `GET /api/work/missions/{missionId}`
   - `POST /api/work/missions/{missionId}/start`
+  - `POST /api/work/missions/{missionId}/evaluate`
   - `GET /api/work/missions/{missionId}/events`
 - Latest public UI E2E verified on `https://hackson.catachess.com/`:
   - Register/Login succeeded.
@@ -141,6 +144,8 @@ Last Modified by: Codex
 - Work Console static-only update on 2026-05-27 replaced public `frontend/dist` without restarting `hackson-domain-8145.service`.
 - Work Console browser smoke verified completed Missions render Progress, Summary, and Product as separate vertical cards; Summary overlaps `0` Progress rows; completed `Start` is disabled.
 - Work Console screenshot: `/tmp/hackson_work_public_final.png`.
+- AgentLens public promotion on 2026-05-28 backed up touched public files to `~/hackson_backups/agentlens_public_20260528023904`, restarted only `hackson-domain-8145.service`, verified `POST /api/work/missions/{missionId}/evaluate`, and saved public UI screenshot `scripts/artifacts/work_mode_agentlens_public_ui_smoke.png`.
+- Desktop Pet handoff public promotion on 2026-05-28 backed up touched public files to `~/hackson_backups/desktop_handoff_public_20260528084126`, restarted only `hackson-domain-8145.service`, verified `POST /api/users/desktop-handoff/claim` returned `200` instead of `405`, verified `pending -> linked -> authorized -> pending`, and saved browser smoke screenshot `scripts/artifacts/desktop_pet_browser_handoff_public.png`.
 - Model-backed Idle/Companion smoke can return upstream `429` during provider throttling; the public API now exposes this as `{"detail":"model_rate_limited"}` instead of an unhandled `500`.
 - Idle Auto smoke service `hackson-idle-auto-8147.service` is active on `127.0.0.1:8147` for isolated verification of topic start, user interjection, server-owned speaker selection, and rate-limit behavior.
 - Idle Auto smoke UI path `5187 -> 18147 -> 8147` verified rate-limit behavior: frontend shows `Model busy`, Auto turns off, no extra tick request is scheduled, and failed tick leaves no messages.

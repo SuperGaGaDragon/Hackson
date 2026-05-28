@@ -7,7 +7,7 @@ Last Modified by: Codex
 ## brief intro
 - This document is the current verified API and port map for Hackson.
 - Public product traffic now uses `https://hackson.catachess.com/`.
-- Public-domain rows describe the currently promoted product service.
+- Public-domain rows describe the currently promoted product service, including Desktop Pet browser handoff login.
 - The `8147` rows describe the isolated Idle Auto smoke service used for its fix.
 - The `8148` rows describe the isolated Work V0.5 artifact smoke service. It is not the public product service.
 - The `8150` rows describe the isolated Work V1 model-driven loop smoke service. It is not the public product service.
@@ -16,6 +16,8 @@ Last Modified by: Codex
 - The `8162` rows describe the isolated Work V1 Delegate tolerance smoke service. It is not the public product service.
 - The `8163` rows describe the isolated Work V1 UI architecture smoke service. It is not the public product service.
 - The `8164` rows describe the isolated Work V1 Product reader regression service. It is not the public product service.
+- The `8165` rows describe the isolated Work V1.0.1-5 quality smoke service. It is not the public product service.
+- The `8166` rows describe the isolated Context Runtime V1.0-V1.6 smoke service. It is not the public product service.
 
 ## current environment
 | Item | Value |
@@ -30,11 +32,13 @@ Last Modified by: Codex
 | Public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled and active |
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
-| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, failed-window cleanup, Delegate result tolerance, Activity -> Windows -> Product -> Progress -> Diagnostics UI, final lineage validation, and final Product all-Artifact reader |
+| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, role-specific Lead/Delegate timeouts, waiting-input answer/resume, daemon worker launch, startup restart recovery for interrupted Missions, failed-window cleanup, Delegate result tolerance, review/discussion tools, controlled `web_search`, soft tool-use guidance, SSE event streaming with polling fallback, AgentLens Reliability evaluator, Activity -> Reliability -> Windows -> Product -> Progress -> Diagnostics UI, final lineage validation, and final Product all-Artifact reader |
+| Public Context Runtime | V1.6+ with context package persistence, prompt-log controls, memory controls, Background Idle permission, idle turn idempotency locks, Idle Working input queue, relationship-aware idle dialogue prompt contract, product-grade Me information architecture, evidence-backed relationship memory, and derived-worker freshness lane |
 | Public model provider | `codex_cli` through target-machine Codex CLI |
 | Public model | `gpt-5.4` |
 | Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
 | Public model auth/config | `/home/catadragon/.codex` |
+| Public model timeout | `HACKSON_MODEL_TIMEOUT_SECONDS=900` |
 | Public cloudflared config | `~/.cloudflared/hackson.yml` |
 | Idle Auto smoke source path | `~/hackson_idle_auto_8146` |
 | Idle Auto smoke backend path | `~/hackson_idle_auto_8146/backend` |
@@ -93,6 +97,29 @@ Last Modified by: Codex
 | Work V1 Product reader backend bind | `127.0.0.1:8164` |
 | Work V1 Product reader database | `hackson_work_product_reader_8164` |
 | Work V1 Product reader model provider | `codex_cli` through target-machine Codex CLI |
+| Work V1.0.1-5 quality source path | `~/hackson_work_quality_8165` |
+| Work V1.0.1-5 quality backend path | `~/hackson_work_quality_8165/backend` |
+| Work V1.0.1-5 quality frontend build path | `~/hackson_work_quality_8165/frontend/dist` |
+| Work V1.0.1-5 quality service | `hackson-work-quality-8165.service`, user-level systemd, active |
+| Work V1.0.1-5 quality backend bind | `127.0.0.1:8165` |
+| Work V1.0.1-5 quality database | `hackson_work_quality_8165` |
+| Work V1.0.1-5 quality model provider | `codex_cli` through target-machine Codex CLI |
+| Work V1.0.1-5 quality model timeout | `HACKSON_MODEL_TIMEOUT_SECONDS=900` |
+| Public frontend assets after Work V1.0.5 promotion | `/assets/index-D-yFdK1R.js`, `/assets/index-CwEAac1R.css` |
+| Context Runtime V1.0-V1.6 smoke source path | `~/hackson_context_runtime_8166` |
+| Context Runtime V1.0-V1.6 smoke backend path | `~/hackson_context_runtime_8166/backend` |
+| Context Runtime V1.0-V1.6 smoke frontend build path | `~/hackson_context_runtime_8166/frontend/dist` |
+| Context Runtime V1.0-V1.6 smoke frontend assets | `/assets/index-DNrmBHyi.js`, `/assets/index-DTBHuMeq.css` |
+| Public frontend assets after Context Runtime V1.6 promotion | `/assets/index-n_-ZPKaU.js`, `/assets/index-CHTMdui3.css` |
+| Public frontend assets after AgentLens promotion | `/assets/index-n_-ZPKaU.js`, `/assets/index-CHTMdui3.css` |
+| Public frontend assets after Desktop Pet handoff promotion | `/assets/index-CTj8ztQu.js`, `/assets/index-DTBHuMeq.css` |
+| Public frontend assets after Work SSE streaming promotion | `/assets/index-CG4wOHJC.js`, `/assets/index-DTBHuMeq.css` |
+| Context Runtime V1.0-V1.6 smoke service | `hackson-context-runtime-8166.service`, user-level systemd, active |
+| Context Runtime fake model service | `hackson-context-runtime-fake-model-18166.service`, user-level systemd, active |
+| Context Runtime V1.0-V1.6 smoke backend bind | `127.0.0.1:8166` |
+| Context Runtime fake model bind | `127.0.0.1:18166` |
+| Context Runtime V1.0-V1.6 smoke database | `hackson_context_runtime_8166` |
+| Context Runtime V1.0-V1.6 smoke model provider | OpenAI-compatible fake relay on `127.0.0.1:18166` |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -102,7 +129,7 @@ Last Modified by: Codex
 ## active Hackson port map
 | Port | Service | Bind | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service`; promoted to Work V1 Delegate tolerance build on 2026-05-28 |
+| 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service`; promoted to AgentLens Reliability evaluator, Work restart-recovery, and Desktop Pet browser handoff login on 2026-05-28 |
 | 8147 | Hackson Idle Auto smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-idle-auto-8147.service` | Isolated verification for Idle Auto topic, interjection, speaker, and rate-limit behavior |
 | 8148 | Hackson Work V0.5 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v05-8148.service` | Isolated verification for Work Mission artifact persistence and Product UI render |
 | 18148 | Work V0.5 fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-work-v05-fake-model-18148.service` | Test-only model relay for deterministic Work V0.5 success smoke; not a product API |
@@ -112,6 +139,9 @@ Last Modified by: Codex
 | 8162 | Hackson Work V1 Delegate tolerance FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-delegate-8162.service` | Isolated verification for tolerant Delegate result ingestion, unstructured prose Artifact persistence, full smoke, HTTP smoke, and browser smoke |
 | 8163 | Hackson Work V1 UI architecture FastAPI + React app | `127.0.0.1` | Active as `hackson-work-ui-8163.service` | Isolated verification for Activity, Windows, Product lineage, Progress, Diagnostics, desktop/mobile browser smoke, and no mobile horizontal overflow |
 | 8164 | Hackson Work V1 Product reader FastAPI + React app | `127.0.0.1` | Active as `hackson-work-product-reader-8164.service` | Isolated regression verification that final Products keep outline, chapter drafts, and final draft readable after Done |
+| 8165 | Hackson Work V1.0.1-5 quality FastAPI + React app | `127.0.0.1` | Active as `hackson-work-quality-8165.service` | Isolated verification for expandable Progress details, New Mission modal, deterministic long-novel quality gates, Review/Discussion tool schema, controlled `web_search`, revision lineage, final Product reader, `MODEL_TURN_INVALID` event polling, and real Codex 8000字 browser smoke |
+| 8166 | Hackson Context Runtime V1.0-V1.6 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-context-runtime-8166.service` | Isolated verification for context package persistence, Full Prompt Logging, Background Idle setting, prompt-log delete, Me controls, idle tick/idlesay idempotency, worker-derived summaries/memory, persisted summary selection, memory controls, Idle Working input queue, relationship-aware idle prompt contract, and deterministic context eval gate |
+| 18166 | Context Runtime fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-context-runtime-fake-model-18166.service` | Test-only model relay for deterministic Context Runtime success smoke; not a product API |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
@@ -131,13 +161,30 @@ Last Modified by: Codex
 - On 2026-05-28, the Work V1 UI architecture frontend build was promoted to public `8145` by replacing only `frontend/dist`; `hackson-domain-8145.service` was not restarted. Public health, root HTML, assets `/assets/index-qPU-cMH4.js` and `/assets/index-BbzX_UAM.css`, and a public browser static Work Console order check passed.
 - On 2026-05-28, `8164` was introduced as the isolated Work V1 Product reader regression service. It verifies that a completed final Product defaults to an all-Artifact reader stack and can switch between `All`, outline, chapter drafts, and final draft.
 - On 2026-05-28, the Work V1 Product reader frontend build was promoted to public `8145` by replacing only `frontend/dist`; `hackson-domain-8145.service` was not restarted. Public health, root HTML, assets `/assets/index-3udE6cD6.js` and `/assets/index-BcI42SsQ.css`, and a public browser asset-load check passed.
+- On 2026-05-28, `8166` and fake model relay `18166` were introduced as isolated Context Runtime V1.0 smoke services. They verified context package persistence, prompt hash/source-id metadata, Full Prompt Logging default-on behavior, disabled prompt text omission, prompt-log deletion, static React serving, and Me prompt-log controls without touching public `8145` or existing smoke services.
+- On 2026-05-28, `8166` was updated with Loop 3 idle tick lock verification. The first target attempt exposed a Mongo ObjectId completion bug and failed-lock retry bug; both were fixed with mongomock regression tests. Target HTTP smoke then passed with `idempotent_retry=ok`, and Mongo `idle_turn_locks` showed completed response snapshots for both idempotency keys.
+- On 2026-05-28, `8166` was updated with the Loop 4 Background Idle user setting. New users return `backgroundIdleOn=false`; Me shows a `Background` toggle; saving `backgroundIdleOn=true` is verified. No background runner is enabled by this smoke.
+- On 2026-05-28, `8166` was updated with the Loop 4 server-side cadence gate. The gate blocks when Background Idle is disabled, allows when enabled and within budget, records successful background turns in `idle_runner_state`, and returns `idle_budget_exhausted` after the configured smoke budget. No daemonized background runner is enabled by this smoke.
+- On 2026-05-28, `8166` was updated with the Loop 5 derived worker runner. The HTTP smoke now runs pending jobs through `DerivedWorkerRunner` and verifies persisted summaries, companion preference memory, idle relationship memory, and diary entries. Earlier smoke processed `22` jobs with `0` failed jobs.
+- On 2026-05-28, `8166` was updated with Loops 6-8. Persisted session summaries are preferred over synchronous compact summaries for long histories, scoped memory is injected into idle/companion/work context without work-to-companion leakage, Me exposes memory list/disable/enable/delete controls, and `scripts/context_runtime_eval.py` gates mode fit, speaker boundary, topic adherence, repetition, transition quality, memory use, and latency notes. Latest target smoke passed with `idempotent_retry=ok background_gate=ok memory_controls=ok worker_processed=14 persisted_summary=6a17d1f9acac0d98f3d0a95c`; target Mongo counts after smoke were context packages `38`, memory cards `17`, summaries `37`, failed jobs `0`. Target Me browser smoke passed with screenshot `scripts/artifacts/context_runtime_me_memory_smoke.png`.
+- On 2026-05-28, `8165` was updated as the isolated Work V1.0.1-4 quality service. Target Work Mode `66`, model_runtime `24`, deterministic full smoke, authenticated HTTP full smoke, frontend build, health, static assets, and real Codex browser smoke passed. The real smoke created Mission `6a17ca6696b9294a46f1f476`, used 4 Delegate windows, persisted 8 Artifacts, recovered from `final_artifact_not_final_content` and `final_artifact_cjk_too_short`, and completed with final Artifact `6a17ccc796b9294a46f1f4c9` at `8827` CJK. The Playwright UI smoke measured full Product text at `23615` CJK and saved target screenshots under `scripts/artifacts/work_mode_v1_quality_target*.png`.
+- On 2026-05-28, the Work V1.0.1-4 quality build was promoted to public `8145` from the verified `8165` release source. Public-directory Work Mode `66`, model_runtime `24`, deterministic full smoke, authenticated HTTP full smoke, and frontend build passed before restart. After restart, `127.0.0.1:8145/health`, `https://hackson.catachess.com/health`, and `/` returned `200`; assets `index-3zN414a_.js` and `index-B9725wXu.css` were served. Public `HACKSON_MODEL_TIMEOUT_SECONDS` is `900`. Real public browser smoke passed with Mission `6a17cfa6f1c229f07da02229`, 2 Work Windows, 5 Artifacts, recovery from `final_artifact_not_final_content`, final Product `《潮汐备忘录》最终成稿`, browser-read Product text `22819` CJK, screenshots `scripts/artifacts/work_mode_v1_quality_public*.png`, and no orphan `codex exec` process.
+- On 2026-05-28, Context Runtime V1.0-V1.3 was promoted from verified `8166` to public `8145`. Public source was backed up to `~/hackson_backups/context_runtime_public_20260528015746` before the whitelist sync. Public-directory Context Runtime scoped tests passed with `66` tests; `scripts/context_runtime_eval.py` passed with `context_runtime_eval=ok cases=4`; frontend build passed with assets `/assets/index-O58mTWZQ.js` and `/assets/index-dKibUoIc.css`. After restarting `hackson-domain-8145.service`, `127.0.0.1:8145/health`, `https://hackson.catachess.com/health`, root HTML, and both assets returned `200`. Public API smoke verified new-user defaults `fullPromptLoggingOn=true` and `backgroundIdleOn=false`, prompt-log list, memory list, and settings patch. Public Me browser smoke passed with screenshot `scripts/artifacts/context_runtime_me_public_smoke.png`. Public model-backed idle tick succeeded with context package `6a17d9d5a0f8dcab0cfc07dc`; production Mongo `hackson_domain_8145` then showed `context_packages=1`, `prompt_text_stored=1`, `memory_cards=0`, `summaries=0`, `jobs_failed=0`. Post-promotion Work regression also passed in the public directory: Work Mode + model_runtime `91` tests, `work_mode_v1_full_smoke`, `work_mode_v1_http_smoke`, and `work_mode_waiting_input_http_smoke`.
+- On 2026-05-28, public `8145` was patched for the Work Mode `waiting_input` answer entry. `ask_user` now has a complete product loop: `USER_INPUT_REQUESTED` displays an answer form, `POST /api/work/missions/{missionId}/answer` records `USER_INPUT_RECEIVED`, closes the waiting run, creates a resumed run, and continues the Mission. Local, `8165`, and public-directory Work Mode `67`, model_runtime `24`, waiting-input HTTP smoke, deterministic full smoke, authenticated HTTP full smoke, and frontend build passed. After restart, `https://hackson.catachess.com/health` returned `200`, public assets `index-CfNoUhgE.js` and `index-Y-VWNAFW.css` were served, public `/answer` returned `409 mission_not_waiting_input` for a non-waiting Mission, and the public JS bundle contains the visible `Input Requested` answer form.
+- On 2026-05-28, `8165` and public `8145` were updated with Work V1.0.5 controlled `web_search`. The tool is read-only, backend-owned, and visible through `WEB_SEARCH_COMPLETED` / `WEB_SEARCH_FAILED` events plus source-link Progress details. Local Work Mode discovery passed with `77` tests; `8165` and public-directory Work Mode passed with `73` tests. Deterministic full smoke, `work_mode_v1_search_smoke`, authenticated HTTP full smoke, and frontend build passed on the public release path. The target-machine real provider probe returned `ok 1 duckduckgo_lite`. After restarting `hackson-domain-8145.service`, `127.0.0.1:8145/health` and `https://hackson.catachess.com/health` returned `{"status":"ok"}`, and public assets `index-D-yFdK1R.js` / `index-CwEAac1R.css` were served.
+- On 2026-05-28, `8166` and public `8145` were updated with Context Runtime V1.6 idle interruption and human dialogue behavior. Idle Working no longer blocks user input: the UI accepts one queued user line, pauses Auto, renders it as pending, and sends it as soon as the active turn finishes. `POST /api/idle/{conversationId}/messages` now accepts `idempotencyKey` and uses the same idle turn lock as tick so concurrent transcript writes return `423 idle_turn_locked` instead of reordering messages. Idle prompts now include `Relationship stance`, `Turn intent`, previous-Agent response requirements, one-move conversational guidance, and anti-checklist rules. Public source was backed up to `~/hackson_backups/idle_human_public_20260528022746` before the whitelist sync. Public-directory Context Runtime tests passed with `69` tests; Work Mode/model_runtime regression passed with `97` tests; `scripts/context_runtime_eval.py`, `work_mode_v1_full_smoke`, `work_mode_v1_http_smoke`, `work_mode_waiting_input_http_smoke`, and frontend build passed before restart. After restarting `hackson-domain-8145.service`, local and public `/health` returned `{"status":"ok"}`, root HTML served `/assets/index-n_-ZPKaU.js` and `/assets/index-CHTMdui3.css`, public API smoke passed with `context_runtime_http_smoke=ok ... worker_processed=26` on final recheck, public Idle interruption browser smoke passed with screenshot `scripts/artifacts/idle_interruption_public_recheck.png`, public Me smoke passed with screenshot `scripts/artifacts/context_runtime_me_public_recheck.png`, and production logs showed the expected `idle/tick`, `idle/messages`, prompt-log, memory, and Work polling requests without service errors.
+- On 2026-05-28, public `8145` was updated with AgentLens Reliability evaluator for Work Missions. Public source files were backed up to `~/hackson_backups/agentlens_public_20260528023904` before the targeted sync. Target Work Mode tests passed with `77` tests; targeted evaluator/route tests passed with `12` tests; target frontend build passed with assets `/assets/index-n_-ZPKaU.js` and `/assets/index-CHTMdui3.css`; target `work_mode_v1_http_smoke.py` passed with `reliability_score=80` and `reliability_status=minor_review`. After restarting only `hackson-domain-8145.service`, local and public `/health` returned `{"status":"ok"}`, public root served the new assets, `scripts/work_mode_agentlens_public_smoke.py` passed against `https://hackson.catachess.com` with Mission `6a17e448abb7d1b24cd60d53`, score `26`, status `unsafe_to_ship`, and issues `hallucinated_entity, missing_source, tool_failure_ignored, unsupported_claim, weakly_supported_claim`; public UI smoke passed with screenshot `scripts/artifacts/work_mode_agentlens_public_ui_smoke.png`.
+- On 2026-05-28, public `8145` was patched for Work restart recovery after user testing exposed a `deactivating (stop-sigterm)` hang while a long Codex-backed Delegate turn was active. Work Mission launch no longer uses request-owned FastAPI `BackgroundTasks`; startup recovery now marks interrupted `running` Missions as `paused_retryable`, marks running Work Windows as `failed`, and emits `WORK_WINDOW_FAILED` plus `MISSION_PAUSED_RETRYABLE` without deleting Products, Artifacts, or Events. The affected public Mission `6a17e0d8a86e4f0e354d1974` recovered to `paused_retryable interrupted_restart`; its open window `6a17e141a86e4f0e354d198f` recovered to `failed`. Local Work Mode tests passed with `80` tests and frontend build passed. Isolated `8165` passed Work Mode `80`, `work_mode_v1_search_smoke.py`, `work_mode_v1_full_smoke.py`, and restart-recovery smoke. Public-directory Work Mode `80`, search smoke, full smoke, HTTP smoke, and frontend build passed before restart. Restarting `hackson-domain-8145.service` completed immediately at `02:46:06 EDT`; local and public `/health` returned `{"status":"ok"}`, and no orphan `codex exec` process remained.
+- On 2026-05-28, public `8145` was patched for Desktop Pet V0.8.2 browser handoff login. Public source files were backed up to `~/hackson_backups/desktop_handoff_public_20260528084126` before the targeted sync. Public-directory user service/route tests passed with `9` tests; target frontend build passed with assets `/assets/index-CTj8ztQu.js` and `/assets/index-DTBHuMeq.css`. After restarting only `hackson-domain-8145.service`, local and public `/health` returned `{"status":"ok"}`, `POST /api/users/desktop-handoff/claim` returned `200` instead of the previous `405`, public API smoke verified `pending -> linked -> authorized -> pending`, and browser smoke verified both already-logged-in and login-then-bind `?desktopAuth=` flows with screenshot `scripts/artifacts/desktop_pet_browser_handoff_public.png`.
+- On 2026-05-28, public `8145` was patched for Work Mode timeout hardening, soft tool-use guidance, and V1.2 event-log streaming. Lead tool-selection calls now use a short default budget (`180s`) while Delegate writing calls keep the long default budget (`900s`); Codex CLI process groups are cleaned after success, timeout, and failure. Lead context now includes soft guidance to use `web_search`, `review_product`, and `discuss_with_delegate` more actively when the task warrants it, without backend hard-coding the workflow. `GET /api/work/missions/{missionId}/events/stream` now streams persisted public Mission events over SSE; frontend Work uses `fetch` + `ReadableStream` so Bearer auth works and falls back to polling if streaming fails. Local, `8165`, and public-directory Work Mode `85` tests, model_runtime `28` tests, deterministic full smoke, search smoke, waiting-input smoke, and frontend build passed. After restart, public `/health` returned `200`, root HTML served `/assets/index-CG4wOHJC.js` and `/assets/index-DTBHuMeq.css`, public SSE probes returned `text/event-stream` with `MISSION_CREATED`, and no orphan `codex exec` process remained.
+- On 2026-05-28, `8166` and public `8145` were updated with Me Page product IA and derived worker freshness. Public source was backed up to `~/hackson_backups/me_worker_public_20260528091359` before the targeted sync. Me now prioritizes Account and editable Nora/Vale Agent profiles in the first viewport, moves Prompt Logs into collapsed Debug, keeps each prompt log expandable, labels user context as `Style` and `Background`, and keeps `Away idle` separate from user Background. Memory reads now hide legacy generic relationship cards exactly matching `Nora and Vale shared another idle interaction.` Relationship memory now requires two Agent source messages and summarizes the actual source text. Derived job processing supports scoped smoke runs and a background freshness lane that processes latest pending jobs in addition to FIFO backlog. Local backend tests passed with `218` tests and frontend build passed. Isolated `8166` backend tests passed with `195` tests; target build with Node `20.19.6` served `/assets/index-DNrmBHyi.js` and `/assets/index-DTBHuMeq.css`; target API smoke passed with `context_runtime_http_smoke=ok ... worker_processed=11 persisted_summary=6a1841095ddfc615b4d0da52`; target Me browser smoke passed with screenshot `scripts/artifacts/context_runtime_me_ia_8166_v2.png`. Public-directory backend tests passed with `216` tests; public build served `/assets/index-CG4wOHJC.js` and `/assets/index-DTBHuMeq.css`; after restart `hackson-domain-8145.service`, `hackson-cloudflared.service`, `hackson-context-runtime-8166.service`, and `hackson-context-runtime-fake-model-18166.service` were all active. Final public API smoke passed with `context_runtime_http_smoke=ok user=6a184109a816f35aa141e653 conversation=6a184109a816f35aa141e654 packages=5 first=6a184109a816f35aa141e657 second=6a18410fa816f35aa141e665 idempotent_retry=ok background_gate=ok memory_controls=ok worker_processed=2 persisted_summary=6a184117a816f35aa141e679`; Mongo for that user had `pending=0`, `summaries=5`, `diaries=4`, and content-derived idle relationship memories. Public Me browser smoke passed with screenshot `scripts/artifacts/context_runtime_me_ia_public_v3.png`.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
-## verified public APIs
-All rows below were verified against `https://hackson.catachess.com/` on 2026-05-27.
+## verified API shapes
+Public Work, AgentLens, Context Runtime, and Desktop Pet handoff rows below were verified against `https://hackson.catachess.com/` on 2026-05-28. Context Runtime was first verified on isolated `127.0.0.1:8166`, then promoted to public `8145`.
 
-Model-backed rows were additionally verified on the target machine against `http://127.0.0.1:8145` on 2026-05-27 after configuring `HACKSON_MODEL_PROVIDER=codex_cli`; the smoke confirmed assistant metadata `provider=codex_cli`, `modelName=gpt-5.4`, `idle_quality_v1`, and `companion_join_quality_v1`.
+Model-backed public rows were additionally verified on the target machine against `http://127.0.0.1:8145` on 2026-05-27 after configuring `HACKSON_MODEL_PROVIDER=codex_cli`; the smoke confirmed assistant metadata `provider=codex_cli`, `modelName=gpt-5.4`, `idle_quality_v1`, and `companion_join_quality_v1`.
 
 | Method | API | Auth | Module | Purpose |
 | --- | --- | --- | --- | --- |
@@ -148,13 +195,20 @@ Model-backed rows were additionally verified on the target machine against `http
 | POST | `/api/users/login` | No | `backend/users/` | Login by email or username |
 | GET | `/api/users/me` | Bearer JWT | `backend/users/` | Read current user and the two editable Agent profiles |
 | PATCH | `/api/users/me` | Bearer JWT | `backend/users/` | Update current user settings and Agent profiles |
+| POST | `/api/users/desktop-handoff` | Bearer JWT | `backend/users/` | Public Desktop Pet V0.8.2 handoff bind; browser login binds a short-lived desktop code to the current user. Verified on public `8145` on 2026-05-28. |
+| POST | `/api/users/desktop-handoff/claim` | No | `backend/users/` | Public Desktop Pet V0.8.2 handoff claim; desktop polls with a one-time code and receives a JWT after browser bind. Verified on public `8145` on 2026-05-28. |
+| GET | `/api/users/me/prompt-logs` | Bearer JWT | `backend/users/`, `backend/context/` | List the current user's retained full prompt logs for Context Runtime debugging |
+| DELETE | `/api/users/me/prompt-logs` | Bearer JWT | `backend/users/`, `backend/context/` | Delete retained full prompt text while keeping context package metadata |
+| GET | `/api/memory/me` | Bearer JWT | `backend/memory/` | List current-user non-deleted memory cards for Me controls |
+| PATCH | `/api/memory/me/{memoryId}` | Bearer JWT | `backend/memory/` | Set a memory card `status` to `active`, `disabled`, or `archived` |
+| DELETE | `/api/memory/me/{memoryId}` | Bearer JWT | `backend/memory/` | Soft-delete a memory card so it leaves UI and context reads |
 | GET | `/api/agents` | No | `backend/agents/` | Return baseline Agent display profiles; authenticated UI prefers the current user's editable profiles from `/api/users/me` |
 | POST | `/api/conversations` | Bearer JWT | `backend/conversations/` | Create an idle, companion, or work conversation container |
 | GET | `/api/conversations` | Bearer JWT | `backend/conversations/` | List current-user conversations by mode/status |
 | GET | `/api/conversations/{conversationId}/messages` | Bearer JWT | `backend/conversations/` | Page messages in one owned conversation |
 | GET | `/api/idle/conversation` | Bearer JWT | `backend/conversations/` | Get or create the active idle conversation |
 | POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `backend/interactions/` | Generate one idle Agent reply |
-| POST | `/api/idle/{conversationId}/messages` | Bearer JWT | `backend/interactions/` | Add a visible user line to idle and generate the next Agent reply |
+| POST | `/api/idle/{conversationId}/messages` | Bearer JWT | `backend/interactions/` | Add a visible user line to idle and generate the next Agent reply; accepts optional `idempotencyKey` for queued/interrupted turns |
 | POST | `/api/idle/{conversationId}/join` | Bearer JWT | `backend/interactions/` | Create a `companion_1` child from idle and reply |
 | POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `backend/interactions/` | Continue a companion conversation |
 | POST | `/api/tasks` | Bearer JWT | `backend/tasks/` | Create the legacy minimal Work task and its conversation |
@@ -165,8 +219,11 @@ Model-backed rows were additionally verified on the target machine against `http
 | POST | `/api/work/missions` | Bearer JWT | `backend/work_mode/` | Create a Mission with `agent_1` or `agent_2` as lead |
 | GET | `/api/work/projects/{projectId}/missions` | Bearer JWT | `backend/work_mode/` | List Missions in one Project |
 | GET | `/api/work/missions/{missionId}` | Bearer JWT | `backend/work_mode/` | Read Mission detail, current event timeline, persisted Products, Work Windows, and Artifacts |
-| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start or resume the V1 model-driven tool loop in current HEAD; public `8145` still runs its deployed version until promoted |
+| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start or resume the public V1.0.5 model-driven tool loop through the daemon launcher, with visible progress, Product/Artifact lineage, review/discussion tools, controlled `web_search`, deterministic long-novel final quality gates, and restart recovery for interrupted runs |
+| POST | `/api/work/missions/{missionId}/answer` | Bearer JWT | `backend/work_mode/` | Submit the user's answer while a Mission is `waiting_input`; records `USER_INPUT_RECEIVED`, resumes the Mission, and launches the model loop |
+| POST | `/api/work/missions/{missionId}/evaluate` | Bearer JWT | `backend/work_mode/` | Public AgentLens evaluator; reads Mission trace, persists a Reliability Report artifact, and records `RELIABILITY_REPORTED` |
 | GET | `/api/work/missions/{missionId}/events` | Bearer JWT | `backend/work_mode/` | Poll Mission events after `afterSequence` |
+| GET | `/api/work/missions/{missionId}/events/stream` | Bearer JWT | `backend/work_mode/` | SSE stream for persisted public Mission events after `afterSequence`; emits `work_event` and `ping`, preserves `/events` polling fallback, and does not stream model tokens or hidden reasoning |
 
 ## request notes
 
@@ -192,6 +249,167 @@ POST /api/users/register
 ```
 
 Returns a JWT plus the current user object.
+
+New users default `fullPromptLoggingOn` to `true`.
+
+New users default `backgroundIdleOn` to `false`.
+
+### Full Prompt Logging
+```http
+PATCH /api/users/me
+```
+
+```json
+{
+  "fullPromptLoggingOn": false
+}
+```
+
+When enabled, future model-backed turns persist full model-visible prompt text for 30 days in `context_packages`. Context package metadata, source ids, prompt hash, and token estimate persist even when this setting is off.
+
+```http
+GET /api/users/me/prompt-logs
+```
+
+Returns retained prompt logs for the current user:
+
+```json
+{
+  "promptLogs": [
+    {
+      "id": "<context-package-id>",
+      "conversationId": "<conversation-id>",
+      "mode": "idle",
+      "targetAgentId": "agent_1",
+      "promptHash": "<sha256>",
+      "tokenEstimate": 1234,
+      "fullPromptText": "system:\\n...",
+      "fullPromptTextExpiresAt": "2026-06-27T00:00:00Z",
+      "createdAt": "2026-05-28T00:00:00Z"
+    }
+  ]
+}
+```
+
+```http
+DELETE /api/users/me/prompt-logs
+```
+
+```json
+{
+  "deletedPromptLogs": 1
+}
+```
+
+This clears retained full prompt text only. Historical prompt text is not editable.
+
+### Desktop Pet handoff
+```http
+POST /api/users/desktop-handoff
+Authorization: Bearer <jwt>
+```
+
+```json
+{
+  "code": "desktop-code-from-pet"
+}
+```
+
+Returns:
+
+```json
+{
+  "status": "linked"
+}
+```
+
+```http
+POST /api/users/desktop-handoff/claim
+```
+
+```json
+{
+  "code": "desktop-code-from-pet"
+}
+```
+
+Pending response:
+
+```json
+{
+  "status": "pending",
+  "accessToken": null,
+  "tokenType": null,
+  "user": null
+}
+```
+
+Authorized response returns `status="authorized"`, `accessToken`, `tokenType`, and `user`. Codes are short-lived and one-time.
+
+
+### Memory controls
+```http
+GET /api/memory/me
+```
+
+Returns non-deleted memory cards owned by the current user:
+
+```json
+{
+  "memoryCards": [
+    {
+      "id": "<memory-id>",
+      "scope": "companion",
+      "ownerType": "user",
+      "ownerId": "<user-id>",
+      "memoryType": "preference",
+      "summary": "User prefers concise Chinese replies.",
+      "sourceMessageIds": ["<message-id>"],
+      "importanceScore": 0.8,
+      "confidence": 0.9,
+      "status": "active",
+      "metadata": {},
+      "createdAt": "2026-05-28T00:00:00Z",
+      "updatedAt": "2026-05-28T00:00:00Z"
+    }
+  ]
+}
+```
+
+```http
+PATCH /api/memory/me/{memoryId}
+```
+
+```json
+{
+  "status": "disabled"
+}
+```
+
+Allowed status updates are `active`, `disabled`, and `archived`. Disabled or deleted memory cards are excluded from context package memory reads.
+
+```http
+DELETE /api/memory/me/{memoryId}
+```
+
+```json
+{
+  "deletedMemoryCard": true
+}
+```
+
+### Background Idle Setting
+```http
+PATCH /api/users/me
+```
+
+```json
+{
+  "backgroundIdleOn": true
+}
+```
+
+This setting is the user permission for future server-owned idle cadence. It defaults to `false`. Current isolated `8166` smoke verifies storage, cadence gating, and Me UI; it does not run a browser-closed background worker.
 
 ### Agent profile update
 ```http
@@ -241,10 +459,14 @@ POST /api/idle/{conversationId}/tick
 
 ```json
 {
-  "speakerSlot": "agent_1",
-  "discussionDirection": "Stay focused on chapter planning."
+  "targetAgentId": "agent_1",
+  "discussionDirection": "Stay focused on chapter planning.",
+  "idleSeed": "Continue naturally.",
+  "idempotencyKey": "client-turn-uuid"
 }
 ```
+
+`idempotencyKey` protects retries for the same transcript. A completed retry returns the same Agent message/context response; a concurrent different key returns `423 idle_turn_locked`.
 
 ### Idle user line
 ```http
@@ -254,12 +476,14 @@ POST /api/idle/{conversationId}/messages
 ```json
 {
   "content": "Make the protagonist older and more tired.",
-  "speakerSlot": "agent_2",
-  "discussionDirection": "Respond to the user's latest line."
+  "discussionDirection": "Respond to the user's latest line.",
+  "idempotencyKey": "idle-say-client-turn-uuid"
 }
 ```
 
-Returns both the saved user message and the generated Agent message.
+Returns both the saved user message and the generated Agent message. The frontend may call this after a currently running idle tick finishes when the user typed during `Working`.
+
+`idempotencyKey` protects retries for queued user lines. A completed retry returns the same saved user message, Agent message, and context response; a concurrent different key on the same transcript returns `423 idle_turn_locked`.
 
 ### Work project
 ```http
@@ -299,14 +523,25 @@ POST /api/work/missions/{missionId}/start
 {}
 ```
 
-The V0.5 worker emits model-backed artifact events:
+The current V1.0.5 worker emits a model-selected tool timeline. Common events include:
 
 ```text
+MISSION_CREATED
 MISSION_STARTED
-STEP_STARTED
-RAW_LOG
+MODEL_TURN_STARTED
+MODEL_TURN_COMPLETED
+MODEL_TURN_INVALID
+TOOL_CALLED
+MISSION_PLAN_UPDATED
 PRODUCT_UPDATED
-STEP_COMPLETED
+WORK_WINDOW_OPENED
+WORK_WINDOW_COMPLETED
+REVIEW_COMPLETED
+DISCUSSION_COMPLETED
+WEB_SEARCH_COMPLETED
+WEB_SEARCH_FAILED
+USER_INPUT_REQUESTED
+USER_INPUT_RECEIVED
 MISSION_COMPLETED
 ```
 
@@ -322,7 +557,7 @@ Read persisted output from:
 GET /api/work/missions/{missionId}
 ```
 
-`artifacts` is sorted newest first:
+Mission detail returns the current timeline, products, work windows, and artifacts. `artifacts` is sorted newest first:
 
 ```json
 {
@@ -350,15 +585,82 @@ GET /api/work/missions/{missionId}
 }
 ```
 
-`PRODUCT_UPDATED` carries `artifactId`, `kind`, `summary`, `changedFiles`, and `tests`. The full Artifact content is not duplicated into event payloads.
+`PRODUCT_UPDATED` carries bounded metadata and references the persisted Artifact. Full Artifact content is read from Mission detail, not duplicated into every event payload.
 
-V0.5 Work Mission generation is intentionally bounded to one model pass. Long requests such as an 8000-character story return a usable first draft, sample, or outline artifact; a later supervisor loop should expand it across multiple runs.
+`web_search` is not an HTTP endpoint. It is a controlled internal Work tool selected by the Lead model through the V1 tool protocol. The backend executes the provider call, persists `WEB_SEARCH_COMPLETED` or `WEB_SEARCH_FAILED`, and returns bounded source observations to the next model turn. Search results are informational only; visible deliverables must still be written through `work_product`.
+
+### Evaluate mission
+```http
+POST /api/work/missions/{missionId}/evaluate
+```
+
+```json
+{
+  "profile": "research_reliability_v1",
+  "mode": "live"
+}
+```
+
+Returns Mission detail after writing a `report` Artifact with `metadata.artifactRole="reliability_report"` and `metadata.reportPayload`. The evaluator only treats trace evidence, especially `WEB_SEARCH_COMPLETED` snippets, as evidence; final answer text cannot support itself.
 
 ## latest verification
+- AgentLens evaluator local verification on 2026-05-28:
+  - Work Mode evaluator and route tests passed with `PYTHONPATH=backend .venv/bin/python -m pytest backend/work_mode/tests/test_work_mode_evaluator.py backend/work_mode/tests/test_work_mode_routes.py -q`.
+  - Full local Work Mode suite passed with `77` tests.
+  - Frontend `npm run build` passed after adding the Reliability panel.
+  - Local HTTP smoke passed with `/api/work/missions/{missionId}/evaluate`, a Reliability Report artifact, `RELIABILITY_REPORTED`, `reliability_score=80`, and `reliability_status=minor_review`.
+  - Local browser smoke passed on isolated ports `9127` and `5127`, including the `Check` action, Reliability panel, desktop screenshot, mobile screenshot, and no mobile horizontal overflow.
+- AgentLens public verification on 2026-05-28:
+  - Target public Work Mode tests passed with `77` tests; targeted evaluator/route tests passed with `12` tests.
+  - Target frontend build passed with `/assets/index-n_-ZPKaU.js` and `/assets/index-CHTMdui3.css`.
+  - Target HTTP smoke passed with `reliability_score=80` and `reliability_status=minor_review`.
+  - Public `/health`, root HTML, and assets passed after restarting only `hackson-domain-8145.service`.
+  - Public AgentLens API smoke passed against `https://hackson.catachess.com` with seeded trace Mission `6a17e448abb7d1b24cd60d53`, score `26`, status `unsafe_to_ship`, and expected issue taxonomy.
+  - Public AgentLens UI smoke passed and saved `scripts/artifacts/work_mode_agentlens_public_ui_smoke.png`.
 - Local backend tests passed before deployment:
   - `backend/interactions/tests`: 18 tests.
   - `backend/work_mode/tests`: 14 tests.
 - Local frontend build passed before deployment.
+- Context Runtime V1.0 local verification on 2026-05-28:
+  - `backend/agents/tests`, `context`, `conversations`, `diary`, `interactions`, `memory`, `model_runtime`, `orchestration`, `summaries`, `tasks`, `backend/tests`, `users`, `workers`, and `work_mode` all passed through per-directory unittest discovery.
+  - Context Runtime scoped checks passed after Loops 6-8: context/users/memory/interactions/workers `66` tests.
+  - Deterministic eval gate passed: `context_runtime_eval=ok cases=4`.
+  - Frontend `npm run build` passed with assets `/assets/index-D8Rq9q5i.js` and `/assets/index-dKibUoIc.css`.
+  - Verified `GET /api/users/me/prompt-logs` and `DELETE /api/users/me/prompt-logs` with FastAPI route tests; verified context package persistence and `context_package_id` message linkage through service tests.
+- Context Runtime V1.0 isolated target verification on active `8166`:
+  - Target source: `~/hackson_context_runtime_8166`.
+  - Target services: `hackson-context-runtime-8166.service` on `127.0.0.1:8166` and `hackson-context-runtime-fake-model-18166.service` on `127.0.0.1:18166`.
+  - Target database: `hackson_context_runtime_8166`.
+  - Target scoped tests passed after Loops 6-8: context/users/memory/interactions/workers `66` tests.
+  - Target deterministic eval gate passed: `context_runtime_eval=ok cases=4`.
+  - Target frontend build passed with Node `20.19.6`, assets `/assets/index-D8Rq9q5i.js` and `/assets/index-dKibUoIc.css`.
+  - Target HTTP smoke passed with `idempotent_retry=ok background_gate=ok memory_controls=ok worker_processed=14 persisted_summary=6a17d1f9acac0d98f3d0a95c`: register returned `fullPromptLoggingOn=true` and `backgroundIdleOn=false`; first idle tick created a context package with full prompt text; retrying the same `idempotencyKey` returned the same Agent message and context package; `GET /api/users/me/prompt-logs` returned the retained prompt text; `PATCH /api/users/me` disabled Full Prompt Logging and separately saved `backgroundIdleOn=true`; second idle tick created metadata without full prompt text; `DELETE /api/users/me/prompt-logs` cleared retained text while keeping all package records; Background Idle gate blocked disabled state, allowed enabled state, then recorded one turn and exhausted the smoke budget; worker runner persisted summaries, memory, and diary entries; memory controls listed, disabled, re-enabled, and soft-deleted one memory; a later long-history idle tick used a persisted session summary instead of a compact summary.
+  - Target Mongo worker smoke after latest run: context packages `38`, summaries `37`, memory cards `17`, failed jobs `0`.
+  - Target Mongo smoke verified `idle_runner_state` persisted `budget_day='2026-05-28'` and `daily_turns=1`.
+  - Target Mongo smoke verified `idle_turn_locks` completed rows include response snapshots and that failed lock rows do not prevent later retry after the fix.
+  - Target static React check passed through the active service build with JS `/assets/index-D8Rq9q5i.js` and CSS `/assets/index-dKibUoIc.css`.
+  - Browser smoke through local SSH tunnel verified Me `Prompt log` default-on control, `Background` default-off control, `Logs/Delete` controls, `Memory` panel rendering, zero API failures, and no horizontal overflow. Screenshots: `scripts/artifacts/context_runtime_me_smoke.png`, `scripts/artifacts/context_runtime_me_background_smoke.png`, `scripts/artifacts/context_runtime_me_memory_smoke.png`.
+  - Existing public `8145`, Idle Auto `8147`, Work services `8148/8150/8160/8161/8162/8163/8164/8165`, fake relay `18148`, and legacy `8130` were not stopped.
+- Context Runtime V1.6 idle interruption and human-dialogue verification on 2026-05-28:
+  - Local scoped backend tests passed: `69 passed` across context, users, memory, interactions, and workers.
+  - Local deterministic eval passed: `context_runtime_eval=ok cases=4`, including `Relationship stance`, `Turn intent`, previous-line response, one-move guidance, and anti-checklist assertions.
+  - Local frontend build passed with `/assets/index-n_-ZPKaU.js` and `/assets/index-CHTMdui3.css`; isolated target `8166` build served `/assets/index-ZUSjv_K4.js` and `/assets/index-CwEAac1R.css`.
+  - Local browser smoke passed on isolated ports `18266` and `5273`: Idle `Say` remained enabled during `Working`, queued user text rendered immediately, and the queued line was sent after the active turn finished.
+  - Isolated target `8166` verification passed with `69` backend tests, `context_runtime_eval=ok cases=4`, frontend build, HTTP/Mongo smoke, Me browser smoke, and Idle interruption browser smoke through an SSH tunnel.
+  - Public-directory verification passed before restart: Context Runtime `69` tests; Work Mode/model_runtime `97` tests; deterministic context eval; `work_mode_v1_full_smoke`; `work_mode_v1_http_smoke`; `work_mode_waiting_input_http_smoke`; frontend build.
+  - Public post-restart verification passed: `hackson-domain-8145.service` and `hackson-cloudflared.service` active; local and public `/health` returned `{"status":"ok"}`; root HTML referenced `/assets/index-n_-ZPKaU.js` and `/assets/index-CHTMdui3.css`; both assets returned `200`.
+  - Public model-backed Context Runtime smoke passed with `context_runtime_http_smoke=ok user=6a17e449abb7d1b24cd60d58 conversation=6a17e44aabb7d1b24cd60d59 packages=5 first=6a17e44aabb7d1b24cd60d5c second=6a17e44fabb7d1b24cd60d6b idempotent_retry=ok background_gate=ok memory_controls=ok worker_processed=26 persisted_summary=6a17e45e7740f84d83d99a5a`.
+- Public browser smokes passed: Idle interruption screenshot `scripts/artifacts/idle_interruption_public_recheck.png`; Me prompt-log/background defaults screenshot `scripts/artifacts/context_runtime_me_public_recheck.png`.
+- Context Runtime Me IA and derived freshness verification on 2026-05-28:
+  - Local backend tests passed with `218 passed`; local frontend build passed with `/assets/index-575GUaz8.js` and `/assets/index-DTBHuMeq.css`.
+  - Local Me browser smoke passed with screenshot `scripts/artifacts/context_runtime_me_ia_local_v5.png`, verifying Account + Agent editors in the first viewport and Debug collapsed by default.
+  - Isolated `8166` backend tests passed with `195 passed`; `8166` frontend build passed with `/assets/index-DNrmBHyi.js` and `/assets/index-DTBHuMeq.css`.
+  - `8166` HTTP smoke passed with `context_runtime_http_smoke=ok user=6a184109f8a8fcf2755c4d7c conversation=6a184109f8a8fcf2755c4d7d packages=5 first=6a184109f8a8fcf2755c4d80 second=6a184109f8a8fcf2755c4d87 idempotent_retry=ok background_gate=ok memory_controls=ok worker_processed=11 persisted_summary=6a1841095ddfc615b4d0da52`.
+  - `8166` Me browser smoke passed with screenshot `scripts/artifacts/context_runtime_me_ia_8166_v2.png`.
+  - Public-directory backend tests passed with `216 passed`; public build passed with `/assets/index-CG4wOHJC.js` and `/assets/index-DTBHuMeq.css`.
+  - Final public HTTP smoke passed with `context_runtime_http_smoke=ok user=6a184109a816f35aa141e653 conversation=6a184109a816f35aa141e654 packages=5 first=6a184109a816f35aa141e657 second=6a18410fa816f35aa141e665 idempotent_retry=ok background_gate=ok memory_controls=ok worker_processed=2 persisted_summary=6a184117a816f35aa141e679`.
+  - Final public Mongo check for that smoke user showed `pending=0`, `summaries=5`, `diaries=4`, and content-derived idle relationship memories rather than the old generic sentence.
+  - Final public Me browser smoke passed with screenshot `scripts/artifacts/context_runtime_me_ia_public_v3.png`.
 - Target backend tests passed under `~/hackson_domain_8145/backend`.
 - Target frontend build passed with Node `20.19.6`; the public asset at that deployment was `/assets/index-DGOMmalo.js`.
 - `hackson-domain-8145.service` was restarted and returned `{"status":"ok"}` on `127.0.0.1:8145/health`.

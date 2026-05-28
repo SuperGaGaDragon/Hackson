@@ -47,6 +47,8 @@ Browser smoke MUST assert:
 - Product Panel shows final Product full content.
 - Final Product is highlighted.
 - Large text is collapsed by default outside Product Panel.
+- Browser assertions MUST be contract-based, not tied to deterministic smoke fixture titles such as a specific story name or chapter title.
+- Real target-machine smoke SHOULD allow enough time for multiple non-streaming model turns and Delegate windows. A 10-minute timeout is a debugging default, not a product-ready full-smoke gate.
 
 ## CJK Character Count
 

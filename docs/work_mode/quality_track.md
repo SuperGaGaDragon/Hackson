@@ -16,6 +16,7 @@ It covers:
 - V1.0.2 deterministic product checks.
 - V1.0.3 Lead review and Delegate discussion tools.
 - V1.0.4 revision lineage.
+- V1.0.5 controlled Web Search tool.
 
 This track does not replace the main roadmap versions. Provider-native tool calling remains V1.1. Streaming remains V1.2.
 
@@ -94,6 +95,28 @@ Decision:
 - Revision creates a Revision Artifact.
 - Final assembly references the chosen current Artifacts.
 
+### 2.7 Should Work Mode allow联网搜索?
+
+Yes, as a controlled backend tool.
+
+Decision:
+
+- Add `web_search` after review/discussion and revision lineage are stable.
+- `web_search` returns bounded search results with source links.
+- It does not open a browser, execute shell commands, or expose Codex CLI as a tool.
+- Search output is an observation and visible event; user-facing writing still requires `work_product`.
+
+### 2.8 Can Codex CLI be the Web Search implementation?
+
+Only behind a provider interface, not as the product tool.
+
+Decision:
+
+- The model-visible tool name remains `web_search`.
+- Backend MAY implement a `SearchProvider` using an HTTP search API, model-native search, or a constrained Codex CLI search adapter.
+- The provider MUST return the same structured result schema.
+- Provider-specific logs MUST stay in Diagnostics, not the Lead context by default.
+
 ## 3. Version Sequence
 
 | Version | Name | Scope | Release Gate |
@@ -102,6 +125,7 @@ Decision:
 | V1.0.2 | Deterministic Product Checks | Programmatic checks for CJK count, outline/chapter/final presence, lineage, and final references. | Full smoke fails if final Product is too short, outline-only, or hides lineage. |
 | V1.0.3 | Review And Discussion Tools | Add `review_product` and `discuss_with_delegate` as model-visible tools. | A review/discussion smoke creates Review and Discussion Artifacts without changing Product content. |
 | V1.0.4 | Revision Lineage | Add revision workflow and UI history grouping. | Revision smoke preserves original Artifact and shows review -> discussion -> revision lineage. |
+| V1.0.5 | Controlled Web Search | Add `web_search` as a Lead-visible read-only research tool. | Search smoke creates a visible search event, returns bounded sourced results, and a later Product references the search observation without bypassing `work_product`. |
 
 ## 4. V1.0.1 UI Contract
 
@@ -112,6 +136,7 @@ Progress details:
 - `delegate_agent` details show brief, expected output, target Product, source Artifacts, and result summary.
 - `review_product` details show verdict, score, findings summary, and Review Artifact link.
 - `discuss_with_delegate` details show participants, linked Artifact/Window, summary, and Discussion Artifact link.
+- `web_search` details show query, result count, source links, and whether results were truncated.
 - Full long-form content stays in Product.
 
 Project rail:
@@ -198,15 +223,48 @@ Product UI:
 - Original, Review, Discussion, and Revision are all retained.
 - V1.0.4 can start without diff view; version chain is required.
 
-## 8. Open Risks
+## 8. V1.0.5 Web Search Design
+
+`web_search` is a read-only research tool.
+
+Purpose:
+
+- Let the Lead retrieve external facts or references when the Mission needs current or niche information.
+- Keep source links visible to the user.
+- Keep provider behavior behind a backend interface.
+
+Output:
+
+- Emit `WEB_SEARCH_COMPLETED`.
+- Return a bounded observation containing query, results, source URLs, snippets, and truncation metadata.
+- MAY persist a Research Artifact when results need to be referenced in Product lineage.
+
+It MUST NOT:
+
+- Modify Product content.
+- Finish Mission.
+- Run browser automation.
+- Run shell/file/Codex CLI as a model-visible tool.
+- Inject unbounded page text into the Lead context.
+
+Provider rule:
+
+- Codex CLI MAY be used only as an internal `SearchProvider` implementation after a smoke proves it returns structured search results.
+- The model-visible contract MUST remain stable if the provider changes.
+
+## 9. Open Risks
 
 - Review can become vague unless findings are structured and evidence-backed.
 - Discussion can become a chat sink unless turn count and scope are hard bounded.
 - Context can overflow if review/discussion include full long-form content.
 - UI can become noisy if Review, Discussion, and Revision are flat siblings with no grouping.
+- Web search can pollute writing with weak sources unless result count, snippets, and source visibility are bounded.
+- Search providers can fail or rate-limit independently from the model provider, so failures must become tool observations or retryable pauses, not silent hallucinated facts.
 
-## 9. 代办
+## 10. 代办
 
 - Implement V1.0.1 first because it is low-risk and improves current usability.
 - Implement V1.0.2 before model review tools so release gates stay deterministic.
 - Implement V1.0.3 only after Review and Discussion Artifacts are represented in Product lineage.
+- Implement V1.0.5 only after `web_search` has deterministic fake-provider tests and target-machine smoke coverage.
+- Implement `issues/issue14-tool-rejection-recovery.md` before target release because deterministic quality gates must be model-correctable, not background-runner crashes.

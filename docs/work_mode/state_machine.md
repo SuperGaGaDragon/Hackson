@@ -211,6 +211,7 @@ Rules:
 - Delegate outputs MUST persist as Artifacts.
 - Review tools MUST persist Review Artifacts and MUST NOT mutate Product content.
 - Discussion tools MUST persist Discussion Artifacts and MUST NOT mutate Product content.
+- Web Search tools MAY persist Research Artifacts and MUST NOT mutate Product content.
 
 ## 10. Event Types
 
@@ -237,6 +238,8 @@ DISCUSSION_WINDOW_OPENED
 DISCUSSION_WINDOW_COMPLETED
 DISCUSSION_WINDOW_BLOCKED
 DISCUSSION_WINDOW_FAILED
+WEB_SEARCH_COMPLETED
+WEB_SEARCH_FAILED
 USER_INPUT_REQUESTED
 USER_INPUT_RECEIVED
 MISSION_PAUSED_RETRYABLE
@@ -251,6 +254,8 @@ Events MUST be sequenced per Mission.
 
 Large events MUST be collapsed by default in UI.
 
+`WEB_SEARCH_COMPLETED` and `WEB_SEARCH_FAILED` are events, not Mission statuses. Search failure SHOULD return a tool observation and let the Lead choose a next tool when possible. Provider-level outages MAY become `paused_retryable` only when the runtime cannot safely continue.
+
 ## 11. Resume Semantics
 
 Resume from `paused_retryable`:
@@ -264,6 +269,14 @@ Retryable provider failures:
 - MAY emit `MODEL_TURN_RETRYING` before Mission pause when automatic retry budget remains.
 - MUST emit `MISSION_PAUSED_RETRYABLE` after automatic retry budget is exhausted.
 - MUST keep already persisted lifecycle events and Work Windows.
+
+Process restart recovery:
+
+- On backend startup, a stale `running` Mission from the previous process MUST become `paused_retryable`, not stay `running`.
+- Any `running` Work Window owned by that Mission MUST become `failed` with a restart/interruption summary.
+- Recovery MUST emit visible events, normally `WORK_WINDOW_FAILED` followed by `MISSION_PAUSED_RETRYABLE`.
+- A stale `stopping` Mission MUST become `stopped`.
+- Recovery MUST preserve existing Products, Artifacts, Work Windows, and Events so the user can resume.
 
 Resume from `waiting_input`:
 

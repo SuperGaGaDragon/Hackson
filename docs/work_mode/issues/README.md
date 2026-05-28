@@ -27,6 +27,14 @@ Lst Modified by: Codex
 |-issue11-progress-details-and-create-modal.md Progress inline details and selected Project rail creation cleanup
 |-issue12-review-discussion-tools.md Lead review and Delegate discussion tool design
 |-issue13-revision-lineage.md immutable revision lineage after review/discussion
+|-issue16-web-search-tool.md controlled read-only Web Search tool for external references
+|-issue17-restart-recovery.md startup recovery for interrupted running Missions
+|-issue18-codex-cli-process-lifecycle.md Codex CLI provider process-group cleanup after success, failure, and timeout
+|-issue19-lead-delegate-timeout-budget.md role-specific timeout budgets for Lead, Delegate, and provider calls
+|-issue20-tool-use-soft-guidance.md Lead context guidance for more active use of search, review, and discussion tools
+|-issue21-v12-streaming-execution-spec.md SSE event-log streaming contract and implementation constraints
+|-issue22-web-search-query-fallback.md web search query fallback, domain post-filtering, and effective query visibility
+|-issue23-product-reader-polish.md Product reader split layout and fixed-rhythm Artifact navigation
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

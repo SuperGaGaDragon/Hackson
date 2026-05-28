@@ -234,6 +234,7 @@ Browser checks:
 - Product Panel renders before Mission Progress.
 - Product Panel exposes readable Artifact lineage and does not hide earlier partial Artifacts after Done.
 - Product Panel can switch between all Artifacts and one selected Artifact.
+- Product Panel uses a fixed-rhythm Artifact Navigator instead of a wrapping title-card grid.
 - Mission Progress renders clock time and compact sequence metadata.
 - Diagnostics renders collapsed raw event detail.
 - Large content collapsed by default.
@@ -413,7 +414,62 @@ Exit criteria:
 
 - Users can understand what changed, why it changed, and which version entered the final Product.
 
-## 18. Recommended Test Commands
+## 18. Loop 16: V1.0.5 Controlled Web Search
+
+Add the read-only external research tool after revision lineage is stable.
+
+Required backend behavior:
+
+- `web_search` validates query, search type, result limit, recency, and domain filters.
+- `web_search` calls a backend `SearchProvider`.
+- The provider returns normalized result objects with title, URL, source, snippet, and optional published date.
+- Executor emits `WEB_SEARCH_COMPLETED` on success.
+- Executor emits `WEB_SEARCH_FAILED` or returns a stable failed observation on provider failure.
+- Search output does not mutate Product content and does not finish Mission.
+- Codex CLI, if used, is only an internal provider adapter and never a model-visible tool.
+
+Required UI behavior:
+
+- Search rows appear in Progress with query and result count.
+- Expanded search row shows bounded source links and snippets.
+- Diagnostics exposes raw structured payload.
+
+Required tests:
+
+- Tool protocol accepts valid `web_search`.
+- Tool protocol rejects invalid `maxResults`, empty query, and invalid search type.
+- Fake Search provider proves result normalization and event persistence.
+- Mission loop smoke proves Lead can search, observe, and then call `work_product`.
+- Browser smoke shows Search rows and source links.
+
+Exit criteria:
+
+- Local tests pass.
+- Local browser build passes.
+- Target-machine quality smoke passes on a non-public port.
+- Public deployment happens only after target smoke passes.
+
+## 19. Loop 17: Restart Recovery
+
+Protect public Work Missions from process restarts while long Codex-backed work is running.
+
+Required backend behavior:
+
+- Start Work Mission execution with a process-local daemon launcher, not FastAPI `BackgroundTasks`.
+- Startup recovery finds stale `running` and `stopping` Missions.
+- `running` Work Windows become failed with an interruption summary.
+- `running` Runs and Missions become `paused_retryable`.
+- `stopping` Runs and Missions become `stopped`.
+- Recovery emits visible events and preserves all prior Products, Artifacts, Work Windows, and Events.
+
+Required tests:
+
+- Service test proves interrupted running Mission recovers to `paused_retryable`.
+- Service test proves running Work Window becomes failed.
+- Route test proves `/start` launches through the launcher without request-owned background tasks.
+- Public smoke verifies restart health and recoverable Mission state.
+
+## 20. Recommended Test Commands
 
 Backend scoped:
 
@@ -436,7 +492,7 @@ Frontend:
 npm --prefix frontend run build
 ```
 
-## 19. Rollback
+## 21. Rollback
 
 Rollback should preserve:
 
@@ -451,6 +507,6 @@ If V1.0 loop is unstable:
 - Fall back to V0.5 single-call worker only as emergency compatibility.
 - Do not delete Products, Windows, or Artifacts created during testing.
 
-## 20. 代办
+## 22. 代办
 
 - Add concrete issue tracker tickets after this document is accepted.

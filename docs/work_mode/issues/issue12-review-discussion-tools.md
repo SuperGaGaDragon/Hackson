@@ -21,6 +21,12 @@ Add two model-visible tools after deterministic checks are stable:
 
 These tools are quality workflow tools. They do not directly modify Product content and do not finish a Mission.
 
+`discuss_with_delegate` is an internal reasoning tool. It complements `web_search`:
+
+- Use `discuss_with_delegate` when the Lead needs a second Agent's judgment about existing Mission work.
+- Use `web_search` when the Lead needs external references or current facts.
+- Both tools are read-only cognition tools. They may create visible events, windows, or Artifacts, but a later `work_product` call is still required to change user-facing deliverables.
+
 ## Tool: `review_product`
 
 Purpose:
@@ -146,6 +152,7 @@ Original content MUST remain immutable.
 - Neither tool modifies Product content.
 - Lead can observe the review/discussion result and choose the next tool.
 - Browser smoke shows Review and Discussion in Progress and Product lineage.
+- Discussion output remains bounded and does not inject a full unbounded transcript into every later Lead context.
 
 ## Follow-Up
 

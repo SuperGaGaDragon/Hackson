@@ -123,10 +123,75 @@ Lst Modified by: Codex
   - 目标机隔离服务 `hackson-work-v1-delegate-8162.service` 通过：Work Mode `55`、model_runtime `24`、interactions `21`、frontend build、full smoke、HTTP smoke、Delegate unstructured-prose HTTP regression、browser smoke。
   - 推广到 public `8145`：public 目录测试、build、full smoke、HTTP smoke、Delegate tolerance regression 全部通过后重启 `hackson-domain-8145.service`。
   - 公网验证：`https://hackson.catachess.com/health` 和 `/` 返回 `200`，runtime Delegate 纯文本解析返回 `completed/delegateStructured=false`，没有 orphan Codex 进程。
+- 完成 Work Mode V1.0.1-4 quality 迭代：
+  - V1.0.1：Progress row 支持点击展开详情；Project rail 的 Mission 创建改为 New Mission 弹窗，完成态阅读不再被创建表单干扰。
+  - V1.0.2：新增 deterministic long-novel quality gate，8000字小说必须有 outline、chapter/draft、final Artifact，且 final Artifact CJK >= 8000。
+  - V1.0.3：新增 `review_product` 和 `discuss_with_delegate` 工具协议；Review/Discussion 产物不覆盖正文，作为 Artifact 留档。
+  - V1.0.4：`work_product.operation=revise_artifact` 记录 `revisionOf` 和 `changeSummary`，Product reader 显示 lineage。
+  - 修复目标机真实 smoke 暴露的问题：`finish_mission` 被质量门禁拒绝时，loop 不再后台异常或卡住，而是写 `MODEL_TURN_INVALID` 并把可修复 observation 返回给 Lead；重复拒绝会按 invalid budget 失败。
+  - 修复公开事件 schema 漏项：`MODEL_TURN_INVALID` 加入 `EventType`，前端轮询不会因可恢复无效回合返回 500。
+  - Browser smoke 改为产品契约断言，不再绑定 deterministic fixture 的故事标题；真实模型可自由选择题材，只要窗口、Product lineage、final CJK、Progress 展开和移动端无横向溢出达标。
+  - 本地通过：Work Mode `66`、model_runtime `24`、backend 全测试目录、deterministic full smoke、HTTP full smoke、frontend build、browser smoke。
+  - 目标机新隔离服务 `hackson-work-quality-8165.service`，目录 `~/hackson_work_quality_8165`，库 `hackson_work_quality_8165`，绑定 `127.0.0.1:8165`，未触碰 public `8145` 和其他既有服务。
+  - 目标机通过：Work Mode `66`、model_runtime `24`、deterministic full smoke、HTTP full smoke、frontend build、health/static assets。
+  - 目标机真实 Codex browser smoke 通过：Mission `6a17ca6696b9294a46f1f476` 完成，4 个 Delegate windows，8 个 Artifacts；Lead 先后被 `final_artifact_not_final_content`、`final_artifact_cjk_too_short` 拒绝后继续修复，最终 final Artifact `6a17ccc796b9294a46f1f4c9` 为 `8827` CJK，UI 全文读取为 `23615` CJK。
+- 推广 Work Mode V1.0.1-4 quality 到公网：
+  - 按用户“切”执行公网发布，从已完整验证的 `~/hackson_work_quality_8165` 同步到 `~/hackson_domain_8145`，保留公网 `.env`、`.venv`、数据库和 systemd 服务。
+  - 将公网模型超时从 `180` 调整为 `900`，与 8165 长篇真实 smoke 配置一致。
+  - Public 目录验证通过：Work Mode `66`、model_runtime `24`、deterministic full smoke、HTTP full smoke、frontend build。
+  - 重启 `hackson-domain-8145.service` 后，`127.0.0.1:8145/health`、`https://hackson.catachess.com/health` 和公网首页均正常，前端 assets 为 `index-3zN414a_.js` / `index-B9725wXu.css`。
+  - 公网真实 browser smoke 通过：Mission `6a17cfa6f1c229f07da02229` 完成，2 个 Work Windows、5 个 Artifacts；`review_product` 生效；第一次 finish 被 `final_artifact_not_final_content` 拒绝后，Lead 自动补建 `《潮汐备忘录》最终成稿` 并成功 finish；UI 读取 Product 全文 `22819` CJK。
+  - 确认无残留 `codex exec` 进程。
+- 修复 Work Mode `waiting_input` 输入入口：
+  - 用户公网截图暴露问题：Lead 合法调用 `ask_user` 后，Mission 进入 `waiting_input`，Progress 展示了问题，但产品没有输入框，后端也没有公开 answer API，导致 Mission 变成死路。
+  - 新增 `docs/work_mode/issues/issue15-waiting-input-entry.md` 固定产品约束：回答入口必须在 Mission 控制区直接可见，不依赖 Progress 展开项。
+  - 后端新增 `POST /api/work/missions/{missionId}/answer`；提交回答会写 `USER_INPUT_RECEIVED`，结束旧 `waiting_input` run，创建 resumed run，并自动继续模型 loop。
+  - 前端 `MissionHeader` 在 `waiting_input` 状态展示问题、建议选项、文本输入和 Reply 按钮。
+  - 本地验证通过：Work Mode `67`、model_runtime `24`、waiting-input HTTP smoke、deterministic full smoke、HTTP full smoke、frontend build。
+  - 目标机 `8165` 验证通过：Work Mode `67`、model_runtime `24`、waiting-input HTTP smoke、deterministic full smoke、HTTP full smoke、frontend build。
+  - 推广到 public `8145`：public 目录同样验证通过后重启 `hackson-domain-8145.service`；公网 `/health` 正常，新 assets 为 `index-CfNoUhgE.js` / `index-Y-VWNAFW.css`；公网 `/answer` 对非等待 Mission 返回 `409 mission_not_waiting_input`，说明路由和状态机已上线。
+- 完成 Work Mode V1.0.5 controlled web search：
+  - 先更新 `docs/work_mode` 文档群和 `issue16-web-search-tool.md`，固定边界：搜索是只读内部工具，不是浏览器、不是 shell、不是 Codex CLI Web Search；模型只能通过 `web_search` 请求外部资料，最终可见产物仍必须走 `work_product`。
+  - 后端新增 `SearchProvider` 抽象和 `DuckDuckGoLiteSearchProvider`；`web_search` 支持 query、searchType、maxResults、recencyDays、allowedDomains、blockedDomains，并把失败收敛成可恢复 observation。
+  - Tool protocol、context builder、ToolExecutor、worker 注入和事件 schema 全部接入；新增 `WEB_SEARCH_COMPLETED` / `WEB_SEARCH_FAILED`，不增加新的 Mission 状态。
+  - 前端 Progress/Activity 展示 Search 事件，展开后可见 query、provider、source links 和失败 code；搜索结果只做来源材料，不覆盖 Product。
+  - 新增 deterministic search smoke 和 parser/provider 单测；本地完整 Work Mode discovery 通过 `77` tests，本次发布口径 Work Mode 通过 `73` tests，另有 `work_mode_v1_search_smoke`、`work_mode_v1_full_smoke`、frontend build 通过。
+  - 目标机 `8165` 验证通过：Work Mode `73`、search smoke、full smoke、frontend build、`127.0.0.1:8165/health`。
+  - 推广到 public `8145`：public 目录 Work Mode `73`、search smoke、full smoke、HTTP smoke、frontend build 均通过；真实 provider 探测返回 `ok 1 duckduckgo_lite`；重启后 `127.0.0.1:8145/health` 和 `https://hackson.catachess.com/health` 正常，public assets 为 `index-D-yFdK1R.js` / `index-CwEAac1R.css`。
+- 修复 Work Mode 生产重启恢复：
+  - 用户公网测试论文 Mission `6a17e0d8a86e4f0e354d1974` 时，`hackson-domain-8145.service` 进入 `deactivating (stop-sigterm)`；Cloudflare 出现 origin connection refused；Mission 停在 `running`，最后事件是 `WORK_WINDOW_OPENED`。
+  - 根因：长 Work Mission 通过 FastAPI `BackgroundTasks` 执行，uvicorn shutdown 会等待 request-owned background task；若后台卡在 Codex 子进程或插件 git 探测，systemd restart 会被阻塞，旧进程被终止后数据库仍残留 running Mission / running Work Window。
+  - 先写 `docs/work_mode/issues/issue17-restart-recovery.md`，更新 state machine、implementation plan 和 backend README，固定产品语义：不能静默 stuck，不能假完成，必须保留 Product/Artifact/Event，并让用户可 Resume。
+  - 后端修复：`/start` 和 `/answer` 改为 daemon worker launcher，不再把长任务绑定到 FastAPI request background lifecycle；应用启动时执行 `recover_interrupted_missions()`。
+  - 恢复规则：`running` Mission -> `paused_retryable interrupted_restart`；running Work Window -> `failed interrupted_restart`；写入 `WORK_WINDOW_FAILED` 和 `MISSION_PAUSED_RETRYABLE`；`stopping` Mission -> `stopped`。
+  - 本地验证通过：Work Mode `80` tests、frontend build、py_compile。
+  - 目标机 `8165` 验证通过：Work Mode `80` tests、`work_mode_v1_search_smoke.py`、`work_mode_v1_full_smoke.py`、人工构造 running Mission 后 restart recovery smoke。
+  - 推广到 public `8145`：public 目录 Work Mode `80` tests、search smoke、full smoke、HTTP smoke、frontend build 均通过；重启 `hackson-domain-8145.service` 在 `02:46:06 EDT` 立即完成，内网和公网 `/health` 均返回 `{"status":"ok"}`。
+  - 生产库确认：Mission `6a17e0d8a86e4f0e354d1974` 已恢复为 `paused_retryable interrupted_restart`；Window `6a17e141a86e4f0e354d198f` 已恢复为 `failed`；最新事件为 `WORK_WINDOW_FAILED` 和 `MISSION_PAUSED_RETRYABLE`；无残留 `codex exec`。
+- 修复公网 Work Mode 长 Lead turn 卡住和 Codex CLI 进程生命周期问题：
+  - 用户测试 Mission `6a1833decf117568867bd0f3` 已生成 1.1 万字终稿，但 Lead 在 `inspect_product` 后再次选工具时持续 heartbeat，暴露 Lead 决策回合和 Delegate 写作回合共用 `900s` 超时预算的问题。
+  - 新增 `docs/work_mode/issues/issue18-codex-cli-process-lifecycle.md` 和 `issue19-lead-delegate-timeout-budget.md`。
+  - `ModelGenerateRequest` 支持 request-level timeout；OpenAI-compatible、Responses、Codex CLI provider 都使用请求级超时覆盖。
+  - Work Mode 默认 Lead tool-selection timeout 为 `180s`，Delegate one-shot writing timeout 为 `900s`，搜索 timeout 保持 `10s`。
+  - Codex CLI subprocess 现在成功、失败、timeout 后都会清理 process group；timeout 先 `SIGTERM`，再按需 `SIGKILL`。
+  - 本地、`8165`、public 目录通过：model_runtime `28` tests，Work Mode `82` tests；公网重启后 `/health` 正常，无残留 `codex exec`。
+- 完成 Work Mode 工具使用软增强：
+  - 新增 `docs/work_mode/issues/issue20-tool-use-soft-guidance.md`。
+  - Lead context 增加 `toolUseGuidance`，鼓励在需要外部事实/资料时优先考虑 `web_search`，在实质性交付前考虑 `review_product`，在重大 review 问题、证据冲突或质量权衡时考虑 `discuss_with_delegate`。
+  - 该增强不是隐藏自动调用；模型仍必须每轮自己选择一个工具，后端只负责 schema、验证、状态和持久化。
+  - 本地、`8165`、public 目录通过：Work Mode `82` tests、deterministic full smoke、search smoke；公网 `/health` 正常。
+- 完成 Work Mode V1.2 事件流 streaming 最小闭环：
+  - 判断原 `issue5-streaming.md` 只有方向，不足以直接开工；新增 `docs/work_mode/issues/issue21-v12-streaming-execution-spec.md`，明确使用 SSE 而不是 WebSocket。
+  - 后端新增 `GET /api/work/missions/{missionId}/events/stream?afterSequence=N`，只流已持久化的 public Mission events，SSE event 为 `work_event`，空闲时发 `ping`；不流 raw model tokens，不流 hidden reasoning，不流 provider logs。
+  - 前端 Work 页面用 `fetch` + `ReadableStream` 接 SSE，保留 Bearer auth；stream 失败时自动回退到既有 `/events` polling。
+  - 本地通过：Work Mode `85` tests、model_runtime `28` tests、frontend build、deterministic full smoke、search smoke、waiting-input smoke。
+  - 目标机 `8165` 通过：frontend build、Work Mode `85` tests、full/search smoke。
+  - 推广到 public `8145`：public 目录 build、Work Mode `85` tests、full/search smoke 通过；重启后 `https://hackson.catachess.com/health` 正常，前端 assets 为 `/assets/index-CG4wOHJC.js` 和 `/assets/index-DTBHuMeq.css`。
+  - 公网 SSE 探针通过：新建草稿 Mission 后，`/events/stream?afterSequence=0` 返回 `text/event-stream` 和 `MISSION_CREATED` 的 `work_event`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
-- V1 不做 streaming，不做搜索 UI，不做文件工具，不做代码沙盒，不展示原始 thinking。
+- V1 当前不做文件工具，不做代码沙盒，不展示原始 thinking；V1.0.5 已加入受控 `web_search`，V1.2 已加入基于持久化事件的 SSE streaming。
 - 先用 fake runtime 和 fixture JSON 做单元测试，再接真实 Responses API。
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
 - Work V0.5 只保证单次有界产物；完整 8000 字长文需要后续 V1 supervisor loop 拆成多步生成、续写、合并、验收。
@@ -138,11 +203,14 @@ Lst Modified by: Codex
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
 - Work V1 hardening 已推广到 public `8145`；`8160` 可继续作为 isolated 对照 smoke 环境保留。
 - Work V1 progress hardening 已推广到 public `8145`；`8161` 可继续作为 isolated 对照 smoke 环境保留。
-- Work V1.1 增加 native tool calling adapter；V1.2 再加 streaming，不改变当前 ToolExecutor。
+- Work V1.0.5 controlled web search 已推广到 public `8145`；`8165` 可继续作为 isolated 对照 smoke 环境保留。
+- Work restart recovery 已推广到 public `8145`；当前仍是单进程 daemon launcher + startup recovery，不是 durable queue。下一阶段要做 worker lease / job queue，把“重启后可恢复”升级成“重启后可继续调度”。
+- Work V1.1 增加 native tool calling adapter；V1.2 event-log streaming 已上线，后续若要 token-level partial progress 必须继续遵守不展示 hidden reasoning、不绕过 tool validation 的约束。
 - Work V1.3 再加并行 Work Window；V2 才引入 Codex/file/browser/computer tools。
 
 ### 风险
-- 如果一次性加入 streaming、web search、memory、citation，问题会混在一起，难以定位。
+- 如果一次性加入 streaming、browser/file/computer tools、memory、citation，问题会混在一起，难以定位。
+- `web_search` 依赖外部搜索源，必须允许 `search_provider_unavailable`、`search_timeout`、`search_rate_limited` 等可恢复失败，并让 Lead 继续用已有上下文推进。
 - `idle` 自动生成如果开高 reasoning 或搜索，会带来成本和循环失败风险。
 - reasoning summary 可以产品化展示，但原始 chain-of-thought 不能展示或依赖。
 - `codex_cli` 是进程级调用，稳定但比直接 HTTP relay 更重；当前先完成最小闭环，后续再优化性能。

@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 
 ## brief intro
@@ -11,7 +11,9 @@ Last Modified by: Codex
   - Product and research documents live under `docs/`.
   - Backend code lives under `backend/` and is split by domain module.
   - Frontend code lives under `frontend/`.
+  - Desktop Pet code lives under `desktop/`.
   - Agent operating rules live under `agents/`.
+  - Evaluator Runtime reliability-report documents live under `docs/evaluator/`.
   - Verified API and port information lives in `api.md`.
 
 ## target machine quick reference
@@ -47,7 +49,8 @@ Last Modified by: Codex
 | `api.md` | Verified API, port map, request/response shapes |
 | `docs/backend-architecture.md` | Backend module boundaries |
 | `docs/deployment/production.md` | Production deployment topology and verification record |
-| `docs/上下文/plan.md` | Context system product plan |
+| `docs/上下文/final_version.md` | Context Runtime product roadmap and version contract |
+| `docs/evaluator/final_version.md` | Evaluator Runtime product roadmap and version contract |
 | `docs/数据库/machine.md` | Target machine access note; ignored locally |
 
 ## folder structure
@@ -55,7 +58,9 @@ Last Modified by: Codex
 |-api.md verified API and port map
 |-agents/ agent operating restrictions
 |-backend/ FastAPI backend
+|-desktop/ Tauri + React Desktop Pet app
 |-docs/ product, context, and database documents
+|-docs/evaluator/ Evaluator Runtime reliability-report documents
 |-frontend/ React + Vite frontend
 |-skills-lock.json skill lock metadata
 

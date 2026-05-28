@@ -28,6 +28,7 @@ Every Lead model turn MUST include:
 - Recent events.
 - Last tool observation.
 - Bounded recent Artifact content.
+- Bounded recent Web Search observations when available.
 - Current budget counters.
 
 ## 3. Product Manifest
@@ -98,6 +99,8 @@ If the Lead needs older content, it MUST call `inspect_product`.
 
 V1.0.x review and discussion tools MUST use the same bounded-content rule. A Review or Discussion turn MUST NOT assume it has read the complete long-form Product unless the context or a prior `inspect_product` observation explicitly provided enough content.
 
+Web Search observations MUST use the same bounded-content rule. Search result snippets and source URLs may appear in recent events or last observation, but full external page text MUST NOT be injected into every Lead turn.
+
 ## 7. inspect_product Context
 
 `inspect_product` returns bounded content to the next Lead model turn.
@@ -154,7 +157,43 @@ It MUST NOT include:
 - Permission to modify Product content.
 - Permission to finish or block the Mission directly.
 
-## 10. Review Context Guidance
+## 10. Web Search Context Package
+
+`web_search` is a Lead tool, not a Delegate tool.
+
+The Lead context MUST show the tool schema and constraints when the tool is enabled.
+
+The search observation MUST include:
+
+- Original query.
+- Search type.
+- Result titles.
+- Source URLs.
+- Bounded snippets.
+- Provider name.
+- Truncation flag.
+
+The search observation MUST NOT include:
+
+- Unbounded page text.
+- Hidden provider logs.
+- Browser session state.
+- Shell or Codex CLI execution details.
+
+The Lead SHOULD:
+
+- Use `web_search` only when external facts, current references, or niche information matter.
+- Use `work_product` on a later turn to write user-visible output from search results.
+- Preserve important source URLs in Product content when the final answer depends on them.
+- Prefer `web_search` early when a Mission asks for current facts, source-backed research, named companies, market information, technical references, or other claims not already supported by Product or Artifact context.
+
+The backend SHOULD:
+
+- Keep recent search observations compact in context.
+- Preserve complete structured result payloads in events or Research Artifacts for UI inspection.
+- Avoid treating snippets as verified facts without source links.
+
+## 11. Review Context Guidance
 
 `review_product` is a Lead tool, not a hidden reviewer model in the first quality-track version.
 
@@ -164,6 +203,8 @@ The Lead SHOULD:
 - Cite evidence for critical or major findings.
 - Produce a Review Artifact instead of modifying Product content.
 - Choose a next tool after seeing the review observation.
+- Prefer `review_product` before `finish_mission` for substantive deliverables when no recent review exists for the final candidate.
+- Prefer `discuss_with_delegate` when a review finds critical or major issues, when evidence conflicts, or when a second Agent can improve a structural or quality decision.
 
 The backend SHOULD:
 
@@ -171,7 +212,7 @@ The backend SHOULD:
 - Keep Review summaries in the Product manifest.
 - Avoid injecting raw full-text review payloads into every later turn.
 
-## 11. Writing Mission Guidance
+## 12. Writing Mission Guidance
 
 For the full 8000 CJK character novel smoke:
 
@@ -183,7 +224,7 @@ For the full 8000 CJK character novel smoke:
 
 The backend MUST NOT hard-code these steps. They belong in model guidance and acceptance criteria, not runtime order.
 
-## 12. Budget Counters
+## 13. Budget Counters
 
 Lead context MUST include budget counters:
 
@@ -202,7 +243,7 @@ Lead context MUST include budget counters:
 
 The model should see budgets so it can decide whether to finish, consolidate, or block.
 
-## 13. Target Context Architecture
+## 14. Target Context Architecture
 
 V1.0:
 
@@ -213,6 +254,7 @@ V1.0.x:
 - Review and Discussion Artifacts appear in manifests as summaries and ids.
 - Deterministic Product checks can be returned as bounded observations.
 - Discussion context is scoped to the selected Product, Artifact, or Work Window.
+- Web Search observations appear as compact sourced result summaries.
 
 V1.1:
 
@@ -224,6 +266,6 @@ V1.5+:
 
 - Read-only file/repo context under permissions.
 
-## 14. 代办
+## 15. 代办
 
 - Choose concrete budget defaults during implementation and record them in `api.md` only after target verification.

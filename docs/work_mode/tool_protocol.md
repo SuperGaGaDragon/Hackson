@@ -279,6 +279,14 @@ These tools are planned for the V1.0.x quality track after the base V1.0 loop is
 
 They MUST follow the same one-tool-per-turn rule. They MUST be visible to the model only after implementation and smoke coverage exist.
 
+Read-only cognition tools:
+
+- `review_product`
+- `discuss_with_delegate`
+- `web_search`
+
+These tools help the Lead think with better evidence. They MUST NOT directly mutate Product content, finish a Mission, or bypass `work_product`.
+
 ### 13.1 Tool: review_product
 
 Purpose:
@@ -375,6 +383,99 @@ Discussion delegate model call MUST return structured JSON:
 ```
 
 Backend MUST persist completed discussion output as a Discussion Artifact and return a structured observation to the Lead.
+
+### 13.4 Tool: web_search
+
+Purpose:
+
+- Let the Lead retrieve bounded external references when current, niche, or factual information would improve the Mission.
+
+Schema:
+
+```json
+{
+  "reason": "string",
+  "query": "string",
+  "searchType": "general|news|technical|reference",
+  "maxResults": 5,
+  "recencyDays": 30,
+  "allowedDomains": ["string"],
+  "blockedDomains": ["string"]
+}
+```
+
+Argument rules:
+
+- `query` MUST be concise and specific.
+- `searchType` defaults to `general`.
+- `maxResults` defaults to `5`; hard maximum is `10`.
+- `recencyDays` MAY be `null` when recency is not relevant.
+- `allowedDomains` and `blockedDomains` MAY be empty.
+
+Constraints:
+
+- MUST be read-only.
+- MUST emit `WEB_SEARCH_COMPLETED` when search succeeds.
+- MUST emit `WEB_SEARCH_FAILED` or return a rejected tool observation when search fails.
+- MUST return bounded results; unbounded page content is forbidden.
+- MUST expose source URLs to the UI.
+- MUST NOT modify Product content.
+- MUST NOT finish the Mission.
+- MUST NOT run browser automation, shell commands, file access, or computer-control actions.
+- MUST NOT expose Codex CLI as the model-visible tool.
+- MAY use Codex CLI only as an internal `SearchProvider` if it returns the same structured result schema and passes smoke.
+
+### 13.5 Web Search Result Protocol
+
+`web_search` observation MUST use this structured shape:
+
+```json
+{
+  "tool": "web_search",
+  "status": "ok",
+  "query": "string",
+  "effectiveQuery": "string",
+  "searchType": "general|news|technical|reference",
+  "results": [
+    {
+      "title": "string",
+      "url": "string",
+      "source": "string",
+      "snippet": "string",
+      "publishedAt": "string|null"
+    }
+  ],
+  "truncated": false,
+  "provider": "string",
+  "fallbackApplied": false,
+  "fallbackReason": "string|null",
+  "attemptCount": 1
+}
+```
+
+Failure observation:
+
+```json
+{
+  "tool": "web_search",
+  "status": "failed",
+  "code": "search_provider_unavailable|search_timeout|search_rate_limited|search_no_results",
+  "query": "string",
+  "effectiveQuery": "string",
+  "fallbackApplied": false,
+  "fallbackReason": "string|null",
+  "attemptCount": 1,
+  "retryable": true
+}
+```
+
+Rules:
+
+- The next Lead turn MAY use `work_product` to turn search results into user-visible writing.
+- Search snippets are evidence hints, not final content.
+- Providers MAY run bounded internal fallback attempts, but returned results MUST still respect `allowedDomains` and `blockedDomains`.
+- `query` is the model-requested query. `effectiveQuery` is the provider query that produced the returned result set.
+- If the Mission needs a citation or source trail, the Lead SHOULD preserve the relevant URLs in Product content or a Research Artifact.
 
 ## 14. Invalid Turns
 

@@ -90,6 +90,8 @@ Product Panel MUST NOT show only the latest Artifact as if it were the whole del
 
 If a final Product exists, Product Panel MUST default to an all-Artifact reader stack. The final Artifact should be visible inside that stack, and the user must be able to isolate a single Artifact from the lineage controls. If no final Product exists, Product Panel MUST keep all Product Artifacts visible in order so partially completed long-form output does not appear lost.
 
+Artifact navigation MUST keep a stable scan rhythm. Desktop SHOULD render a fixed-width Artifact Navigator beside the reader instead of a wrapping card grid. Navigator rows SHOULD clamp generated titles, expose short type labels, and avoid letting title length resize the Product Panel. Mobile MAY stack the navigator above the reader.
+
 ## 6. Mission Progress
 
 Timeline shows the process.
@@ -100,6 +102,7 @@ It MUST render:
 - Tool calls.
 - Product updates.
 - Product inspections.
+- Web Search completed/failed events.
 - Delegate window opened/completed/blocked.
 - User input requested/received.
 - Retryable pauses.
@@ -132,6 +135,7 @@ Progress row expansion:
 - Window rows show brief, expected output, target Product, source Artifacts, result summary, and linked Artifact.
 - Review rows show verdict, score, findings summary, and Review Artifact link.
 - Discussion rows show participants, linked Product/Artifact/Window, transcript summary, recommendation, and Discussion Artifact link.
+- Web Search rows show query, source count, source links, provider, and truncation state.
 - Full long-form Product content MUST remain in Product Panel.
 
 ## 7. Diagnostics
@@ -187,6 +191,7 @@ Collapsed by default:
 
 - `work_product` large content.
 - `inspect_product` inspected excerpts.
+- `web_search` result snippets beyond the first few sources.
 - Delegate window result content.
 - Long error payloads.
 
@@ -207,6 +212,8 @@ If content exceeds display limit, UI MUST link to the Product/Artifact reader.
 | `PRODUCT_UPDATED` | Progress + Product Panel | Progress compact, Product full |
 | `PRODUCT_INSPECTED` | Progress | Collapsed inspected excerpt |
 | `PRODUCT_REVIEWED` | Progress + Product Panel | Review summary, Artifact linked |
+| `WEB_SEARCH_COMPLETED` | Progress + Diagnostics | Query, result count, source links |
+| `WEB_SEARCH_FAILED` | Activity + Progress + Diagnostics | Search error and retryability |
 | `WORK_WINDOW_OPENED` | Progress + Work Windows | Window row created |
 | `WORK_WINDOW_COMPLETED` | Progress + Work Windows + Product Panel | Result linked |
 | `WORK_WINDOW_BLOCKED` | Progress + Work Windows | Block reason visible |
@@ -254,6 +261,7 @@ V1.0 browser smoke MUST verify:
 - Product Panel shows final Product full content.
 - Progress plan rows can expand to show steps.
 - Progress Product rows can expand to show bounded detail without rendering full long-form content.
+- Progress Web Search rows can expand to show bounded source links and snippets.
 - Selected Project rail hides the Mission creation form until `New Mission` is used.
 - Diagnostics is present and collapsed by default.
 - Completed Mission highlights final Product.
