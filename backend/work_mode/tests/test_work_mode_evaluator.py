@@ -103,6 +103,9 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertIn("evaluation_limitation", issue_types)
         self.assertIn("unsupported_claim", issue_types)
         self.assertEqual(report.status, "needs_human_review")
+        self.assertFalse(report.objective)
+        self.assertEqual(report.confidence, "low")
+        self.assertIn("not proof", report.score_meaning)
 
     def test_no_evidence_long_research_draft_score_is_capped_by_root_cause(self) -> None:
         mission, run_id, product, final_artifact = self._research_mission(
@@ -167,6 +170,9 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertEqual(report_artifact["metadata"]["evaluatorVersion"], EVALUATOR_VERSION)
         self.assertIn("reportPayload", report_artifact["metadata"])
         self.assertEqual(report_artifact["metadata"]["reportPayload"]["reportArtifactId"], report_artifact["id"])
+        self.assertFalse(report_artifact["metadata"]["reportPayload"]["objective"])
+        self.assertIn("scoreMeaning", report_artifact["metadata"]["reportPayload"])
+        self.assertIn("confidenceReason", report_artifact["metadata"]["reportPayload"])
 
     def test_paused_mission_is_not_ship_ready_even_with_final_artifact(self) -> None:
         mission, run_id, product, _final_artifact = self._research_mission()

@@ -12,6 +12,8 @@ from fastapi import HTTPException, status
 from agents.catalog import normalize_user_agent_profiles
 from conversations.model import now_utc
 from work_mode.model import (
+    DELIVERABLE_ARTIFACT_KINDS,
+    NON_DELIVERABLE_ARTIFACT_ROLES,
     public_artifact,
     public_employee,
     public_event,
@@ -744,6 +746,8 @@ class WorkModeService:
             "status": "active",
             "artifact_ids": [],
             "latest_artifact_id": None,
+            "deliverable_artifact_id": None,
+            "delivery_status": "none",
             "created_by": created_by,
             "metadata": metadata or {},
             "created_at": timestamp,
@@ -790,15 +794,22 @@ class WorkModeService:
         )
         artifact_ids = [str(value) for value in product.get("artifact_ids", [])]
         artifact_ids.append(artifact["id"])
+        product_metadata = _product_metadata_with_artifact_manifest(product.get("metadata", {}), artifact, summary)
+        update_values = {
+            "artifact_ids": artifact_ids,
+            "latest_artifact_id": artifact["id"],
+            "summary": summary,
+            "metadata": product_metadata,
+            "updated_at": now_utc(),
+        }
+        if _artifact_is_deliverable(artifact):
+            update_values["deliverable_artifact_id"] = artifact["id"]
+            if product.get("delivery_status") != "verified_final":
+                update_values["delivery_status"] = "draft_candidate"
         self.repository.update_product(
             product_id,
             user_id,
-            {
-                "artifact_ids": artifact_ids,
-                "latest_artifact_id": artifact["id"],
-                "summary": summary,
-                "updated_at": now_utc(),
-            },
+            update_values,
         )
         return artifact
 
@@ -885,11 +896,23 @@ class WorkModeService:
             },
         )
 
-    def mark_product_final(self, user_id: str, product_id: str) -> dict[str, Any]:
+    def mark_product_final(
+        self,
+        user_id: str,
+        product_id: str,
+        deliverable_artifact_id: str | None = None,
+    ) -> dict[str, Any]:
+        values: dict[str, Any] = {
+            "status": "final",
+            "delivery_status": "verified_final",
+            "updated_at": now_utc(),
+        }
+        if deliverable_artifact_id:
+            values["deliverable_artifact_id"] = deliverable_artifact_id
         product = self.repository.update_product(
             product_id,
             user_id,
-            {"status": "final", "updated_at": now_utc()},
+            values,
         )
         if product is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="product_not_found")
@@ -927,6 +950,7 @@ class WorkModeService:
         blocked_reason: str,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         timestamp = now_utc()
+        self.mark_products_blocked_candidates(user_id, mission_id)
         mission = self._update_mission(
             user_id,
             mission_id,
@@ -939,6 +963,22 @@ class WorkModeService:
         )
         run = self._update_run(user_id, run_id, {"status": "blocked", "ended_at": timestamp})
         return mission, run
+
+    def mark_products_blocked_candidates(self, user_id: str, mission_id: str) -> None:
+        products = self.repository.list_products(user_id, mission_id, limit=500)
+        for product in products:
+            deliverable_id = product.get("deliverable_artifact_id") or _deliverable_id_from_product_manifest(product)
+            if not deliverable_id:
+                continue
+            self.repository.update_product(
+                str(product["_id"]),
+                user_id,
+                {
+                    "deliverable_artifact_id": str(deliverable_id),
+                    "delivery_status": "blocked_candidate",
+                    "updated_at": now_utc(),
+                },
+            )
 
     def mark_mission_paused_retryable(
         self,
@@ -1217,3 +1257,44 @@ def _control_request_mode(mission: dict[str, Any]) -> str:
     control_request = mission.get("metadata", {}).get("controlRequest", {})
     mode = control_request.get("mode")
     return mode if mode in {"pause", "stop"} else "stop"
+
+
+def _artifact_is_deliverable(artifact: dict[str, Any]) -> bool:
+    metadata = artifact.get("metadata", {})
+    if metadata.get("artifactRole") in NON_DELIVERABLE_ARTIFACT_ROLES:
+        return False
+    return artifact.get("kind") in DELIVERABLE_ARTIFACT_KINDS
+
+
+def _product_metadata_with_artifact_manifest(
+    metadata: dict[str, Any],
+    artifact: dict[str, Any],
+    summary: str,
+) -> dict[str, Any]:
+    values = dict(metadata or {})
+    manifest = list(values.get("artifactManifest") or [])
+    manifest.append(
+        {
+            "id": artifact["id"],
+            "kind": artifact.get("kind"),
+            "title": artifact.get("title"),
+            "artifactRole": artifact.get("metadata", {}).get("artifactRole"),
+            "summary": summary,
+            "deliverable": _artifact_is_deliverable(artifact),
+            "createdAt": artifact.get("createdAt"),
+        }
+    )
+    values["artifactManifest"] = manifest[-100:]
+    return values
+
+
+def _deliverable_id_from_product_manifest(product: dict[str, Any]) -> str | None:
+    manifest = product.get("metadata", {}).get("artifactManifest") or []
+    if not isinstance(manifest, list):
+        return None
+    for item in reversed(manifest):
+        if not isinstance(item, dict):
+            continue
+        if item.get("deliverable") and item.get("id"):
+            return str(item["id"])
+    return None

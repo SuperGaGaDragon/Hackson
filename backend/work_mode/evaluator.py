@@ -217,6 +217,7 @@ def build_reliability_report(
     tool_failures = _tool_failures(detail_for_report.get("events", []))
     issues = _issues(detail_for_report, requirements, claims, evidence, final_artifact)
     score = _score(issues)
+    confidence, confidence_reason = _score_confidence(detail_for_report, evidence, issues)
     report = ReliabilityReport(
         reportId=f"report_{uuid4().hex[:12]}",
         missionId=mission["id"],
@@ -225,6 +226,9 @@ def build_reliability_report(
         score=score,
         status=_status(score, issues),
         summary=_summary(score, issues),
+        objective=False,
+        confidence=confidence,
+        confidenceReason=confidence_reason,
         requirements=requirements,
         claims=claims,
         evidence=evidence,
@@ -601,6 +605,25 @@ def _summary(score: int, issues: list[ReliabilityIssue]) -> str:
     return f"Reliability score {score}. Detected {len(issues)} issues, including {high} high-severity risks."
 
 
+def _score_confidence(
+    detail: dict[str, Any],
+    evidence: list[EvidenceItem],
+    issues: list[ReliabilityIssue],
+) -> tuple[str, str]:
+    mission_status = str(detail.get("mission", {}).get("status") or "")
+    if not evidence:
+        return "low", "No Evidence Ledger was available, so the score is a risk signal with limited factual coverage."
+    if mission_status != "completed":
+        return "low", "The Mission is not completed, so the report cannot certify the current candidate."
+    if any(issue.type == "evaluation_limitation" for issue in issues):
+        return "low", "Evaluator limitations remain in the current trace."
+    if any(issue.severity in {"critical", "high"} for issue in issues):
+        return "medium", "Evidence exists, but high-severity reliability issues remain unresolved."
+    if any(issue.severity == "medium" for issue in issues):
+        return "medium", "Evidence exists, but some claims or requirements still need review."
+    return "high", "Visible trace evidence covers the evaluated candidate and no high-severity issue remains."
+
+
 def _suggested_actions(issues: list[ReliabilityIssue]) -> list[str]:
     actions: list[str] = []
     for issue in issues:
@@ -617,6 +640,8 @@ def _report_markdown(report: ReliabilityReport) -> str:
         "",
         f"Score: {report.score} / 100",
         f"Status: {report.status}",
+        f"Meaning: {report.score_meaning}",
+        f"Confidence: {report.confidence} - {report.confidence_reason}",
         f"Profile: {report.profile}",
         f"Mode: {report.mode}",
         "",

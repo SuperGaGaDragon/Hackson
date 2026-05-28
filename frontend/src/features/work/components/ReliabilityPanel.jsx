@@ -32,6 +32,11 @@ function ReliabilityPanel({ artifacts = [], events = [] }) {
         {report.createdAt || report.eventTime || "Latest report"}
         {report.reportArtifactId ? ` / ${report.reportArtifactId}` : ""}
       </p>
+      <div className="reliability-confidence">
+        <span>Risk score</span>
+        <strong>{report.scoreMeaning || "Trace-backed risk score, not proof."}</strong>
+        <small>{confidenceLabel(report.confidence, report.confidenceReason)}</small>
+      </div>
       <p className="reliability-summary">{report.summary}</p>
       <div className="reliability-badges">
         {issueBadges(report.issueCounts).map(([label, count]) => (
@@ -217,7 +222,14 @@ function reportFromEvent(event, reportsByArtifactId) {
     status: report?.status || event.payload?.status,
     issueCounts: report?.issueCounts || event.payload?.issueCounts || {},
     mode: report?.mode || event.payload?.mode,
+    objective: report?.objective ?? event.payload?.objective ?? false,
     profile: report?.profile || event.payload?.profile,
+    scoreMeaning:
+      report?.scoreMeaning ||
+      event.payload?.scoreMeaning ||
+      "Trace-backed reliability risk score, not proof of correctness.",
+    confidence: report?.confidence || event.payload?.confidence || "low",
+    confidenceReason: report?.confidenceReason || event.payload?.confidenceReason || "",
     eventSequence: event.sequence,
     eventTime: formatEventTime(event),
     summary: report?.summary || event.message || "",
@@ -246,6 +258,16 @@ function uniqueReports(reports) {
     }
     return new Date(right.artifactCreatedAt || 0).getTime() - new Date(left.artifactCreatedAt || 0).getTime();
   });
+}
+
+function confidenceLabel(confidence, reason) {
+  const label =
+    {
+      high: "High confidence",
+      low: "Low confidence",
+      medium: "Medium confidence",
+    }[confidence] || "Confidence not set";
+  return reason ? `${label}: ${reason}` : label;
 }
 
 function statusLabel(status) {

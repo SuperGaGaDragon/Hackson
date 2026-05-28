@@ -42,6 +42,8 @@ const product = {
   status: 'active',
   artifactIds: [artifact.id],
   latestArtifactId: artifact.id,
+  deliverableArtifactId: null,
+  deliveryStatus: 'none',
 };
 
 async function api(path, options = {}) {
@@ -225,6 +227,10 @@ function missionDetail() {
         score: 80,
         status: 'minor_review',
         issueCounts: { high: 0, medium: 1, low: 0 },
+        objective: false,
+        scoreMeaning: 'Trace-backed reliability risk score, not proof of correctness.',
+        confidence: 'medium',
+        confidenceReason: 'Smoke report has synthetic trace coverage.',
       }),
       event('event_instruction_initial', 9, 'USER_INSTRUCTION_ADDED', 'Instruction added', '先收束为三段结构。', {
         instruction: '先收束为三段结构。',

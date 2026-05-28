@@ -76,6 +76,7 @@ Product Panel is the canonical full-content surface.
 
 It MUST show:
 
+- Authoritative Deliverable.
 - Product list.
 - Product status.
 - Artifact lineage.
@@ -87,6 +88,22 @@ It MUST show:
 Product Panel MUST NOT rely on Timeline payloads as the source of truth for full content.
 
 Product Panel MUST NOT show only the latest Artifact as if it were the whole deliverable.
+
+Product Panel MUST NOT treat `latestArtifactId` as the authoritative user answer. `latestArtifactId` is the newest
+lineage item. The authoritative answer is `deliverableArtifactId` when present, or the newest deliverable-like Artifact
+fallback for older Products.
+
+The Deliverable surface MUST be visually separate from Product History. It shows one clean current answer candidate
+and a status label:
+
+- `Verified final`
+- `Blocked candidate`
+- `Draft candidate`
+- `User accepted`
+
+When a Mission is `blocked`, Deliverable MUST still show the best current candidate when one exists, plus the blocker
+reason and recovery choices. Product History stays available for review reports, revision plans, reliability reports,
+and older drafts.
 
 If a final Product exists, Product Panel MUST default to an all-Artifact reader stack. The final Artifact should be visible inside that stack, and the user must be able to isolate a single Artifact from the lineage controls. If no final Product exists, Product Panel MUST keep all Product Artifacts visible in order so partially completed long-form output does not appear lost.
 

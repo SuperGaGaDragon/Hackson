@@ -547,7 +547,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           <ActivityStrip events={events} mission={selectedMission} />
           <ReliabilityPanel artifacts={artifacts} events={events} />
           <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
-          <ProductPanel artifacts={artifacts} products={products} />
+          <ProductPanel artifacts={artifacts} mission={selectedMission} products={products} />
           <ProgressTimeline events={events} />
           <RawLogPanel events={events} />
         </div>

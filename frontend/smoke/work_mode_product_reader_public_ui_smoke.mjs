@@ -57,9 +57,11 @@ const product = {
   id: productId,
   title: "长篇爽文《我能看见万物价格》",
   summary: "大纲、前段、中段与后段已形成完整闭环，可进入任务完成。",
-  status: "active",
+  status: "final",
   artifactIds: artifacts.map((item) => item.id),
   latestArtifactId: "artifact_review",
+  deliverableArtifactId: "artifact_final",
+  deliveryStatus: "verified_final",
 };
 
 async function main() {
@@ -75,6 +77,15 @@ async function main() {
   await page.getByText(project.name, { exact: true }).click();
   await page.locator(".history-list .history-item", { hasText: mission.title }).first().click();
   await page.locator(".product-panel").waitFor();
+  await page.locator(".deliverable-surface").waitFor();
+
+  const deliverableText = await page.locator(".deliverable-surface").innerText();
+  if (!deliverableText.includes("Verified final") || !deliverableText.includes("最终成稿")) {
+    throw new Error(`deliverable_missing_final:${deliverableText}`);
+  }
+  if (deliverableText.includes("成稿审查")) {
+    throw new Error("review_artifact_replaced_deliverable");
+  }
 
   const navRows = page.locator(".artifact-nav-row");
   const rowCount = await navRows.count();

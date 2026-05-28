@@ -285,6 +285,8 @@ class WorkModeRepository:
         values = dict(values)
         if values.get("latest_artifact_id") is not None:
             values["latest_artifact_id"] = _object_id(values["latest_artifact_id"])
+        if values.get("deliverable_artifact_id") is not None:
+            values["deliverable_artifact_id"] = _object_id(values["deliverable_artifact_id"])
         if "artifact_ids" in values:
             values["artifact_ids"] = [_object_id(value) for value in values["artifact_ids"]]
         return self.products.find_one_and_update(

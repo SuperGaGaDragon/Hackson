@@ -7,6 +7,9 @@ Last Modified by: Codex
 
 from typing import Any
 
+DELIVERABLE_ARTIFACT_KINDS = {"text", "chapter", "draft", "revision", "final", "mission_result"}
+NON_DELIVERABLE_ARTIFACT_ROLES = {"review", "reliability_report", "discussion"}
+
 
 def public_project(document: dict[str, Any]) -> dict[str, Any]:
     """Convert a persisted Project document to the public API shape."""
@@ -128,6 +131,10 @@ def public_artifact(document: dict[str, Any]) -> dict[str, Any]:
 
 def public_product(document: dict[str, Any]) -> dict[str, Any]:
     """Convert a persisted Product document to the public API shape."""
+    deliverable_artifact_id = document.get("deliverable_artifact_id")
+    if deliverable_artifact_id is None:
+        deliverable_artifact_id = _fallback_deliverable_artifact_id(document)
+    delivery_status = document.get("delivery_status") or _fallback_delivery_status(document, deliverable_artifact_id)
     return {
         "id": _public_id(document["_id"]),
         "userId": document["user_id"],
@@ -137,6 +144,8 @@ def public_product(document: dict[str, Any]) -> dict[str, Any]:
         "status": document.get("status", "active"),
         "artifactIds": [_public_id(value) for value in document.get("artifact_ids", [])],
         "latestArtifactId": _public_id(document.get("latest_artifact_id")) if document.get("latest_artifact_id") else None,
+        "deliverableArtifactId": _public_id(deliverable_artifact_id) if deliverable_artifact_id else None,
+        "deliveryStatus": delivery_status,
         "createdBy": document.get("created_by", {}),
         "metadata": document.get("metadata", {}),
         "createdAt": document["created_at"],
@@ -182,3 +191,32 @@ def public_event(document: dict[str, Any]) -> dict[str, Any]:
 
 def _public_id(value: Any) -> str:
     return str(value)
+
+
+def _fallback_deliverable_artifact_id(document: dict[str, Any]) -> Any:
+    metadata = document.get("metadata", {})
+    lineage = metadata.get("artifactManifest") or []
+    if isinstance(lineage, list):
+        for item in reversed(lineage):
+            if _manifest_item_is_deliverable(item):
+                return item.get("id")
+    if document.get("status") == "final" and document.get("latest_artifact_id"):
+        return document.get("latest_artifact_id")
+    return None
+
+
+def _fallback_delivery_status(document: dict[str, Any], deliverable_artifact_id: Any) -> str:
+    if not deliverable_artifact_id:
+        return "none"
+    if document.get("status") == "final":
+        return "verified_final"
+    return "draft_candidate"
+
+
+def _manifest_item_is_deliverable(item: Any) -> bool:
+    if not isinstance(item, dict):
+        return False
+    role = item.get("artifactRole")
+    if role in NON_DELIVERABLE_ARTIFACT_ROLES:
+        return False
+    return item.get("kind") in DELIVERABLE_ARTIFACT_KINDS

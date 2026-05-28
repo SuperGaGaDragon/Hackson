@@ -160,6 +160,10 @@ Repeated unsupported-claim and hallucinated-entity issues caused by an empty Evi
 
 Paper-like research Missions MUST check that the final Artifact is a final draft, not only a plan, outline, or chapter map.
 
+Reliability score MUST be presented as deterministic risk triage, not objective truth. V1 reports MUST include
+`objective=false`, `scoreMeaning`, `confidence`, and `confidenceReason`; UI copy MUST avoid "truth score" or
+"certified correct" framing.
+
 V1.0 implementation closure:
 
 - `issueCounts` MUST include both severity keys and `type:<issue_type>` keys.

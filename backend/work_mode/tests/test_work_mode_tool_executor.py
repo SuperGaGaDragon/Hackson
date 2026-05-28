@@ -382,6 +382,8 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertTrue(result.terminal)
         self.assertEqual(detail["mission"]["status"], "completed")
         self.assertEqual(detail["products"][0]["status"], "final")
+        self.assertEqual(detail["products"][0]["deliverableArtifactId"], artifact["id"])
+        self.assertEqual(detail["products"][0]["deliveryStatus"], "verified_final")
         self.assertEqual(completed_event["type"], "MISSION_COMPLETED")
         self.assertEqual(completed_event["payload"]["finalProductIds"], [product["id"]])
         self.assertEqual(completed_event["payload"]["finalArtifactIds"], [artifact["id"]])

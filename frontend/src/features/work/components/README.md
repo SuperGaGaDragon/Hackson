@@ -16,6 +16,7 @@ Last Modified by: Codex
   - `MissionHeader` mirrors selected Mission identity/status and lifecycle controls; it must not own textarea forms after the command-rail refactor.
   - `ProjectMissionRail` owns selected Project navigation and will compose the Mission input Composer.
   - `ProductPanel` uses persisted Products and Artifacts as the source of truth and exposes Artifact lineage as readable content, including after Done.
+  - `ProductPanel` separates the authoritative Deliverable from Product History; `latestArtifactId` is only lineage recency and must not replace the final user-facing result.
   - `ProductPanel` uses a fixed-rhythm Artifact Navigator plus reader layout so generated title length does not control the page shape.
   - `WorkWindowPanel` renders persisted Delegate windows collapsed by default.
   - `ProgressTimeline` is an audit trail, not the primary product reader.
@@ -31,7 +32,7 @@ Last Modified by: Codex
 |-MissionComposer.jsx selected Mission command input for waiting answers, follow-up, resume, draft start, and running instructions
 |-MissionHeader.jsx selected mission title, status, and controls
 |-ActivityStrip.jsx latest compact Mission activity row
-|-ReliabilityPanel.jsx latest event-backed Evaluator Runtime score, issue counts, collapsed report history, requirement evidence, claim support, tool failures, and evidence summary
+|-ReliabilityPanel.jsx latest event-backed Evaluator Runtime risk score, confidence, issue counts, collapsed report history, requirement evidence, claim support, tool failures, and evidence summary
 |-ProgressTimeline.jsx compact mission progress audit trail with single-select category filters
 |-WorkWindowPanel.jsx delegate work window list
 |-SummaryCard.jsx summary event card

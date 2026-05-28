@@ -31,6 +31,7 @@ RequirementType = Literal["count", "field", "constraint", "format", "action", "s
 RequirementStatus = Literal["met", "partially_met", "missing", "not_evaluable"]
 ClaimType = Literal["existence", "location", "product", "customer", "funding", "founding", "other"]
 SupportLevel = Literal["strong", "weak", "none", "contradicted", "not_evaluable"]
+ScoreConfidence = Literal["low", "medium", "high"]
 
 
 class RequirementItem(BaseModel):
@@ -130,6 +131,13 @@ class ReliabilityReport(BaseModel):
     score: int = Field(ge=0, le=100)
     status: ReliabilityStatus
     summary: str
+    objective: bool = False
+    score_meaning: str = Field(
+        default="Trace-backed reliability risk score, not proof of correctness.",
+        alias="scoreMeaning",
+    )
+    confidence: ScoreConfidence = "low"
+    confidence_reason: str = Field(default="", alias="confidenceReason")
     requirements: list[RequirementItem] = Field(default_factory=list)
     claims: list[ClaimItem] = Field(default_factory=list)
     evidence: list[EvidenceItem] = Field(default_factory=list)

@@ -535,8 +535,13 @@ class WorkModeToolExecutor:
         )
         if is_research_paper_like_goal(f"{mission.get('title', '')} {mission.get('goal', '')}"):
             _validate_research_paper_completion(detail, arguments.final_product_ids, arguments.final_artifact_ids)
+        final_artifact_id_by_product_id = _final_artifact_id_by_product_id(
+            detail,
+            arguments.final_product_ids,
+            arguments.final_artifact_ids,
+        )
         for product_id in arguments.final_product_ids:
-            self.service.mark_product_final(user_id, product_id)
+            self.service.mark_product_final(user_id, product_id, final_artifact_id_by_product_id.get(product_id))
         self.service.mark_mission_completed(
             user_id,
             mission_id,
@@ -1078,6 +1083,23 @@ def _validate_research_paper_completion(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_required")
     if _report_has_blocking_issues(report):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_needs_review")
+
+
+def _final_artifact_id_by_product_id(
+    detail: dict[str, Any],
+    final_product_ids: list[str],
+    final_artifact_ids: list[str],
+) -> dict[str, str]:
+    wanted_products = set(final_product_ids)
+    wanted_artifacts = set(final_artifact_ids)
+    result: dict[str, str] = {}
+    for product in detail["products"]:
+        if product["id"] not in wanted_products:
+            continue
+        product_artifacts = [artifact_id for artifact_id in product.get("artifactIds", []) if artifact_id in wanted_artifacts]
+        if product_artifacts:
+            result[product["id"]] = product_artifacts[-1]
+    return result
 
 
 def _latest_reliability_report(detail: dict[str, Any]) -> dict[str, Any]:

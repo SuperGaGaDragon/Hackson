@@ -46,6 +46,7 @@ Last Modified by: Codex
 |-issue32-resumable-failure-and-pause-resume-controls.md resumable invalid-turn exhaustion and stateful Start/Pause/Resume controls
 |-issue33-command-rail-and-compact-reading-ui.md selected Project rail as Directory plus Composer, and compact long-text display rules
 |-issue34-progress-filters.md Progress segmented filters for Thinking, Reliability, Products, Windows, Search, Inputs, and Issues
+|-issue35-authoritative-deliverable.md Product-level authoritative deliverable separate from editable Artifact history
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

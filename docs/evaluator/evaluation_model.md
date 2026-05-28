@@ -238,6 +238,26 @@ V1.0 weights:
 | `evaluation_limitation` | 5 |
 | `mission_incomplete` | 25 |
 
+The numeric score is deterministic risk triage, not objective truth. It is computed from the visible Mission trace,
+Evidence Ledger, and issue weights. It MUST NOT be described as proof that a result is correct or incorrect.
+
+Every report includes score interpretation metadata:
+
+```json
+{
+  "objective": false,
+  "scoreMeaning": "Trace-backed reliability risk score, not proof of correctness.",
+  "confidence": "low|medium|high",
+  "confidenceReason": "Short explanation tied to evidence coverage and unresolved issues."
+}
+```
+
+Confidence guidance:
+
+- `low`: no evidence ledger, incomplete Mission, replay-only evidence, or a major evaluator limitation.
+- `medium`: some evidence exists, but unsupported claims, weak support, or missing requirements remain.
+- `high`: evidence coverage is strong and no high/critical unresolved issue remains.
+
 Caps:
 
 - Score floor is 0.

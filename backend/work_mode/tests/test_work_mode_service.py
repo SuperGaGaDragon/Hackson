@@ -710,6 +710,43 @@ class WorkModeServiceTest(TestCase):
             mission["id"],
             run_id,
             product["id"],
+            kind="draft",
+            title="正文草稿",
+            content="一名年轻人追查旧车票背后的秘密。",
+            summary="完成正文草稿。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(completed["products"][0]["id"], product["id"])
+        self.assertEqual(completed["products"][0]["latestArtifactId"], artifact["id"])
+        self.assertEqual(completed["products"][0]["deliverableArtifactId"], artifact["id"])
+        self.assertEqual(completed["products"][0]["deliveryStatus"], "draft_candidate")
+        self.assertEqual(completed["products"][0]["artifactIds"], [artifact["id"]])
+        self.assertEqual(completed["products"][0]["metadata"]["artifactManifest"][0]["id"], artifact["id"])
+        self.assertTrue(completed["products"][0]["metadata"]["artifactManifest"][0]["deliverable"])
+        self.assertEqual(completed["artifacts"][0]["metadata"]["productId"], product["id"])
+        self.assertEqual(completed["artifacts"][0]["metadata"]["sourceArtifactIds"], [])
+
+    def test_outline_only_product_has_history_but_no_authoritative_deliverable(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="8000字小说",
+            summary="长篇小说产品。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
             kind="outline",
             title="故事大纲",
             content="一名年轻人追查旧车票背后的秘密。",
@@ -721,11 +758,90 @@ class WorkModeServiceTest(TestCase):
 
         completed = self.service.get_mission_detail("user_1", mission["id"])
 
-        self.assertEqual(completed["products"][0]["id"], product["id"])
         self.assertEqual(completed["products"][0]["latestArtifactId"], artifact["id"])
-        self.assertEqual(completed["products"][0]["artifactIds"], [artifact["id"]])
-        self.assertEqual(completed["artifacts"][0]["metadata"]["productId"], product["id"])
-        self.assertEqual(completed["artifacts"][0]["metadata"]["sourceArtifactIds"], [])
+        self.assertIsNone(completed["products"][0]["deliverableArtifactId"])
+        self.assertEqual(completed["products"][0]["deliveryStatus"], "none")
+        self.assertFalse(completed["products"][0]["metadata"]["artifactManifest"][0]["deliverable"])
+
+    def test_review_report_does_not_replace_product_deliverable(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="Essay",
+            summary="Essay product.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        draft = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="final",
+            title="Final essay",
+            content="Final candidate.",
+            summary="Final candidate.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+        review = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="report",
+            title="Review",
+            content="Needs source tightening.",
+            summary="Needs source tightening.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[draft["id"]],
+            work_window_id=None,
+            metadata={"artifactRole": "review"},
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        product_detail = completed["products"][0]
+
+        self.assertEqual(product_detail["latestArtifactId"], review["id"])
+        self.assertEqual(product_detail["deliverableArtifactId"], draft["id"])
+        self.assertEqual(product_detail["deliveryStatus"], "draft_candidate")
+        self.assertEqual(product_detail["metadata"]["artifactManifest"][-1]["artifactRole"], "review")
+        self.assertFalse(product_detail["metadata"]["artifactManifest"][-1]["deliverable"])
+
+    def test_blocked_mission_marks_current_deliverable_as_blocked_candidate(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="Essay",
+            summary="Essay product.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Best candidate",
+            content="Best available candidate.",
+            summary="Best available candidate.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+
+        self.service.mark_mission_blocked("user_1", mission["id"], run_id, "Reliability gate failed.")
+
+        blocked = self.service.get_mission_detail("user_1", mission["id"])
+        self.assertEqual(blocked["mission"]["status"], "blocked")
+        self.assertEqual(blocked["products"][0]["deliverableArtifactId"], artifact["id"])
+        self.assertEqual(blocked["products"][0]["deliveryStatus"], "blocked_candidate")
 
     def test_service_tracks_visible_work_window_result(self) -> None:
         mission = self._mission()

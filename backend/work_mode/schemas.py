@@ -42,6 +42,7 @@ ArtifactKind = Literal[
     "mission_result",
 ]
 ProductStatus = Literal["active", "final_candidate", "final", "archived"]
+ProductDeliveryStatus = Literal["none", "draft_candidate", "blocked_candidate", "verified_final", "user_accepted"]
 WorkWindowStatus = Literal["queued", "running", "completed", "blocked", "failed", "cancelled"]
 EventType = Literal[
     "MISSION_CREATED",
@@ -406,6 +407,8 @@ class ProductResponse(BaseModel):
     status: ProductStatus
     artifact_ids: list[str] = Field(alias="artifactIds")
     latest_artifact_id: str | None = Field(default=None, alias="latestArtifactId")
+    deliverable_artifact_id: str | None = Field(default=None, alias="deliverableArtifactId")
+    delivery_status: ProductDeliveryStatus = Field(default="none", alias="deliveryStatus")
     created_by: dict[str, str] = Field(alias="createdBy")
     metadata: dict[str, Any]
     created_at: datetime = Field(alias="createdAt")

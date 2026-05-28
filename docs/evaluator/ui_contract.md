@@ -89,6 +89,9 @@ Color rules:
 
 Do not render the score as a game-like achievement. It is a quality gate.
 
+Do not render the score as objective truth. The score is a trace-backed risk signal. The panel MUST show confidence
+and a short limitation line when the report exposes `objective=false`, `scoreMeaning`, or `confidenceReason`.
+
 ## 5. Issue List
 
 Issue row fields:

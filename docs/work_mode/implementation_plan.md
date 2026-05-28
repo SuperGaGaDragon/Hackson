@@ -12,6 +12,24 @@ This document is the engineer-facing build order for V1.0 Pure API Text Mission 
 
 Follow this plan after reading `final_version.md`, `architecture.md`, `tool_protocol.md`, `state_machine.md`, `context_design.md`, and `ui_contract.md`.
 
+## 1.1 2026-05-28 Addendum: Authoritative Deliverable And Reliability Risk Copy
+
+Execution order:
+
+1. Add Product-level deliverable fields while preserving existing Product history.
+2. Backfill public API fallback so old Products still show a current candidate.
+3. Render a clean Deliverable surface above Product History.
+4. Keep blocked Missions resumable and show blocker reason next to the candidate.
+5. Add evaluator report metadata that states the score is risk triage, not objective proof.
+6. Verify with unit tests, frontend build, browser smoke, target-machine tests, and public smoke before updating `api.md`.
+
+Release constraints:
+
+- Do not delete or reorder existing Artifact history.
+- Do not treat review/reliability reports as the deliverable.
+- Do not claim Reliability score is objective.
+- Do not restart public service while a real Mission is running unless the user approves.
+
 ## 2. Preflight
 
 Before implementation:
