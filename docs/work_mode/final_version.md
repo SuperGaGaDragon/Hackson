@@ -190,7 +190,9 @@ V1.0 UI surfaces:
 
 The Mission Console MUST render Work Windows and Product before the Progress audit trail. Large text events MUST be collapsed by default. Users MUST be able to expand Work Windows and Diagnostics. The Product Panel is the canonical full-content reading surface and MUST expose Artifact lineage as readable content instead of only the latest Artifact.
 
-See `ui_contract.md`, `issues/issue3-delegate-window.md`, `issues/issue9-work-ui-information-architecture.md`, and `issues/issue10-product-reader-final-lineage.md`.
+The selected Project rail MUST evolve into a Directory plus Composer surface. Project/Mission navigation belongs in the upper rail. User commands and Mission conversation entry belong in a persistent lower Composer. Long generated prose MUST NOT dominate default list rows; full content belongs in reader/detail surfaces.
+
+See `ui_contract.md`, `issues/issue3-delegate-window.md`, `issues/issue9-work-ui-information-architecture.md`, `issues/issue10-product-reader-final-lineage.md`, and `issues/issue33-command-rail-and-compact-reading-ui.md`.
 
 ### 8.1 V1.0.x Quality Track
 

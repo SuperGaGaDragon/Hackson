@@ -127,6 +127,7 @@ Decision:
 | V1.0.4 | Revision Lineage | Add revision workflow and UI history grouping. | Revision smoke preserves original Artifact and shows review -> discussion -> revision lineage. |
 | V1.0.5 | Controlled Web Search | Add `web_search` as a Lead-visible read-only research tool. | Search smoke creates a visible search event, returns bounded sourced results, and a later Product references the search observation without bypassing `work_product`. |
 | V1.0.6 | Evaluator Tool And Paper Gate | Add `evaluate_product`, deterministic paper final-draft completion checks, replay mode, lifecycle events, report tool failures, and Reliability UI field coverage. | A paper/research smoke cannot finish with outline-only content, can run Reliability, shows started/reported/failed lifecycle, and blocks completion on no-evidence needs-review reports. |
+| V1.0.8 | Command Rail And Compact Reading UI | Refactor selected Project rail into Directory plus Composer and enforce compact default rows for long text. | Browser smoke proves Mission navigation, waiting-input answer, completed follow-up, and long text clamping are usable on desktop and mobile. |
 
 ## 4. V1.0.1 UI Contract
 
@@ -263,6 +264,8 @@ Provider rule:
 - Search providers can fail or rate-limit independently from the model provider, so failures must become tool observations or retryable pauses, not silent hallucinated facts.
 - Evaluator reports can feel authoritative unless no-evidence and unsupported-profile cases are visibly capped at human review.
 - Paper/research gates can accidentally hard-code a workflow if they validate process instead of final deliverable shape.
+- A persistent Composer can become a fake chat box unless every action maps to a persisted Mission event.
+- Long-text clamping can hide important failure detail unless every compact row has an explicit expansion path.
 
 ## 10. 代办
 
@@ -272,3 +275,4 @@ Provider rule:
 - Implement V1.0.5 only after `web_search` has deterministic fake-provider tests and target-machine smoke coverage.
 - Implement V1.0.6 only as a quality gate and model-visible evaluator tool; do not hard-code research writing order.
 - Implement `issues/issue14-tool-rejection-recovery.md` before target release because deterministic quality gates must be model-correctable, not background-runner crashes.
+- Implement `issues/issue33-command-rail-and-compact-reading-ui.md` after resume/follow-up/input endpoints are stable; do not expose running-message UI until backend event semantics exist.

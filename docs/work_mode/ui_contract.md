@@ -168,15 +168,31 @@ Control Panel MUST show:
 
 V1.0 text-only `waiting_input` MAY auto-resume after user answer, but UI still MUST show the question and answer.
 
-## 8.1 Project Rail And Mission Creation
+## 8.1 Project Rail, Mission Creation, And Composer
 
 Selected Project rail default content:
 
 - Project name.
 - Back/navigation command.
-- Agent list.
 - Mission list.
+- Current Lead as compact metadata.
 - `New Mission` command.
+- Persistent Composer for the selected Mission.
+
+Selected Project rail MUST be split into two zones:
+
+1. Directory zone.
+   - Project identity.
+   - Mission directory.
+   - Compact Lead/Agent indicator.
+   - New Mission command.
+
+2. Composer zone.
+   - Pinned near the bottom on desktop.
+   - Used for Mission input, not Project navigation.
+   - Adapts to selected Mission status.
+
+Large Agent cards MUST NOT be the default selected Mission rail. Agent choice belongs primarily in Mission creation, while the selected Mission rail should preserve space for navigation and user command input.
 
 Mission creation form:
 
@@ -186,6 +202,16 @@ Mission creation form:
 - SHOULD preserve typed values if the modal/drawer is dismissed accidentally without creation.
 
 Completed or running Mission view SHOULD prioritize reading and process context over creating another Mission.
+
+Mission Composer status modes:
+
+- `waiting_input`: show the Lead's question and answer action.
+- `completed`: show continue-with-Lead action.
+- `paused`, `paused_retryable`, `failed`, `blocked`, `stopped`: show resume action with optional instruction.
+- `running`: show add-instruction action only when backend persistence exists.
+- `draft`: show start guidance or disabled state, without duplicating the New Mission modal.
+
+Mission Header MUST NOT own textarea forms. It owns selected Mission identity, status, lifecycle buttons, and explicit checks. Text entry belongs to the rail Composer.
 
 ## 9. Collapsed Content Rules
 
@@ -200,6 +226,14 @@ Collapsed by default:
 Expanded content MUST enforce display limits.
 
 If content exceeds display limit, UI MUST link to the Product/Artifact reader.
+
+Default row density:
+
+- List rows MUST NOT render unbounded model prose.
+- Mission, Progress, Window, Review, Search, Evaluation, and Product summary rows MUST fit a stable scan rhythm.
+- Row title, status, time, and summary SHOULD fit within two visual lines before expansion.
+- Full long-form content MUST remain in Product reader, Work Window detail, Progress detail, or Diagnostics.
+- CSS line clamping is required as a guard, but components MUST also map event payloads into concise summaries instead of dumping raw payload text.
 
 ## 10. Event Mapping
 
@@ -258,6 +292,9 @@ V1.0 browser smoke MUST verify:
 - Timeline shows plan and tool events.
 - At least two delegate windows are visible.
 - Work Windows render above Progress.
+- Selected Project rail separates Directory from Composer.
+- Waiting-input and completed follow-up text entry appear in Composer, not Mission Header.
+- Long timeline/product summary text is compact by default and full content remains reachable.
 - Delegate windows are collapsed by default and expandable.
 - Product Panel shows Product list and Artifact lineage.
 - Product Panel shows final Product full content.

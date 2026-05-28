@@ -498,7 +498,49 @@ Required tests:
 - Frontend build.
 - Public deployment smoke verifies health, root, assets, and clean logs.
 
-## 20. Recommended Test Commands
+## 20. Loop 19: V1.0.8 Command Rail And Compact Reading UI
+
+Refactor the selected Project UI after lifecycle endpoints are stable.
+
+Required behavior:
+
+- Left Project rail has two zones:
+  - Directory zone for Project identity, Mission list, compact Lead metadata, and New Mission.
+  - Composer zone for selected Mission input.
+- Mission Header no longer renders textarea forms.
+- Composer handles:
+  - waiting-input answer;
+  - completed follow-up;
+  - resumable Mission resume with optional instruction when supported;
+  - running add-instruction only after backend persistence exists.
+- Mission list rows stay compact and fixed rhythm.
+- Progress rows, Work Window rows, Product summaries, Review rows, Search rows, and Evaluation rows do not render paragraph walls by default.
+- Expanded details are bounded and structured.
+- Full long-form content remains in Product reader or explicit detail surfaces.
+
+Required tests/build:
+
+```bash
+npm --prefix frontend run build
+```
+
+Browser checks:
+
+- One Project can show at least two Missions without either disappearing.
+- Left rail upper area is clearly Mission directory.
+- Left rail lower area is clearly the Composer.
+- Waiting-input answer is submitted from Composer.
+- Completed Mission follow-up is submitted from Composer.
+- Long generated Progress text is clamped by default and expandable.
+- Desktop and mobile screenshots show no overlapping text or horizontal overflow.
+
+Exit criteria:
+
+- Browser screenshot proves the rail is navigable and the Composer is visible.
+- Full Product text remains readable in Product Panel.
+- No default row displays an unbounded paragraph wall.
+
+## 21. Recommended Test Commands
 
 Backend scoped:
 
@@ -521,7 +563,7 @@ Frontend:
 npm --prefix frontend run build
 ```
 
-## 21. Rollback
+## 22. Rollback
 
 Rollback should preserve:
 
@@ -536,6 +578,6 @@ If V1.0 loop is unstable:
 - Fall back to V0.5 single-call worker only as emergency compatibility.
 - Do not delete Products, Windows, or Artifacts created during testing.
 
-## 22. 代办
+## 23. 代办
 
 - Add concrete issue tracker tickets after this document is accepted.
