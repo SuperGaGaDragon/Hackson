@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 # Work Mode V1.0 Implementation Plan
@@ -214,9 +214,11 @@ Implement UI contract.
 
 Required surfaces:
 
-- Mission Timeline.
+- Current Activity.
 - Work Windows.
 - Product Panel.
+- Mission Progress.
+- Diagnostics.
 - Control Panel.
 
 Required tests/build:
@@ -227,7 +229,12 @@ npm --prefix frontend run build
 
 Browser checks:
 
-- Timeline and windows render.
+- Current Activity renders.
+- Work Windows render above Mission Progress.
+- Product Panel renders before Mission Progress.
+- Product Panel exposes Artifact lineage and does not hide earlier partial Artifacts.
+- Mission Progress renders clock time and compact sequence metadata.
+- Diagnostics renders collapsed raw event detail.
 - Large content collapsed by default.
 - Product Panel shows final Product.
 - Resume/answer controls appear for matching statuses.

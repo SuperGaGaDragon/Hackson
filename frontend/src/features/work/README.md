@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -11,8 +11,11 @@ Lst Modified by: Codex
   - Work opens to a Workspace project list and New Project form.
   - Project detail owns the two user-edited Agents from `Me`, Missions, console, and Inspector.
   - Use `/api/work` Project, Mission, and Event APIs verified on the target machine.
-  - Mission detail renders a single vertical console stream so Progress, Summary, Product, and Raw Log never overlap.
+  - Mission detail renders a single vertical console stream so Activity, Windows, Product, Progress, and Diagnostics never overlap.
   - `ActivityStrip` renders the latest safe runtime lifecycle event so long model turns do not look frozen.
+  - `WorkWindowPanel` renders delegated Agent work above Progress because it answers who is working before showing the audit trail.
+  - `ProductPanel` renders Product and Artifact lineage from persisted state and never treats only the latest Artifact as the whole deliverable.
+  - `RawLogPanel` is the collapsed Diagnostics surface for raw event payloads.
   - Terminal mission actions must be truthful; a completed mission cannot present an enabled `Start` action.
   - Do not expose Work-only Employee or Team creation in the current product UI.
   - Do not expose autonomous tool execution before backend safety gates exist.
@@ -20,7 +23,7 @@ Lst Modified by: Codex
 ## folder structure
 |-README.md work feature guide
 |-WorkPage.jsx Work Mode Workspace and Project detail page
-|-components/ fixed Work UI components for Activity, Timeline, Windows, Product, and Inspector
+|-components/ fixed Work UI components for Activity, Windows, Product, Progress, Diagnostics, and Inspector
 
 ## 代办
 - Add native streaming display after backend exposes a verified safe stream API.

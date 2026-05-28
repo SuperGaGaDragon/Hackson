@@ -177,14 +177,16 @@ The UI MUST show the process, not only the final result.
 
 V1.0 UI surfaces:
 
-- Mission Timeline.
+- Current Activity.
 - Work Windows.
 - Product Panel.
+- Mission Progress.
+- Diagnostics.
 - Control Panel.
 
-Large text events MUST be collapsed by default. Users MUST be able to expand work windows and large text events. The Product Panel is the canonical full-content reading surface.
+The Mission Console MUST render Work Windows and Product before the Progress audit trail. Large text events MUST be collapsed by default. Users MUST be able to expand Work Windows and Diagnostics. The Product Panel is the canonical full-content reading surface and MUST expose Artifact lineage instead of only the latest Artifact.
 
-See `ui_contract.md` and `issues/issue3-delegate-window.md`.
+See `ui_contract.md`, `issues/issue3-delegate-window.md`, and `issues/issue9-work-ui-information-architecture.md`.
 
 ## 9. Failure And Resume Strategy
 
@@ -258,3 +260,4 @@ Known risks:
 - Full smoke cost, duration, and deterministic validation: `issues/issue6-full-smoke.md`
 - Long model turn progress and timeout UX: `issues/issue7-long-turn-progress.md`
 - Delegate result tolerance after real-model wrapper misses: `issues/issue8-delegate-result-tolerance.md`
+- Work UI hierarchy, Product lineage, and diagnostics clarity: `issues/issue9-work-ui-information-architecture.md`

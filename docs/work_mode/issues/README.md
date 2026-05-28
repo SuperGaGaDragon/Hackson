@@ -22,6 +22,7 @@ Lst Modified by: Codex
 |-issue6-full-smoke.md full 8000 CJK character smoke acceptance
 |-issue7-long-turn-progress.md long model turn progress, bounded retry, and timeout UX
 |-issue8-delegate-result-tolerance.md tolerant Delegate result ingestion after public smoke failure
+|-issue9-work-ui-information-architecture.md Work UI hierarchy, Product lineage, Progress, and Diagnostics decisions
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

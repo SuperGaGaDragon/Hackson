@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 # Work Mode UI Contract
@@ -16,14 +16,81 @@ The model never renders UI. The UI renders persisted backend events, Products, A
 
 V1.0 UI MUST contain:
 
-- Mission Timeline.
+- Current Activity.
 - Work Windows.
 - Product Panel.
+- Mission Progress.
+- Diagnostics.
 - Control Panel.
 
-These can be arranged in the existing Work page layout, but the four surfaces must be present.
+The main Mission Console MUST render in this order:
 
-## 3. Mission Timeline
+1. Current Activity.
+2. Work Windows.
+3. Product Panel.
+4. Mission Progress.
+5. Diagnostics.
+
+The side rail MAY render Inspector, warnings, and budget details.
+
+## 3. Current Activity
+
+Current Activity shows the latest safe runtime state.
+
+It MUST render:
+
+- Latest model state, tool action, retry, pause, completion, or failure.
+- Local clock time when available.
+- Short status detail.
+
+It MUST NOT render raw chain-of-thought.
+
+## 4. Work Windows
+
+Every `delegate_agent` call MUST create a visible Work Window.
+
+Window card MUST show:
+
+- Window title.
+- Source Lead action.
+- Delegate Agent name and slot.
+- Brief.
+- Status.
+- Result Artifact id/title.
+- Summary.
+- Expand/collapse control.
+
+Window details MAY show:
+
+- Full brief.
+- Delegate result content excerpt.
+- Link to Product/Artifact panel for full result.
+
+V1.0 Work Windows run sequentially, but UI should not assume future windows cannot run in parallel.
+
+Work Windows MUST appear above Mission Progress.
+
+## 5. Product Panel
+
+Product Panel is the canonical full-content surface.
+
+It MUST show:
+
+- Product list.
+- Product status.
+- Artifact lineage.
+- Source Agent.
+- Source Work Window when applicable.
+- Final Product highlight.
+- Full Artifact content reader.
+
+Product Panel MUST NOT rely on Timeline payloads as the source of truth for full content.
+
+Product Panel MUST NOT show only the latest Artifact as if it were the whole deliverable.
+
+If a final Product exists, Product Panel SHOULD default to the final Artifact. If no final Product exists, Product Panel MUST keep all Product Artifacts visible in order so partially completed long-form output does not appear lost.
+
+## 6. Mission Progress
 
 Timeline shows the process.
 
@@ -51,46 +118,26 @@ Timeline entries MAY show:
 
 Timeline entries MUST NOT require parsing raw model prose to determine type.
 
-## 4. Work Windows
+Timeline rows MUST show local clock time when `createdAt` exists. Sequence number MAY appear as muted diagnostic metadata.
 
-Every `delegate_agent` call MUST create a visible Work Window.
+Repeated heartbeat events MUST render compactly and MUST NOT dominate the Mission Console.
 
-Window card MUST show:
+## 7. Diagnostics
 
-- Window title.
-- Source Lead action.
-- Delegate Agent name and slot.
-- Brief.
-- Status.
-- Result Artifact id/title.
-- Summary.
-- Expand/collapse control.
+Diagnostics is the engineering/debug surface.
 
-Window details MAY show:
+It MUST be collapsed by default.
 
-- Full brief.
-- Delegate result content excerpt.
-- Link to Product/Artifact panel for full result.
+It SHOULD show:
 
-V1.0 Work Windows run sequentially, but UI should not assume future windows cannot run in parallel.
+- Event sequence.
+- Event type.
+- Local clock time.
+- Payload JSON.
 
-## 5. Product Panel
+Diagnostics MUST NOT be named `Logs` in the main UI.
 
-Product Panel is the canonical full-content surface.
-
-It MUST show:
-
-- Product list.
-- Product status.
-- Artifact lineage.
-- Source Agent.
-- Source Work Window when applicable.
-- Final Product highlight.
-- Full Artifact content reader.
-
-Product Panel MUST NOT rely on Timeline payloads as the source of truth for full content.
-
-## 6. Control Panel
+## 8. Control Panel
 
 Control Panel MUST show:
 
@@ -103,7 +150,7 @@ Control Panel MUST show:
 
 V1.0 text-only `waiting_input` MAY auto-resume after user answer, but UI still MUST show the question and answer.
 
-## 7. Collapsed Content Rules
+## 9. Collapsed Content Rules
 
 Collapsed by default:
 
@@ -116,29 +163,30 @@ Expanded content MUST enforce display limits.
 
 If content exceeds display limit, UI MUST link to the Product/Artifact reader.
 
-## 8. Event Mapping
+## 10. Event Mapping
 
 | Event Type | UI Surface | Default Display |
 | --- | --- | --- |
-| `MISSION_PLAN_UPDATED` | Timeline | Expanded summary, steps visible |
-| `MODEL_TURN_STARTED` | Timeline + Control Panel | Compact active row |
-| `MODEL_TURN_HEARTBEAT` | Timeline + Control Panel | Compact active row |
-| `MODEL_TURN_COMPLETED` | Timeline | Compact completed row |
-| `MODEL_TURN_RETRYING` | Timeline + Control Panel | Retry visible |
-| `TOOL_CALLED` | Timeline | Collapsed reason and tool |
-| `PRODUCT_UPDATED` | Timeline + Product Panel | Timeline collapsed, Product full |
-| `PRODUCT_INSPECTED` | Timeline | Collapsed, expandable inspected excerpt |
-| `WORK_WINDOW_OPENED` | Timeline + Work Windows | Window card created |
-| `WORK_WINDOW_COMPLETED` | Timeline + Work Windows + Product Panel | Result linked |
-| `WORK_WINDOW_BLOCKED` | Timeline + Work Windows | Block reason visible |
-| `WORK_WINDOW_FAILED` | Timeline + Work Windows | Failed window visible |
-| `USER_INPUT_REQUESTED` | Timeline + Control Panel | Question visible |
-| `MISSION_PAUSED_RETRYABLE` | Timeline + Control Panel | Resume visible |
-| `MISSION_COMPLETED` | Timeline + Product Panel | Final Product highlighted |
-| `MISSION_BLOCKED` | Timeline + Control Panel | Block reason visible |
-| `MISSION_FAILED` | Timeline + Control Panel | Error visible |
+| `MISSION_PLAN_UPDATED` | Progress | Expanded summary, steps visible |
+| `MODEL_TURN_STARTED` | Activity + Progress | Compact active row |
+| `MODEL_TURN_HEARTBEAT` | Activity + Progress | Compact active row |
+| `MODEL_TURN_COMPLETED` | Progress | Compact completed row |
+| `MODEL_TURN_RETRYING` | Activity + Progress + Control Panel | Retry visible |
+| `TOOL_CALLED` | Activity + Progress | Decision/action row |
+| `PRODUCT_UPDATED` | Progress + Product Panel | Progress compact, Product full |
+| `PRODUCT_INSPECTED` | Progress | Collapsed inspected excerpt |
+| `WORK_WINDOW_OPENED` | Progress + Work Windows | Window row created |
+| `WORK_WINDOW_COMPLETED` | Progress + Work Windows + Product Panel | Result linked |
+| `WORK_WINDOW_BLOCKED` | Progress + Work Windows | Block reason visible |
+| `WORK_WINDOW_FAILED` | Activity + Progress + Work Windows | Failed window visible |
+| `USER_INPUT_REQUESTED` | Progress + Control Panel | Question visible |
+| `MISSION_PAUSED_RETRYABLE` | Activity + Progress + Control Panel | Resume visible |
+| `MISSION_COMPLETED` | Activity + Progress + Product Panel | Final Product highlighted |
+| `MISSION_BLOCKED` | Activity + Progress + Control Panel | Block reason visible |
+| `MISSION_FAILED` | Activity + Progress + Control Panel | Error visible |
+| `RAW_LOG` | Diagnostics | Collapsed raw detail |
 
-## 9. Copy Rules
+## 11. Copy Rules
 
 Frontend copy MUST stay short.
 
@@ -147,6 +195,8 @@ Recommended labels:
 - `Plan`
 - `Windows`
 - `Product`
+- `Progress`
+- `Diagnostics`
 - `Resume`
 - `Answer`
 - `Final`
@@ -155,19 +205,22 @@ Recommended labels:
 
 Avoid long explanatory UI text. The process itself should be visible through cards and events.
 
-## 10. Browser Verification
+## 12. Browser Verification
 
 V1.0 browser smoke MUST verify:
 
 - Mission can start.
 - Timeline shows plan and tool events.
 - At least two delegate windows are visible.
+- Work Windows render above Progress.
 - Delegate windows are collapsed by default and expandable.
+- Product Panel shows Product list and Artifact lineage.
 - Product Panel shows final Product full content.
+- Diagnostics is present and collapsed by default.
 - Completed Mission highlights final Product.
 - No large text overlaps controls.
 - Mobile layout keeps Product readable.
 
-## 11. 代办
+## 13. 代办
 
-- Finalize component split after backend response shapes are implemented.
+- Add streaming activity when V1.2 backend stream is available.
