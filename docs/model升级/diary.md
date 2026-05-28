@@ -110,6 +110,9 @@ Lst Modified by: Codex
   - 目标机新隔离服务 `hackson-work-v1-progress-8161.service`，新目录 `~/hackson_work_v1_progress_8161`，新库 `hackson_work_v1_progress_8161`，绑定 `127.0.0.1:8161`。
   - 目标机通过：Work Mode `52`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke `events=30/final_cjk=9936`、HTTP full smoke `events=30/final_cjk=9936`、browser smoke `windows=2/final_cjk=9936`。
   - 目标机 `127.0.0.1:8161/health` 返回 `{"status":"ok"}`，静态首页包含 React root 和 assets，未停止 `8145/8147/8148/8150/8160/8130` 等现有服务。
+  - 推广到 public `8145`：public 目录 Work Mode `52`、model_runtime `24`、interactions `21`、frontend build、full smoke、HTTP smoke 全部通过后，重启 `hackson-domain-8145.service`。
+  - 公网验证：`https://hackson.catachess.com/health` 和 `/` 返回 `200`，新 assets 为 `index-HYSRYan8.js` / `index-cInveBCH.css`。
+  - 真实 Codex 小任务 Mission `6a17a145f01aad81f13bca71` 完成，事件链包含每轮 `MODEL_TURN_STARTED`、`MODEL_TURN_COMPLETED`、`TOOL_CALLED`，最终 `MISSION_COMPLETED`，没有 orphan Codex 进程。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -123,9 +126,8 @@ Lst Modified by: Codex
 ### 下一步
 - 继续观察 `codex_cli` 冷启动延迟；如需要，再做常驻 worker 或队列化。
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
-- Work V1 下一步先把 `8150` 的通过内容推广到 public `8145` 前，再做 public browser full smoke。
 - Work V1 hardening 已推广到 public `8145`；`8160` 可继续作为 isolated 对照 smoke 环境保留。
-- Work V1 progress hardening 已在 `8161` 隔离验证通过；推广 public 前需先跑 public 目录测试并重启 `8145`。
+- Work V1 progress hardening 已推广到 public `8145`；`8161` 可继续作为 isolated 对照 smoke 环境保留。
 - Work V1.1 增加 native tool calling adapter；V1.2 再加 streaming，不改变当前 ToolExecutor。
 - Work V1.3 再加并行 Work Window；V2 才引入 Codex/file/browser/computer tools。
 
