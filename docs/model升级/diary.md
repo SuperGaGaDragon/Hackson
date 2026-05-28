@@ -105,7 +105,11 @@ Lst Modified by: Codex
   - Lead turn 对 retryable provider error 先做有限自动 retry，耗尽后才进入 `paused_retryable`。
   - Delegate window 打开后若模型超时/失败，会标记窗口 `failed` 并发 `WORK_WINDOW_FAILED`，不再让 UI 看起来还在后台跑。
   - 前端新增 `ActivityStrip`，展示最近一次安全运行状态，用户能看到 Thinking、Tool、Retry、Done 等进度。
-  - 本地验证通过：backend 全目录 unittest、Work Mode `51`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke、HTTP full smoke、browser smoke，最终 `final_cjk=9936`。
+  - 新增 `HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES` 和 `HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS`，让 retry 和 heartbeat 节奏可运维配置。
+  - 本地验证通过：backend 全目录 unittest、Work Mode `52`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke、HTTP full smoke、browser smoke，最终 `final_cjk=9936`。
+  - 目标机新隔离服务 `hackson-work-v1-progress-8161.service`，新目录 `~/hackson_work_v1_progress_8161`，新库 `hackson_work_v1_progress_8161`，绑定 `127.0.0.1:8161`。
+  - 目标机通过：Work Mode `52`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke `events=30/final_cjk=9936`、HTTP full smoke `events=30/final_cjk=9936`、browser smoke `windows=2/final_cjk=9936`。
+  - 目标机 `127.0.0.1:8161/health` 返回 `{"status":"ok"}`，静态首页包含 React root 和 assets，未停止 `8145/8147/8148/8150/8160/8130` 等现有服务。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -121,6 +125,7 @@ Lst Modified by: Codex
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
 - Work V1 下一步先把 `8150` 的通过内容推广到 public `8145` 前，再做 public browser full smoke。
 - Work V1 hardening 已推广到 public `8145`；`8160` 可继续作为 isolated 对照 smoke 环境保留。
+- Work V1 progress hardening 已在 `8161` 隔离验证通过；推广 public 前需先跑 public 目录测试并重启 `8145`。
 - Work V1.1 增加 native tool calling adapter；V1.2 再加 streaming，不改变当前 ToolExecutor。
 - Work V1.3 再加并行 Work Window；V2 才引入 Codex/file/browser/computer tools。
 
