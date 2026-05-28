@@ -184,6 +184,18 @@ Expanded `RELIABILITY_REPORTED` details should show:
 - Issue counts.
 - Report Artifact id.
 
+Expanded `EVALUATION_STARTED` details should show:
+
+- Profile.
+- Mode.
+- Evaluator version.
+
+Expanded `EVALUATION_FAILED` details should show:
+
+- Stable error code.
+- Message.
+- Evaluator version.
+
 ## 11. Diagnostics
 
 Diagnostics may show raw report payload.

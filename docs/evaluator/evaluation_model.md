@@ -276,8 +276,11 @@ Status bands:
     "critical": 0,
     "high": 3,
     "medium": 1,
-    "low": 0
+    "low": 0,
+    "type:unsupported_claim": 2,
+    "type:missing_source": 1
   },
+  "toolFailures": [],
   "suggestedNextActions": [
     "Re-run web search for Company B.",
     "Remove unsupported bank-customer claim."
@@ -333,6 +336,11 @@ Model-assisted checks should handle:
 - Claim extraction.
 - Claim-to-snippet support judgement.
 - Over-specific claim detection.
+
+V1.0 closure note:
+
+- The first production implementation may use deterministic extractors and matchers if they return the same structured `requirements`, `claims`, `supportLevel`, `confidence`, `bestEvidenceIds`, and `reason` fields.
+- A later model-assisted implementation MUST preserve this schema and convert invalid model JSON into an `evaluation_limitation` issue.
 
 ## 13. Limitations
 

@@ -28,7 +28,7 @@ Last Modified by: Codex
 |-ProjectMissionRail.jsx project detail rail with user Agents and missions
 |-MissionHeader.jsx selected mission title, status, and controls
 |-ActivityStrip.jsx latest compact Mission activity row
-|-ReliabilityPanel.jsx latest Evaluator Runtime reliability score, issues, and evidence summary
+|-ReliabilityPanel.jsx latest Evaluator Runtime score, issue counts, requirement evidence, claim support, tool failures, and evidence summary
 |-ProgressTimeline.jsx compact mission progress audit trail
 |-WorkWindowPanel.jsx delegate work window list
 |-SummaryCard.jsx summary event card

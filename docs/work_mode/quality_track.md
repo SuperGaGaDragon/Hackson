@@ -126,7 +126,7 @@ Decision:
 | V1.0.3 | Review And Discussion Tools | Add `review_product` and `discuss_with_delegate` as model-visible tools. | A review/discussion smoke creates Review and Discussion Artifacts without changing Product content. |
 | V1.0.4 | Revision Lineage | Add revision workflow and UI history grouping. | Revision smoke preserves original Artifact and shows review -> discussion -> revision lineage. |
 | V1.0.5 | Controlled Web Search | Add `web_search` as a Lead-visible read-only research tool. | Search smoke creates a visible search event, returns bounded sourced results, and a later Product references the search observation without bypassing `work_product`. |
-| V1.0.6 | Evaluator Tool And Paper Gate | Add `evaluate_product` and deterministic paper final-draft completion checks. | A paper/research smoke cannot finish with outline-only content, can run Reliability, and blocks completion on no-evidence needs-review reports. |
+| V1.0.6 | Evaluator Tool And Paper Gate | Add `evaluate_product`, deterministic paper final-draft completion checks, replay mode, lifecycle events, report tool failures, and Reliability UI field coverage. | A paper/research smoke cannot finish with outline-only content, can run Reliability, shows started/reported/failed lifecycle, and blocks completion on no-evidence needs-review reports. |
 
 ## 4. V1.0.1 UI Contract
 

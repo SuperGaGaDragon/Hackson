@@ -210,7 +210,7 @@ def evaluate_mission(
     current_user_id: str = Depends(get_current_user_id),
     evaluator: EvaluatorRuntime = Depends(get_evaluator_runtime),
 ) -> dict:
-    return evaluator.evaluate(current_user_id, mission_id, profile=payload.profile)
+    return evaluator.evaluate(current_user_id, mission_id, profile=payload.profile, mode=payload.mode)
 
 
 @router.get("/missions/{mission_id}/events", response_model=list[EventResponse])

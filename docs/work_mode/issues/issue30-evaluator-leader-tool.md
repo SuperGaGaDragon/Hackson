@@ -26,7 +26,9 @@ It is a backend-owned quality tool. The Lead chooses it, but the backend produce
 
 - Run Evaluator Runtime against the current Mission trace.
 - Persist a Reliability Report Artifact.
+- Emit `EVALUATION_STARTED` unless returning an unchanged current report.
 - Emit `RELIABILITY_REPORTED`.
+- Emit `EVALUATION_FAILED` if no report can be produced.
 - Return a bounded observation with score, status, issue counts, top issues, report Artifact id, and a recommended next tool.
 
 `evaluate_product` MUST NOT:
@@ -63,5 +65,6 @@ This keeps the model flexible while preventing a paper-like research Mission fro
 - `evaluate_product` appears in Lead context and tool schemas.
 - The parser accepts a valid `evaluate_product` action.
 - The executor persists a Reliability Report Artifact and event.
+- Evaluator lifecycle events are visible in Progress.
 - The tool observation tells the Lead whether to revise or finish.
 - Paper/research completion is blocked when no current report exists or the current report requires human review.

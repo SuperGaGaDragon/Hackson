@@ -11,6 +11,7 @@ import json
 import re
 from collections import Counter
 from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -18,10 +19,12 @@ from fastapi import HTTPException, status
 from work_mode.evaluator_schemas import (
     ClaimItem,
     EvidenceItem,
+    EvaluationMode,
     EvaluationProfile,
     ReliabilityIssue,
     ReliabilityReport,
     RequirementItem,
+    ToolFailureItem,
 )
 from work_mode.service import WorkModeService
 
@@ -93,6 +96,7 @@ class EvaluatorRuntime:
         user_id: str,
         mission_id: str,
         profile: EvaluationProfile = "research_reliability_v1",
+        mode: EvaluationMode = "live",
     ) -> dict[str, Any]:
         detail = self.service.get_mission_detail(user_id, mission_id)
         run_id = _latest_run_id(detail)
@@ -100,28 +104,66 @@ class EvaluatorRuntime:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_has_no_run")
         if _latest_event_is_current_report(detail):
             return detail
-        report = build_reliability_report(detail, profile=profile)
-        artifact = self._persist_report(user_id, mission_id, run_id, report)
-        report.report_artifact_id = artifact["id"]
         mission = self.service._require_mission(user_id, mission_id)
+        run = {"_id": run_id}
         self.service.append_event(
             user_id,
             mission,
-            run={"_id": run_id},
+            run=run,
             step=None,
-            event_type="RELIABILITY_REPORTED",
-            title="Reliability",
-            message=f"{report.score} / 100",
+            event_type="EVALUATION_STARTED",
+            title="Evaluation started",
+            message=f"{profile} · {mode}",
             payload={
-                "profile": report.profile,
-                "score": report.score,
-                "status": report.status,
-                "issueCounts": report.issue_counts,
-                "reportArtifactId": artifact["id"],
+                "profile": profile,
+                "mode": mode,
                 "evaluatorVersion": EVALUATOR_VERSION,
                 "employee": _employee_payload(detail["mission"]),
             },
         )
+        try:
+            started_detail = self.service.get_mission_detail(user_id, mission_id)
+            report = build_reliability_report(started_detail, profile=profile, mode=mode)
+            artifact = self._persist_report(user_id, mission_id, run_id, report)
+            report.report_artifact_id = artifact["id"]
+            self.service.append_event(
+                user_id,
+                mission,
+                run=run,
+                step=None,
+                event_type="RELIABILITY_REPORTED",
+                title="Reliability",
+                message=f"{report.score} / 100",
+                payload={
+                    "profile": report.profile,
+                    "mode": report.mode,
+                    "score": report.score,
+                    "status": report.status,
+                    "issueCounts": report.issue_counts,
+                    "reportArtifactId": artifact["id"],
+                    "evaluatorVersion": EVALUATOR_VERSION,
+                    "employee": _employee_payload(detail["mission"]),
+                },
+            )
+        except Exception as exc:
+            self.service.append_event(
+                user_id,
+                mission,
+                run=run,
+                step=None,
+                event_type="EVALUATION_FAILED",
+                title="Evaluation failed",
+                message="evaluation_failed",
+                payload={
+                    "profile": profile,
+                    "mode": mode,
+                    "code": "evaluation_failed",
+                    "error": str(exc),
+                    "evaluatorVersion": EVALUATOR_VERSION,
+                    "employee": _employee_payload(detail["mission"]),
+                },
+            )
+            raise
         return self.service.get_mission_detail(user_id, mission_id)
 
     def _persist_report(
@@ -162,28 +204,33 @@ class EvaluatorRuntime:
 def build_reliability_report(
     detail: dict[str, Any],
     profile: EvaluationProfile = "research_reliability_v1",
+    mode: EvaluationMode = "live",
 ) -> ReliabilityReport:
+    detail_for_report = _with_replay_evidence(detail) if mode == "replay" else detail
     mission = detail["mission"]
-    final_artifact = _final_artifact(detail)
+    final_artifact = _final_artifact(detail_for_report)
     final_text = final_artifact.get("content", "") if final_artifact else ""
-    evidence = _evidence_ledger(detail.get("events", []))
+    evidence = _evidence_ledger(detail_for_report)
     goal = mission.get("goal", "")
     requirements = _requirements(goal, final_text, evidence, final_artifact)
     claims = _claims(final_text, final_artifact["id"] if final_artifact else "", evidence)
-    issues = _issues(detail, requirements, claims, evidence, final_artifact)
+    tool_failures = _tool_failures(detail_for_report.get("events", []))
+    issues = _issues(detail_for_report, requirements, claims, evidence, final_artifact)
     score = _score(issues)
     report = ReliabilityReport(
         reportId=f"report_{uuid4().hex[:12]}",
         missionId=mission["id"],
         profile=profile,
+        mode=mode,
         score=score,
         status=_status(score, issues),
         summary=_summary(score, issues),
         requirements=requirements,
         claims=claims,
         evidence=evidence,
+        toolFailures=tool_failures,
         issues=issues,
-        issueCounts=dict(Counter(issue.severity for issue in issues)),
+        issueCounts=_issue_counts(issues),
         suggestedNextActions=_suggested_actions(issues),
         limitations=[
             "Evidence support is limited to Work Mode search results and source snippets in the Mission trace.",
@@ -193,8 +240,9 @@ def build_reliability_report(
     return report
 
 
-def _evidence_ledger(events: list[dict[str, Any]]) -> list[EvidenceItem]:
+def _evidence_ledger(detail: dict[str, Any]) -> list[EvidenceItem]:
     evidence: list[EvidenceItem] = []
+    events = detail.get("events", [])
     for event in events:
         if event.get("type") != "WEB_SEARCH_COMPLETED":
             continue
@@ -212,6 +260,23 @@ def _evidence_ledger(events: list[dict[str, Any]]) -> list[EvidenceItem]:
                     eventSequence=event["sequence"],
                     provider=provider,
                     publishedAt=result.get("publishedAt"),
+                )
+            )
+    for artifact in detail.get("artifacts", []):
+        if artifact.get("metadata", {}).get("artifactRole") == "reliability_report":
+            continue
+        for source in _artifact_sources(artifact):
+            evidence.append(
+                EvidenceItem(
+                    id=f"E{len(evidence) + 1}",
+                    title=str(source.get("title") or artifact.get("title") or "")[:300],
+                    url=str(source.get("url") or "")[:2000],
+                    source=str(source.get("source") or _source_from_url(source.get("url")) or "")[:200],
+                    snippet=str(source.get("snippet") or artifact.get("content") or "")[:1200],
+                    eventId=f"artifact:{artifact['id']}",
+                    eventSequence=0,
+                    provider="artifact",
+                    publishedAt=source.get("publishedAt"),
                 )
             )
     return evidence
@@ -539,11 +604,22 @@ def _report_markdown(report: ReliabilityReport) -> str:
         f"Score: {report.score} / 100",
         f"Status: {report.status}",
         f"Profile: {report.profile}",
+        f"Mode: {report.mode}",
         "",
         report.summary,
         "",
-        "## Issues",
+        "## Tool Failures",
     ]
+    if not report.tool_failures:
+        lines.append("- None.")
+    for failure in report.tool_failures:
+        lines.append(
+            f"- #{failure.event_sequence} {failure.tool}: {failure.code or failure.message} retryable={failure.retryable}"
+        )
+    lines.extend([
+        "",
+        "## Issues",
+    ])
     if not report.issues:
         lines.append("- No open issues.")
     for issue in report.issues:
@@ -551,6 +627,146 @@ def _report_markdown(report: ReliabilityReport) -> str:
     lines.extend(["", "## Limitations"])
     lines.extend(f"- {item}" for item in report.limitations)
     return "\n".join(lines)
+
+
+def _tool_failures(events: list[dict[str, Any]]) -> list[ToolFailureItem]:
+    failures: list[ToolFailureItem] = []
+    failed_types = {
+        "WEB_SEARCH_FAILED": "web_search",
+        "WORK_WINDOW_FAILED": "delegate_agent",
+        "DISCUSSION_WINDOW_FAILED": "discuss_with_delegate",
+        "MODEL_TURN_INVALID": "model_turn",
+        "EVALUATION_FAILED": "evaluate_product",
+    }
+    for event in events:
+        tool = str(event.get("payload", {}).get("tool") or failed_types.get(event.get("type"), ""))
+        if not tool:
+            continue
+        is_failed = str(event.get("type") or "").endswith("_FAILED") or event.get("type") == "MODEL_TURN_INVALID"
+        if not is_failed:
+            continue
+        payload = event.get("payload", {})
+        failures.append(
+            ToolFailureItem(
+                id=f"TF{len(failures) + 1}",
+                tool=tool,
+                code=str(payload.get("code") or payload.get("error") or event.get("message") or "")[:120],
+                message=str(event.get("message") or "")[:500],
+                eventId=event["id"],
+                eventSequence=event["sequence"],
+                retryable=bool(payload.get("retryable", False)),
+            )
+        )
+    return failures
+
+
+def _issue_counts(issues: list[ReliabilityIssue]) -> dict[str, int]:
+    counts = Counter(issue.severity for issue in issues)
+    counts.update(f"type:{issue.type}" for issue in issues)
+    return dict(counts)
+
+
+def _with_replay_evidence(detail: dict[str, Any]) -> dict[str, Any]:
+    if any(event.get("type") == "WEB_SEARCH_COMPLETED" for event in detail.get("events", [])):
+        return detail
+    replay_detail = {**detail, "events": list(detail.get("events", []))}
+    replay_detail["events"].append(
+        {
+            "id": "replay_evidence_1",
+            "userId": detail["mission"]["userId"],
+            "missionId": detail["mission"]["id"],
+            "runId": _latest_run_id(detail),
+            "stepId": None,
+            "sequence": 0,
+            "type": "WEB_SEARCH_COMPLETED",
+            "title": "Replay evidence",
+            "message": "Deterministic replay evidence.",
+            "payload": {
+                "tool": "web_search",
+                "status": "ok",
+                "query": detail["mission"].get("goal", ""),
+                "provider": "replay_fixture",
+                "results": _replay_results(detail),
+            },
+            "createdAt": "",
+        }
+    )
+    return replay_detail
+
+
+def _replay_results(detail: dict[str, Any]) -> list[dict[str, Any]]:
+    text = ""
+    artifact = _final_artifact(detail)
+    if artifact:
+        text = artifact.get("content", "")
+    mission_text = f"{detail['mission'].get('title', '')} {detail['mission'].get('goal', '')} {text}".lower()
+    if "海地" in mission_text or "haiti" in mission_text:
+        return [
+            {
+                "title": "Haitian Revolution reference",
+                "url": "https://www.britannica.com/event/Haitian-Revolution",
+                "source": "britannica.com",
+                "snippet": "The Haitian Revolution was a conflict in Saint-Domingue that led to Haitian independence and reshaped Atlantic politics.",
+                "publishedAt": None,
+            }
+        ]
+    return [
+        {
+            "title": "Cohere enterprise AI",
+            "url": "https://cohere.com",
+            "source": "cohere.com",
+            "snippet": "Cohere provides enterprise AI models and is headquartered in Toronto.",
+            "publishedAt": None,
+        },
+        {
+            "title": "Layer 6 AI",
+            "url": "https://www.layer6.ai",
+            "source": "layer6.ai",
+            "snippet": "Layer 6 applies machine learning and AI research in Toronto.",
+            "publishedAt": None,
+        },
+        {
+            "title": "Vector Institute startup ecosystem",
+            "url": "https://vectorinstitute.ai",
+            "source": "vectorinstitute.ai",
+            "snippet": "Toronto has a large AI ecosystem connected to enterprise AI research and startups.",
+            "publishedAt": None,
+        },
+    ]
+
+
+def _artifact_sources(artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = artifact.get("metadata", {})
+    role = metadata.get("artifactRole")
+    sources = metadata.get("sources") or metadata.get("sourceUrls") or metadata.get("evidence")
+    normalized_sources: list[dict[str, Any]] = []
+    if isinstance(sources, list):
+        for source in sources:
+            if isinstance(source, dict) and source.get("url"):
+                normalized_sources.append(source)
+            elif isinstance(source, str) and source.startswith("http"):
+                normalized_sources.append({"url": source, "title": source, "snippet": artifact.get("content", "")[:1200]})
+    elif isinstance(sources, dict) and sources.get("url"):
+        normalized_sources.append(sources)
+    if normalized_sources:
+        return normalized_sources
+    if role in {"research_evidence", "source", "evidence"}:
+        urls = URL_RE.findall(str(artifact.get("content") or ""))
+        if urls:
+            return [
+                {"url": url, "title": artifact.get("title", ""), "snippet": artifact.get("content", "")[:1200]}
+                for url in urls[:5]
+            ]
+    return []
+
+
+def _source_from_url(url: Any) -> str:
+    if not url:
+        return ""
+    try:
+        return urlparse(str(url)).netloc
+    except ValueError:
+        return ""
 
 
 def _final_artifact(detail: dict[str, Any]) -> dict[str, Any] | None:

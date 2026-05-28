@@ -32,6 +32,13 @@ Rules:
 
 V1.0 MAY skip explicit `queued` and run synchronously for small demo cases, but the public state model should preserve it.
 
+V1.0 event mapping:
+
+- `running` emits `EVALUATION_STARTED`.
+- `completed` emits `RELIABILITY_REPORTED`.
+- `failed` emits `EVALUATION_FAILED` with a stable error code.
+- Idempotent no-op evaluation returns the existing current report and MUST NOT emit a new lifecycle event.
+
 ## 3. Reliability Report States
 
 ```text
@@ -131,6 +138,12 @@ If evaluator model calls fail:
 - Deterministic checks should still produce a partial report when possible.
 - Report status should be at most `needs_human_review`.
 - Add `evaluation_limitation` issue with stable error code.
+
+If report construction or persistence fails before a valid report exists:
+
+- Emit `EVALUATION_FAILED`.
+- Preserve Mission state.
+- Do not write a misleading Reliability Report.
 
 If Evidence Ledger is empty:
 

@@ -259,7 +259,34 @@ Acceptance:
 
 - Lead can search, produce Product, finish, then evaluator reports against live search observations.
 
-## 13. Release Gate
+## 13. Loop 11: V1 Contract Closure
+
+Implement the document-to-code closure from `issues/issue8-v1-compliance-closure.md`.
+
+Required implementation:
+
+- Pass `mode` from the API route to Evaluator Runtime.
+- Support deterministic `replay` mode without mutating fake search events into the Mission trace.
+- Emit `EVALUATION_STARTED`, `RELIABILITY_REPORTED`, and `EVALUATION_FAILED`.
+- Add `toolFailures` to the report schema and UI.
+- Count issues by severity and by type.
+- Include source-backed Research Artifacts in Evidence Ledger.
+- Render requirement evidence, claim best source/reason, and tool failure summary in the Reliability Panel.
+
+Tests:
+
+- `mode="replay"` creates a normal report with replay fixture evidence.
+- A source-backed Research Artifact becomes Evidence Ledger input.
+- Failed tool events appear in `toolFailures`.
+- `issueCounts` includes `high` and `type:<issue_type>` entries.
+- Evaluator emits lifecycle events and repeated Evaluate stays idempotent.
+- Frontend build passes with the expanded report payload.
+
+Acceptance:
+
+- The V1.0 docs and implementation no longer disagree on any public API, report field, state/event, or UI surface.
+
+## 14. Release Gate
 
 V1.0 release passes when:
 

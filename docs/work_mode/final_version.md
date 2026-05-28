@@ -211,7 +211,7 @@ V1.0.x read-only cognition tools, including `discuss_with_delegate` and `web_sea
 
 `web_search` is not a browser, shell, Codex CLI, or computer-control tool. It is a backend-owned search provider wrapper with bounded results and visible source links.
 
-`evaluate_product` is a backend-owned quality tool. The Lead chooses it, but Evaluator Runtime writes the Reliability Report. It MUST NOT edit Product content or finish the Mission. For research/paper-like Missions, `finish_mission` MUST reject outline-only final deliverables and SHOULD require a current Reliability Report before completion.
+`evaluate_product` is a backend-owned quality tool. The Lead chooses it, but Evaluator Runtime writes the Reliability Report. It MUST emit evaluation lifecycle events, MUST NOT edit Product content or finish the Mission, and MUST return actionable issue ids plus a recommended next tool. For research/paper-like Missions, `finish_mission` MUST reject outline-only final deliverables and SHOULD require a current Reliability Report before completion.
 
 See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, `issues/issue13-revision-lineage.md`, `issues/issue16-web-search-tool.md`, `issues/issue29-research-paper-final-draft-gate.md`, and `issues/issue30-evaluator-leader-tool.md`.
 
@@ -293,3 +293,4 @@ Known risks:
 - Progress inline details and Mission create modal: `issues/issue11-progress-details-and-create-modal.md`
 - Review and Delegate discussion tool design: `issues/issue12-review-discussion-tools.md`
 - Immutable revision lineage after review/discussion: `issues/issue13-revision-lineage.md`
+- Evaluator as a Leader tool: `issues/issue30-evaluator-leader-tool.md`

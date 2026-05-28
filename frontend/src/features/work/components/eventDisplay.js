@@ -32,6 +32,7 @@ const actionLabels = {
   work_product: "Product",
   discuss_with_delegate: "Discuss",
   web_search: "Search",
+  evaluate_product: "Evaluate",
 };
 
 export function eventView(event) {
@@ -89,8 +90,12 @@ export function eventView(event) {
       return { ...common, icon: Search, tone: "product", title: event.title || "Search" };
     case "WEB_SEARCH_FAILED":
       return { ...common, icon: TriangleAlert, tone: "danger", title: event.title || "Search failed" };
+    case "EVALUATION_STARTED":
+      return { ...common, icon: ShieldCheck, tone: "model", title: event.title || "Evaluation" };
     case "RELIABILITY_REPORTED":
       return { ...common, icon: ShieldCheck, tone: "review", title: event.title || "Reliability" };
+    case "EVALUATION_FAILED":
+      return { ...common, icon: TriangleAlert, tone: "danger", title: event.title || "Evaluation failed" };
     case "PRODUCT_REVIEWED":
       return { ...common, icon: ListChecks, tone: "review", title: event.title || "Review" };
     case "WORK_WINDOW_OPENED":

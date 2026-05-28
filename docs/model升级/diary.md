@@ -224,6 +224,39 @@ Last Modified by: Codex
   - 重启 `hackson-domain-8145.service` 后，内网和公网 `/health` 均正常；公网首页 assets 为 `/assets/index-Cy-unphL.js` 和 `/assets/index-Dx_ve1gX.css`。
   - 公网 in-process smoke 通过：论文大纲完成被 `final_paper_draft_required` 拒绝；终稿未评估被 `reliability_evaluation_required` 拒绝；无证据评估返回 `needs_human_review` 且建议 `web_search`；随后完成被 `reliability_evaluation_needs_review` 拒绝。
   - 公网日志检查无 traceback/500，active-like Mission 仍为 `0`。
+- 完成 Evaluator Runtime V1 文档合规收口（本地阶段）：
+  - 先自审 `docs/evaluator`，确认缺口集中在 `mode=replay` 未透传、缺 `EVALUATION_STARTED/EVALUATION_FAILED`、`issueCounts` 只按 severity、报告缺 `toolFailures`、Evidence Ledger 未读取 source-backed Research Artifacts、Reliability UI 未显示 requirement evidence / claim best source / tool failure。
+  - 新增 `docs/evaluator/issues/issue8-v1-compliance-closure.md`，同步更新 evaluator final version、evaluation model、state machine、UI contract、implementation plan，以及 Work Mode `evaluate_product` 工具协议。
+  - 后端补齐：
+    - `MissionEvaluateRequest.mode` 透传到 Evaluator Runtime。
+    - `ReliabilityReport` 新增 `mode` 和 `toolFailures`。
+    - 新增 `EvaluationRun` / `ToolFailureItem` schema。
+    - Evaluator Runtime 评估时写 `EVALUATION_STARTED`，成功写 `RELIABILITY_REPORTED`，失败写 `EVALUATION_FAILED`。
+    - `mode=replay` 使用 `replay_fixture` evidence，不把假搜索事件写进 Mission trace。
+    - Evidence Ledger 支持 `WEB_SEARCH_COMPLETED` 和 source-backed Research Artifacts。
+    - `issueCounts` 同时输出 severity 和 `type:<issue_type>`。
+  - 前端补齐：
+    - Activity/Progress 支持 `EVALUATION_STARTED` 和 `EVALUATION_FAILED`。
+    - Progress 展开 Reliability 时显示 mode、issueCounts、report id。
+    - Reliability Panel 显示 tool failures、requirement evidence、claim reason、best source、mode 和 issue type badges。
+  - 本地验证通过：
+    - 新增 evaluator/tool/route 回归测试，锁定 replay、生命周期、toolFailures、source-backed evidence 和 Leader `evaluate_product` 修复建议。
+    - Work Mode 全量测试 `110 passed`。
+    - Work Mode + main static 测试 `114 passed`。
+    - Frontend build 通过，assets 为 `/assets/index-CHVyLRVQ.js` 和 `/assets/index-Cg9l671U.css`。
+  - 目标机隔离 `8165` 验证通过：
+    - 同步 evaluator/work_mode/frontend 相关文件到 `~/hackson_work_quality_8165`。
+    - 目标 unittest `45 tests OK`。
+    - 目标 frontend build 通过，assets 为 `/assets/index-D3-OdeSN.js` 和 `/assets/index-Cg9l671U.css`。
+    - 目标数据库级 smoke 通过：live evaluator 生成 `toolFailures=search_timeout` 和 artifact evidence；replay evaluator 使用 `replay_fixture` 且不写假 `WEB_SEARCH_COMPLETED`；论文大纲 completion 被 `final_paper_draft_required` 拒绝。
+  - 公网 `8145` 已推广：
+    - 推广前确认 active-like public Work Missions 为 `0`。
+    - Public touched files 备份到 `~/hackson_domain_8145_backups/evaluator_contract_20260528_113131`。
+    - Public 目录目标 unittest `45 tests OK`，frontend build 通过，assets 为 `/assets/index-CHVyLRVQ.js` 和 `/assets/index-Cg9l671U.css`。
+    - 重启 `hackson-domain-8145.service` 后，内网 `/health`、公网 `/health`、公网 `/` 均返回 `200`。
+    - Public 数据库级 smoke 通过：live evaluator、replay evaluator、论文大纲 gate。
+    - Smoke 产生的测试 running Mission 已停止；最终 active-like public Work Missions 为 `0`。
+    - 最近日志无 traceback、500、error；`hackson-domain-8145.service` 与 `hackson-cloudflared.service` 均 active。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。

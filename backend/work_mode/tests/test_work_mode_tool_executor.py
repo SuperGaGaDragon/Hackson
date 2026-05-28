@@ -717,6 +717,7 @@ class WorkModeToolExecutorTest(TestCase):
         detail = self.service.get_mission_detail("user_1", mission["id"])
         report_artifact = next(item for item in detail["artifacts"] if item["metadata"].get("artifactRole") == "reliability_report")
         report_event = detail["events"][-1]
+        event_types = [event["type"] for event in detail["events"]]
 
         self.assertFalse(result.terminal)
         self.assertEqual(result.observation["tool"], "evaluate_product")
@@ -724,7 +725,71 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertEqual(result.observation["reportArtifactId"], report_artifact["id"])
         self.assertEqual(result.observation["reliabilityStatus"], "needs_human_review")
         self.assertEqual(result.observation["recommendedNextTool"], "web_search")
+        self.assertIn("EVALUATION_STARTED", event_types)
         self.assertEqual(report_event["type"], "RELIABILITY_REPORTED")
+
+    def test_evaluate_product_can_recommend_revision_after_supported_search(self) -> None:
+        mission, run_id = self._started_agent_mission(
+            title="研究报告",
+            goal="Assess the Toronto AI startup claims.",
+        )
+        mission_document = self.service._require_mission("user_1", mission["id"])
+        self.service.append_event(
+            "user_1",
+            mission_document,
+            run={"_id": run_id},
+            step=None,
+            event_type="WEB_SEARCH_COMPLETED",
+            title="Search",
+            message="Toronto AI startups",
+            payload={
+                "tool": "web_search",
+                "status": "ok",
+                "query": "Toronto AI startups",
+                "provider": "fake",
+                "results": [
+                    {
+                        "title": "Cohere enterprise AI",
+                        "url": "https://cohere.com",
+                        "source": "cohere.com",
+                        "snippet": "Cohere provides enterprise AI models and is headquartered in Toronto.",
+                    }
+                ],
+            },
+        )
+        product, artifact = self._product_with_artifact(
+            mission,
+            run_id,
+            content=(
+                "Cohere is a Toronto enterprise AI company. Source: https://cohere.com\n"
+                "MapleNeural Labs sells enterprise AI to banks. Source: https://mapleneural.example"
+            ),
+            kind="final",
+        )
+
+        result = self.executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "evaluate_product",
+                  "arguments": {{
+                    "reason": "检查研究报告可靠性。",
+                    "profile": "research_reliability_v1",
+                    "productIds": ["{product["id"]}"],
+                    "artifactIds": ["{artifact["id"]}"],
+                    "focus": "检查来源和缺失项。"
+                  }}
+                }}
+                """
+            ),
+        )
+
+        self.assertEqual(result.observation["recommendedNextTool"], "work_product")
+        self.assertTrue(result.observation["topIssues"])
+        self.assertIn("type:unsupported_claim", result.observation["issueCounts"])
 
     def test_finish_mission_rejects_research_paper_outline_only_final(self) -> None:
         mission, run_id = self._started_agent_mission(title="研究论文", goal="写一篇关于海地革命的研究论文，需要最终稿。")

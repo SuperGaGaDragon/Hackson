@@ -25,7 +25,9 @@ const timelineTypes = new Set([
   "PRODUCT_REVIEWED",
   "WEB_SEARCH_COMPLETED",
   "WEB_SEARCH_FAILED",
+  "EVALUATION_STARTED",
   "RELIABILITY_REPORTED",
+  "EVALUATION_FAILED",
   "WORK_WINDOW_OPENED",
   "WORK_WINDOW_COMPLETED",
   "WORK_WINDOW_BLOCKED",
@@ -207,7 +209,22 @@ function progressDetails(event) {
       value: [
         payload.score != null ? `Score: ${payload.score}` : "",
         payload.status ? `Status: ${payload.status}` : "",
+        payload.mode ? `Mode: ${payload.mode}` : "",
+        payload.issueCounts ? `Issues: ${formatIssueCounts(payload.issueCounts)}` : "",
         payload.reportArtifactId ? `Report: ${payload.reportArtifactId}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+  }
+  if (event.type === "EVALUATION_STARTED" || event.type === "EVALUATION_FAILED") {
+    details.push({
+      label: "Evaluation",
+      value: [
+        payload.profile ? `Profile: ${payload.profile}` : "",
+        payload.mode ? `Mode: ${payload.mode}` : "",
+        payload.evaluatorVersion ? `Version: ${payload.evaluatorVersion}` : "",
+        payload.code ? `Code: ${payload.code}` : "",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -226,6 +243,13 @@ function progressDetails(event) {
     details.push({ label: "Event", value: event.message || event.type });
   }
   return details;
+}
+
+function formatIssueCounts(issueCounts) {
+  return Object.entries(issueCounts)
+    .filter(([, count]) => count)
+    .map(([key, count]) => `${key} ${count}`)
+    .join(", ");
 }
 
 function compactTimeline(rows) {

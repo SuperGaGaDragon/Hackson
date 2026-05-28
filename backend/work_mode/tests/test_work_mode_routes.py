@@ -405,6 +405,62 @@ class WorkModeRoutesTest(TestCase):
             any(item["metadata"].get("artifactRole") == "reliability_report" for item in detail["artifacts"])
         )
 
+    def test_evaluate_route_passes_replay_mode(self) -> None:
+        project = self.client.post("/api/work/projects", json={"name": "Replay Research"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={
+                "projectId": project["id"],
+                "title": "Toronto AI research",
+                "goal": "Find 3 Toronto AI companies with source link.",
+            },
+        ).json()
+        started = self.client.post(f"/api/work/missions/{mission['id']}/start", json={}).json()
+        run_id = started["latestRun"]["id"]
+        product = self.service.create_product(
+            TEST_USER_ID,
+            mission["id"],
+            title="Research",
+            summary="Research result.",
+            created_by={"id": "agent_1", "name": "Agent 1", "role": "Lead"},
+        )
+        artifact = self.service.create_product_artifact(
+            TEST_USER_ID,
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="final",
+            title="Research final",
+            content="Cohere is a Toronto enterprise AI company. Source: https://cohere.com",
+            summary="Research result.",
+            created_by={"id": "agent_1", "name": "Agent 1", "role": "Lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+            metadata={"summary": "Research result."},
+        )
+        self.service.mark_product_final(TEST_USER_ID, product["id"])
+        self.service.mark_mission_completed(
+            TEST_USER_ID,
+            mission["id"],
+            run_id,
+            step_id=None,
+            final_product_ids=[product["id"]],
+            final_artifact_ids=[artifact["id"]],
+            summary="Done.",
+        )
+
+        response = self.client.post(f"/api/work/missions/{mission['id']}/evaluate", json={"mode": "replay"})
+
+        self.assertEqual(response.status_code, 200)
+        detail = response.json()
+        report = next(
+            item["metadata"]["reportPayload"]
+            for item in detail["artifacts"]
+            if item["metadata"].get("artifactRole") == "reliability_report"
+        )
+        self.assertEqual(report["mode"], "replay")
+        self.assertTrue(any(item["provider"] == "replay_fixture" for item in report["evidence"]))
+
     def test_answer_route_records_input_and_resumes_waiting_mission(self) -> None:
         action_client = AskThenFinishRouteActionClient()
         self.client.app.dependency_overrides[get_work_mode_worker_launcher] = lambda: (

@@ -10,6 +10,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EvaluationProfile = Literal["research_reliability_v1"]
+EvaluationMode = Literal["live", "replay"]
+EvaluationRunStatus = Literal["queued", "running", "completed", "failed", "cancelled"]
 ReliabilityStatus = Literal["ship_ready", "minor_review", "needs_human_review", "unsafe_to_ship"]
 IssueSeverity = Literal["critical", "high", "medium", "low"]
 IssueType = Literal[
@@ -73,6 +75,30 @@ class EvidenceItem(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class ToolFailureItem(BaseModel):
+    id: str
+    tool: str
+    code: str = ""
+    message: str = ""
+    event_id: str = Field(alias="eventId")
+    event_sequence: int = Field(alias="eventSequence")
+    retryable: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class EvaluationRun(BaseModel):
+    id: str
+    mission_id: str = Field(alias="missionId")
+    profile: EvaluationProfile
+    mode: EvaluationMode = "live"
+    status: EvaluationRunStatus
+    report_id: str | None = Field(default=None, alias="reportId")
+    error_code: str | None = Field(default=None, alias="errorCode")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class ReliabilityIssue(BaseModel):
     id: str
     type: IssueType
@@ -100,12 +126,14 @@ class ReliabilityReport(BaseModel):
     report_id: str = Field(alias="reportId")
     mission_id: str = Field(alias="missionId")
     profile: EvaluationProfile
+    mode: EvaluationMode = "live"
     score: int = Field(ge=0, le=100)
     status: ReliabilityStatus
     summary: str
     requirements: list[RequirementItem] = Field(default_factory=list)
     claims: list[ClaimItem] = Field(default_factory=list)
     evidence: list[EvidenceItem] = Field(default_factory=list)
+    tool_failures: list[ToolFailureItem] = Field(default_factory=list, alias="toolFailures")
     issues: list[ReliabilityIssue] = Field(default_factory=list)
     issue_counts: dict[str, int] = Field(default_factory=dict, alias="issueCounts")
     suggested_next_actions: list[str] = Field(default_factory=list, alias="suggestedNextActions")

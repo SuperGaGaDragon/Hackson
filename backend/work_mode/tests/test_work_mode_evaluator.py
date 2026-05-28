@@ -71,6 +71,10 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertIn("unsupported_claim", issue_types)
         self.assertIn("hallucinated_entity", issue_types)
         self.assertIn("tool_failure_ignored", issue_types)
+        self.assertGreaterEqual(report.issue_counts["high"], 1)
+        self.assertEqual(report.issue_counts["type:tool_failure_ignored"], 1)
+        self.assertEqual(report.tool_failures[0].code, "search_timeout")
+        self.assertEqual(report.tool_failures[0].tool, "web_search")
         self.assertLess(report.score, 85)
         self.assertNotEqual(report.status, "ship_ready")
 
@@ -117,11 +121,14 @@ class WorkModeEvaluatorTest(TestCase):
         report_artifact = next(
             artifact for artifact in detail["artifacts"] if artifact["metadata"].get("artifactRole") == "reliability_report"
         )
+        event_types = [event["type"] for event in detail["events"]]
         report_event = detail["events"][-1]
 
+        self.assertIn("EVALUATION_STARTED", event_types)
         self.assertEqual(report_event["type"], "RELIABILITY_REPORTED")
         self.assertEqual(report_event["payload"]["reportArtifactId"], report_artifact["id"])
         self.assertEqual(report_event["payload"]["evaluatorVersion"], EVALUATOR_VERSION)
+        self.assertEqual(report_event["payload"]["mode"], "live")
         self.assertEqual(report_artifact["metadata"]["evaluatorVersion"], EVALUATOR_VERSION)
         self.assertIn("reportPayload", report_artifact["metadata"])
         self.assertEqual(report_artifact["metadata"]["reportPayload"]["reportArtifactId"], report_artifact["id"])
@@ -171,10 +178,106 @@ class WorkModeEvaluatorTest(TestCase):
             if artifact["metadata"].get("artifactRole") == "reliability_report"
         ]
         report_events = [event for event in second_detail["events"] if event["type"] == "RELIABILITY_REPORTED"]
+        started_events = [event for event in second_detail["events"] if event["type"] == "EVALUATION_STARTED"]
 
         self.assertEqual(len(first_reports), 1)
         self.assertEqual(len(second_reports), 1)
         self.assertEqual(len(report_events), 1)
+        self.assertEqual(len(started_events), 1)
+
+    def test_replay_mode_uses_fixture_evidence_without_mutating_search_trace(self) -> None:
+        mission, run_id, product, final_artifact = self._research_mission()
+        self.service.mark_product_final("user_1", product["id"])
+        self.service.mark_mission_completed(
+            "user_1",
+            mission["id"],
+            run_id,
+            step_id=None,
+            final_product_ids=[product["id"]],
+            final_artifact_ids=[final_artifact["id"]],
+            summary="Research complete.",
+        )
+
+        detail = EvaluatorRuntime(self.service).evaluate("user_1", mission["id"], mode="replay")
+        report_artifact = next(
+            artifact for artifact in detail["artifacts"] if artifact["metadata"].get("artifactRole") == "reliability_report"
+        )
+        report = report_artifact["metadata"]["reportPayload"]
+        event_types = [event["type"] for event in detail["events"]]
+
+        self.assertEqual(report["mode"], "replay")
+        self.assertTrue(any(item["provider"] == "replay_fixture" for item in report["evidence"]))
+        self.assertNotIn("WEB_SEARCH_COMPLETED", event_types)
+        self.assertIn("EVALUATION_STARTED", event_types)
+        self.assertIn("RELIABILITY_REPORTED", event_types)
+
+    def test_source_backed_research_artifact_counts_as_evidence(self) -> None:
+        mission, run_id, product, final_artifact = self._research_mission()
+        self.service.create_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            kind="notes",
+            title="Cohere source note",
+            content="Cohere provides enterprise AI models and is headquartered in Toronto.",
+            metadata={
+                "artifactRole": "research_evidence",
+                "sources": [
+                    {
+                        "title": "Cohere enterprise AI",
+                        "url": "https://cohere.com",
+                        "source": "cohere.com",
+                        "snippet": "Cohere provides enterprise AI models and is headquartered in Toronto.",
+                    }
+                ],
+            },
+        )
+        self.service.mark_product_final("user_1", product["id"])
+        self.service.mark_mission_completed(
+            "user_1",
+            mission["id"],
+            run_id,
+            step_id=None,
+            final_product_ids=[product["id"]],
+            final_artifact_ids=[final_artifact["id"]],
+            summary="Research complete.",
+        )
+
+        report = build_reliability_report(self.service.get_mission_detail("user_1", mission["id"]))
+
+        self.assertTrue(any(item.provider == "artifact" for item in report.evidence))
+        self.assertFalse(
+            any(issue.type == "evaluation_limitation" and issue.title == "No evidence ledger" for issue in report.issues)
+        )
+
+    def test_evaluator_emits_failed_event_when_report_cannot_be_persisted(self) -> None:
+        mission, run_id, product, final_artifact = self._research_mission()
+        self.service.mark_product_final("user_1", product["id"])
+        self.service.mark_mission_completed(
+            "user_1",
+            mission["id"],
+            run_id,
+            step_id=None,
+            final_product_ids=[product["id"]],
+            final_artifact_ids=[final_artifact["id"]],
+            summary="Research complete.",
+        )
+        runtime = EvaluatorRuntime(self.service)
+
+        def fail_persist(*_args, **_kwargs):
+            raise RuntimeError("persist_failed")
+
+        runtime._persist_report = fail_persist
+
+        with self.assertRaises(RuntimeError):
+            runtime.evaluate("user_1", mission["id"])
+
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        failed_event = detail["events"][-1]
+
+        self.assertEqual(failed_event["type"], "EVALUATION_FAILED")
+        self.assertEqual(failed_event["payload"]["code"], "evaluation_failed")
+        self.assertEqual(failed_event["payload"]["evaluatorVersion"], EVALUATOR_VERSION)
 
     def test_chinese_paper_outline_only_final_is_missing_final_draft(self) -> None:
         mission, run_id, product, outline = self._paper_mission(

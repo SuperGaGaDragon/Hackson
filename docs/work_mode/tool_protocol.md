@@ -501,7 +501,9 @@ Constraints:
 - MUST be read-only against Product content.
 - MUST run Evaluator Runtime against the visible Mission trace.
 - MUST persist a Reliability Report Artifact.
+- MUST emit `EVALUATION_STARTED` before report construction unless returning an unchanged current report.
 - MUST emit `RELIABILITY_REPORTED`.
+- MUST emit `EVALUATION_FAILED` if no report can be produced.
 - MUST return score, status, issue counts, top issues, report Artifact id, and recommended next tool.
 - MUST NOT modify Product content.
 - MUST NOT mark Mission completed.

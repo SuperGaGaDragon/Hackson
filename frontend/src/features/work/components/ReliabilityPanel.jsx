@@ -12,6 +12,7 @@ function ReliabilityPanel({ artifacts = [] }) {
   const requirements = (report.requirements || []).slice(0, 5);
   const claims = (report.claims || []).slice(0, 5);
   const evidence = report.evidence || [];
+  const toolFailures = (report.toolFailures || []).slice(0, 5);
   const suggestedActions = (report.suggestedNextActions || []).slice(0, 4);
   const limitations = (report.limitations || []).slice(0, 3);
 
@@ -26,18 +27,35 @@ function ReliabilityPanel({ artifacts = [] }) {
       </div>
       <p className="reliability-summary">{report.summary}</p>
       <div className="reliability-badges">
-        {Object.entries(report.issueCounts || {}).map(([severity, count]) => (
-          <span key={severity}>
-            {count} {severity}
+        {issueBadges(report.issueCounts).map(([label, count]) => (
+          <span key={label}>
+            {count} {label}
           </span>
         ))}
         <span>{evidence.length} evidence</span>
+        {report.mode && <span>{report.mode}</span>}
         {issues.length === 0 && <span>Clear</span>}
       </div>
       <div className="reliability-evidence">
         <span>Evidence ledger</span>
         <strong>{evidence.length ? `${evidence.length} sources` : "No trace evidence"}</strong>
       </div>
+      {toolFailures.length > 0 && (
+        <div className="reliability-section">
+          <strong>Tool failures</strong>
+          <div className="reliability-table">
+            {toolFailures.map((failure) => (
+              <div key={failure.id || failure.eventId}>
+                <span>#{failure.eventSequence}</span>
+                <p className="reliability-rich">
+                  <strong>{failure.tool || "tool"}</strong>
+                  <small>{failure.code || failure.message || "failed"}</small>
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {topIssues.length > 0 && (
         <div className="reliability-section">
           <strong>Issues</strong>
@@ -46,6 +64,7 @@ function ReliabilityPanel({ artifacts = [] }) {
               <span>{issue.severity}</span>
               <p>{issue.title}</p>
               {issue.description && <small>{issue.description}</small>}
+              {issue.type && <small>{issueTypeLabel(issue.type)}</small>}
               <small>{issue.suggestedFix}</small>
             </div>
           ))}
@@ -68,7 +87,10 @@ function ReliabilityPanel({ artifacts = [] }) {
             {requirements.map((item) => (
               <div key={item.id}>
                 <span>{item.status}</span>
-                <p>{item.requirement}</p>
+                <p className="reliability-rich">
+                  <strong>{item.requirement}</strong>
+                  {item.evidence && <small>{item.evidence}</small>}
+                </p>
               </div>
             ))}
           </div>
@@ -81,7 +103,11 @@ function ReliabilityPanel({ artifacts = [] }) {
             {claims.map((claim) => (
               <div key={claim.id}>
                 <span>{supportLabel(claim.supportLevel)}</span>
-                <p>{claim.text}</p>
+                <p className="reliability-rich">
+                  <strong>{claim.text}</strong>
+                  {claim.reason && <small>{claim.reason}</small>}
+                  {claim.bestEvidenceIds?.length > 0 && <small>{bestSourceLabel(claim.bestEvidenceIds, evidence)}</small>}
+                </p>
               </div>
             ))}
           </div>
@@ -134,6 +160,32 @@ function statusLabel(status) {
   }[status] || "Review";
 }
 
+function issueBadges(issueCounts = {}) {
+  const severityOrder = ["critical", "high", "medium", "low"];
+  const severity = severityOrder
+    .filter((key) => issueCounts[key])
+    .map((key) => [key, issueCounts[key]]);
+  const types = Object.entries(issueCounts)
+    .filter(([key, count]) => key.startsWith("type:") && count)
+    .slice(0, 4)
+    .map(([key, count]) => [issueTypeLabel(key.slice(5)), count]);
+  return [...severity, ...types];
+}
+
+function issueTypeLabel(type) {
+  return {
+    evaluation_limitation: "limitation",
+    hallucinated_entity: "entity risk",
+    missing_requirement: "missing req",
+    missing_source: "missing source",
+    mission_incomplete: "incomplete",
+    tool_failure_ignored: "tool failure",
+    unsupported_claim: "unsupported",
+    unsafe_action: "unsafe",
+    weakly_supported_claim: "weak support",
+  }[type] || type;
+}
+
 function supportLabel(level) {
   return {
     contradicted: "Contradicted",
@@ -142,6 +194,21 @@ function supportLabel(level) {
     strong: "Supported",
     weak: "Weak",
   }[level] || level;
+}
+
+function bestSourceLabel(ids = [], evidence = []) {
+  const source = evidence.find((item) => ids.includes(item.id));
+  if (!source) return `Source ${ids.join(", ")}`;
+  const host = source.source || safeHost(source.url);
+  return `Best source: ${host || source.title || source.id}`;
+}
+
+function safeHost(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
 }
 
 export default ReliabilityPanel;

@@ -23,6 +23,7 @@ Current issue notes:
 - `issues/issue5-demo-replay-and-live-mode.md`
 - `issues/issue6-incomplete-mission-gate.md`
 - `issues/issue7-research-paper-evidence-gate.md`
+- `issues/issue8-v1-compliance-closure.md`
 
 ## 2. Product North Star
 
@@ -154,6 +155,14 @@ Scores are decision support, not truth labels.
 `research_reliability_v1` with an empty Evidence Ledger MUST cap status at `needs_human_review`. A numeric score in the 70-84 range cannot make no-evidence research work a minor review.
 
 Paper-like research Missions MUST check that the final Artifact is a final draft, not only a plan, outline, or chapter map.
+
+V1.0 implementation closure:
+
+- `issueCounts` MUST include both severity keys and `type:<issue_type>` keys.
+- `toolFailures` MUST be a first-class report field, not only buried in raw events.
+- `mode="replay"` MUST create a normal Reliability Report using replay fixture evidence when live evidence is missing.
+- Evaluator lifecycle MUST be visible in Progress through `EVALUATION_STARTED`, `RELIABILITY_REPORTED`, and `EVALUATION_FAILED`.
+- Deterministic extractors/matchers are acceptable for V1.0 only because they produce the same structured report contract required from later model-assisted checks.
 
 Initial status bands:
 
