@@ -1190,7 +1190,7 @@ dependencies = [
 
 [[package]]
 name = "hackson-desktop-pet"
-version = "0.8.0"
+version = "0.8.4"
 dependencies = [
  "open",
  "reqwest 0.12.28",

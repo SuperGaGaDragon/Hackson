@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -16,6 +16,7 @@ Lst Modified by: Codex
 |-auth/ login and register feature
 |-idle/ idle conversation, tick, join, and history feature
 |-chat/ companion_2 chat feature
+|-download/ public Desktop Companion download feature
 |-work/ Work Mode task and task-message feature
 |-me/ current-user settings feature
 

@@ -26,6 +26,7 @@ Lst Modified by: Codex
 |-context_runtime_http_smoke.py authenticated HTTP and MongoDB smoke for Context Runtime V1.0-V1.6; verifies prompt-log contracts and supports optional fake-model first-content assertion
 |-context_runtime_eval.py deterministic context-package eval gate for mode, speaker, topic, transition, convergence, account memory, and latency metadata
 |-context_runtime_smoke_server.py in-memory API server for local browser smoke of Idle interruption behavior
+|-package_desktop_download.sh zips the latest Desktop Pet app into `frontend/dist/assets/downloads/`
 |-artifacts/ generated smoke artifacts folder
 
 ## 代办

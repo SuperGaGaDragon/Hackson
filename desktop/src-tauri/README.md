@@ -8,9 +8,9 @@ Lst Modified by: Codex
 - goal for this folder.
   - Store the Tauri native shell for Desktop Pet.
 - 架构思路
-  - Configure a small transparent desktop window for the V0.5 pet.
-  - Keep native commands minimal: window movement and clean quit only.
-  - Do not add backend, filesystem, shell, or screen-control permissions in V0.5.
+  - Configure a small transparent desktop window for the Work Mode Desktop Pet.
+  - Keep native commands minimal: open site, window movement, HTTP allowlisted Hackson APIs, and clean quit.
+  - Build `.app` artifacts for the V0.8.4 public Mac alpha; release packaging zips the app for the website.
 
 ## folder structure
 |-README.md Tauri shell guide
@@ -22,4 +22,5 @@ Lst Modified by: Codex
 |-icons/ temporary app icons generated from the V0.5 cat idle image
 
 ## 代办
+- Add signing, notarization, and DMG packaging after the public Mac alpha zip is validated.
 - Add tray capability after V1 Mission watching begins.

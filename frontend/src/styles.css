@@ -235,6 +235,188 @@ input:disabled {
   opacity: 0.58;
 }
 
+.download-shell {
+  min-height: 100vh;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(57, 208, 196, 0.07), transparent 42%),
+    #080a0c;
+}
+
+.download-nav,
+.download-brand,
+.download-actions,
+.download-primary,
+.download-card {
+  display: flex;
+  align-items: center;
+}
+
+.download-nav {
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.download-brand {
+  gap: 8px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.download-nav-button {
+  display: flex;
+  gap: 8px;
+}
+
+.download-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+  align-items: center;
+  gap: 42px;
+  max-width: 1160px;
+  min-height: min(720px, calc(100vh - 88px));
+  margin: 0 auto;
+  padding: 58px 0 38px;
+}
+
+.download-copy {
+  display: grid;
+  gap: 18px;
+  max-width: 700px;
+}
+
+.download-copy h1 {
+  max-width: 760px;
+  font-size: 72px;
+  line-height: 0.94;
+}
+
+.download-copy > p:not(.eyebrow):not(.download-note) {
+  max-width: 640px;
+  color: #d7d0c7;
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+.download-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.download-actions .secondary-button,
+.download-primary {
+  display: flex;
+  gap: 8px;
+  min-height: 44px;
+  text-decoration: none;
+}
+
+.download-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.download-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+}
+
+.download-preview::after {
+  position: absolute;
+  right: 12%;
+  bottom: 54px;
+  left: 14%;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  content: "";
+  filter: blur(12px);
+}
+
+.download-preview img {
+  position: relative;
+  z-index: 1;
+  width: min(96%, 390px);
+  height: auto;
+  filter: drop-shadow(0 28px 42px rgba(0, 0, 0, 0.58));
+}
+
+.pet-demo-bubble {
+  position: absolute;
+  top: 58px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  gap: 3px;
+  max-width: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 8px;
+  padding: 11px 13px;
+  background: rgba(255, 251, 244, 0.94);
+  color: #1d1712;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+}
+
+.pet-demo-bubble::after {
+  position: absolute;
+  right: 42px;
+  bottom: -10px;
+  width: 18px;
+  height: 18px;
+  background: inherit;
+  border-right: 1px solid rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.86);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.pet-demo-bubble strong {
+  font-size: 15px;
+}
+
+.pet-demo-bubble span {
+  color: #62574d;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 1160px;
+  margin: 0 auto 32px;
+}
+
+.download-card {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 156px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(16, 20, 24, 0.9);
+}
+
+.download-card svg {
+  color: var(--teal);
+}
+
+.download-card h2 {
+  font-size: 16px;
+}
+
+.download-card p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .idle-grid,
 .chat-grid {
   display: grid;
@@ -2280,6 +2462,23 @@ input:disabled {
   .mission-console {
     max-height: none;
   }
+
+  .download-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .download-copy h1 {
+    font-size: 60px;
+  }
+
+  .download-preview {
+    min-height: 320px;
+  }
+
+  .download-preview img {
+    width: min(80%, 340px);
+  }
 }
 
 @media (max-width: 760px) {
@@ -2436,5 +2635,59 @@ input:disabled {
 
   .artifact-content {
     max-height: none;
+  }
+
+  .download-shell {
+    padding: 16px;
+  }
+
+  .download-nav {
+    align-items: flex-start;
+  }
+
+  .download-nav-button span {
+    display: none;
+  }
+
+  .download-hero {
+    min-height: auto;
+    padding: 48px 0 22px;
+  }
+
+  .download-copy h1 {
+    font-size: 42px;
+  }
+
+  .download-copy > p:not(.eyebrow):not(.download-note) {
+    font-size: 16px;
+  }
+
+  .download-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .download-actions .secondary-button,
+  .download-primary {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .download-preview {
+    min-height: 260px;
+  }
+
+  .download-preview img {
+    width: min(92%, 280px);
+  }
+
+  .pet-demo-bubble {
+    top: 12px;
+    right: 0;
+    max-width: 188px;
+  }
+
+  .download-grid {
+    grid-template-columns: 1fr;
   }
 }

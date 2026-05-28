@@ -26,6 +26,7 @@ Desktop Pet should grow from a narrow Work Mode progress surface into a broader 
 | V0.8.1 | Environment-Aware Watcher Fix | The cat watches the same Hackson source the maintainer is using, not a hard-coded website by accident. | Auto/local/public API source selection, readable native HTTP errors, and matching Site open action. | Missing local API falls back cleanly, source can be switched in the cat panel, and raw JSON parser errors never appear in the UI. |
 | V0.8.2 | Browser Handoff Login | The desktop pet has no password form; browser login authorizes it automatically. | Short-lived desktop handoff code, website bind endpoint, desktop claim polling, and control-free pet UI. | Public `8145` handoff API and browser `desktopAuth` bind pass; double-click cat opens browser login, website binds the code after auth, desktop claims token, and no form/control chrome appears on the pet. |
 | V0.8.3 | Bubble Progress Glance | Clicking the cat bubble expands a compact view of current Work Mode progress. | Desktop-only Progress summary from selected Mission events, compact event rows, and temporary window resize. | Single click expands/collapses progress; double-click still opens the website; build and screenshot smoke pass. |
+| V0.8.4 | Public Mac Alpha Download | A user can find and download the Desktop Pet from the Hackson website. | Public download page, stable app zip URL, Mac alpha install guide, and deep website routes. | Public `/download/companion` and `/assets/downloads/hackson-pet-mac-arm64.zip` return `200`; downloaded app still opens browser handoff login and reflects Work progress. |
 | V1.0 | Work Mode Progress Pet | User can leave the browser and still see Agent work status on desktop. | Packaged desktop app with pet window, popover, tray, notifications, and Work Console open action. | 30-minute Mission watch smoke passes with no notification spam or stale terminal state. |
 | V1.1 | Product Glance | User can preview latest Product and Artifact summary from the pet. | Product manifest and latest Artifact reader in compact popover. | Latest Product opens quickly and never displays raw diagnostics as user content. |
 | V1.2 | Streaming Presence | Pet reacts faster during long model turns. | Uses verified Work Mode stream API when available, with polling fallback. | Stream disconnect falls back to polling without duplicated notifications. |
@@ -214,6 +215,34 @@ V0.8.2 verification:
 - target frontend build: `/assets/index-CTj8ztQu.js`, `/assets/index-DTBHuMeq.css`
 - public API smoke: pending claim, authenticated bind, authorized one-time claim, second claim pending
 - public browser smoke: already-logged-in `?desktopAuth=` bind and login-then-bind both pass
+
+## 6.4. V0.8.4 Public Mac Alpha Download
+
+V0.8.4 makes Desktop Pet discoverable from the public website.
+
+V0.8.4 includes:
+
+- public route `/download/companion`
+- direct app zip URL `/assets/downloads/hackson-pet-mac-arm64.zip`
+- Mac alpha positioning
+- Apple Silicon limitation until other builds exist
+- short install guide
+- browser-login explanation
+- Work Mode progress explanation
+- top-level website paths for `/idle`, `/companion`, `/work`, `/work_project/:projectId`, and `/me`
+
+V0.8.4 excludes:
+
+- Windows build
+- Linux build
+- auto-update
+- notarized public release claim
+- App Store distribution
+- desktop command controls
+
+V0.8.4 product rule:
+
+- The download page sells the desktop app as a Work Mode status companion, not a toy pet. The core promise is: start work on the website, then read progress from the cat on the desktop.
 
 ## 7. V1.1 Product Glance
 

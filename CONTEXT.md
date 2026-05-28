@@ -100,6 +100,10 @@ _Avoid_: any agent task, general work
 The Product reader control that lets the user scan and select Artifacts belonging to one Product. It is navigation, not the deliverable itself.
 _Avoid_: artifact card wall, debug lineage dump, title gallery
 
+**Desktop Pet**:
+The local desktop companion surface that reflects Hackson Work Mode status outside the browser. It may be charming, but its product job is Work progress presence, not standalone entertainment.
+_Avoid_: toy pet, separate agent, background controller
+
 ## Example Dialogue
 
 Developer: "Should V1.0 implement memory?"

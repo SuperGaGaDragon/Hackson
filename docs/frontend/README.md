@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -15,6 +15,7 @@ Lst Modified by: Codex
 |-README.md frontend docs folder guide
 |-design.md Hackson frontend product design direction
 |-intro.md current backend integration blueprint for the frontend
+|-public_routes.md public website route and Desktop Companion download contract
 |-work-console-diagnosis.md Work Console overlap and terminal action diagnosis
 
 ## 代办

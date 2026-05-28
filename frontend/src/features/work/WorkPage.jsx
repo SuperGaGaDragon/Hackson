@@ -34,7 +34,7 @@ import WorkspaceView from "./components/WorkspaceView";
 
 const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked"]);
 
-function WorkPage({ agents = [] }) {
+function WorkPage({ agents = [], initialRoute = {} }) {
   const workAgents = useMemo(() => normalizeAgents(agents).slice(0, 2), [agents]);
   const defaultLeadId = workAgents[0]?.slot || "agent_1";
   const [projects, setProjects] = useState([]);
@@ -77,16 +77,24 @@ function WorkPage({ agents = [] }) {
         const rows = await listProjects();
         if (!mounted) return;
         setProjects(rows);
-        setSelectedProject(null);
         setMissionLeadId(defaultLeadId);
-        setMissions([]);
-        setSelectedMission(null);
-        setEvents([]);
-        setArtifacts([]);
-        setProducts([]);
-        setWorkWindows([]);
-        setAnswerText("");
-        setFollowUpText("");
+        if (initialRoute.projectId) {
+          const project = rows.find((item) => item.id === initialRoute.projectId);
+          if (project) {
+            await loadProject(project);
+          } else {
+            resetWorkSelection();
+            setError("Project not found");
+          }
+        } else if (initialRoute.missionId) {
+          const loaded = await loadMissionRoute(rows, initialRoute.missionId);
+          if (!loaded) {
+            resetWorkSelection();
+            setError("Mission not found");
+          }
+        } else {
+          resetWorkSelection();
+        }
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -98,7 +106,7 @@ function WorkPage({ agents = [] }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialRoute.projectId, initialRoute.missionId]);
 
   useEffect(() => {
     if (!workAgents.some((agent) => agent.slot === missionLeadId)) {
@@ -182,6 +190,7 @@ function WorkPage({ agents = [] }) {
       setProjects((current) => [project, ...current]);
       setProjectName("");
       await loadProject(project);
+      writeRoute(`/work_project/${encodeURIComponent(project.id)}`);
     } catch (err) {
       setError(err.message || "Create failed");
     } finally {
@@ -195,6 +204,7 @@ function WorkPage({ agents = [] }) {
     setError("");
     try {
       await loadProject(project);
+      writeRoute(`/work_project/${encodeURIComponent(project.id)}`);
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
@@ -219,6 +229,41 @@ function WorkPage({ agents = [] }) {
     setFollowUpText("");
   }
 
+  async function loadMissionRoute(projectRows, missionId) {
+    for (const project of projectRows) {
+      const missionRows = await listProjectMissions(project.id);
+      const mission = missionRows.find((item) => item.id === missionId);
+      if (mission) {
+        const detail = await getMission(mission.id);
+        const selected = detail?.mission || mission;
+        setSelectedProject(project);
+        setMissionLeadId(defaultLeadId);
+        setMissions(replaceMission(missionRows, selected));
+        setSelectedMission(selected);
+        setEvents(detail?.events || []);
+        setArtifacts(detail?.artifacts || []);
+        setProducts(detail?.products || []);
+        setWorkWindows(detail?.workWindows || []);
+        setAnswerText("");
+        setFollowUpText("");
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function resetWorkSelection() {
+    setSelectedProject(null);
+    setMissions([]);
+    setSelectedMission(null);
+    setEvents([]);
+    setArtifacts([]);
+    setProducts([]);
+    setWorkWindows([]);
+    setAnswerText("");
+    setFollowUpText("");
+  }
+
   function backToWorkspace() {
     if (busy) return;
     setError("");
@@ -235,6 +280,7 @@ function WorkPage({ agents = [] }) {
     setShowMissionCreate(false);
     setAnswerText("");
     setFollowUpText("");
+    writeRoute("/work");
   }
 
   async function addMission() {
@@ -262,6 +308,7 @@ function WorkPage({ agents = [] }) {
       setMissionTitle("");
       setMissionGoal("");
       setShowMissionCreate(false);
+      writeRoute(`/work_mission/${encodeURIComponent(detail.mission.id)}`);
     } catch (err) {
       setError(err.message || "Create failed");
     } finally {
@@ -284,6 +331,7 @@ function WorkPage({ agents = [] }) {
       if (detail.mission?.status !== "waiting_input") setAnswerText("");
       setAnswerText("");
       setFollowUpText("");
+      writeRoute(`/work_mission/${encodeURIComponent(detail.mission.id)}`);
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
@@ -475,6 +523,12 @@ function mergeEvents(current, nextEvents) {
 function replaceMission(missions, mission) {
   if (!mission) return missions;
   return missions.map((item) => (item.id === mission.id ? mission : item));
+}
+
+function writeRoute(path) {
+  if (window.location.pathname !== path) {
+    window.history.pushState({}, "", path);
+  }
 }
 
 export default WorkPage;

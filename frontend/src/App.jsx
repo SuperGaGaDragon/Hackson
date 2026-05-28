@@ -1,10 +1,10 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { Activity, BriefcaseBusiness, MessageSquare, Sparkles, UserRound } from "lucide-react";
+import { Activity, BriefcaseBusiness, Download, MessageSquare, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listAgents } from "./api/agents";
 import { getToken } from "./api/client";
@@ -12,6 +12,7 @@ import { bindDesktopHandoff, getCurrentUser } from "./api/users";
 import { FALLBACK_AGENTS, normalizeAgents } from "./domain/agents";
 import AuthPage from "./features/auth/AuthPage";
 import ChatPage from "./features/chat/ChatPage";
+import CompanionDownloadPage from "./features/download/CompanionDownloadPage";
 import IdlePage from "./features/idle/IdlePage";
 import MePage from "./features/me/MePage";
 import WorkPage from "./features/work/WorkPage";
@@ -22,15 +23,28 @@ const navItems = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "work", label: "Work", icon: BriefcaseBusiness },
   { id: "me", label: "Me", icon: UserRound },
+  { id: "download", label: "Mac", icon: Download },
 ];
 
 function App() {
-  const [view, setView] = useState("idle");
+  const initialRoute = readRouteFromLocation();
+  const [view, setView] = useState(initialRoute.view);
+  const [routeParams, setRouteParams] = useState(initialRoute.params);
   const [user, setUser] = useState(null);
   const [agents, setAgents] = useState(FALLBACK_AGENTS);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState("");
   const desktopAuthCode = getDesktopAuthCode();
+
+  useEffect(() => {
+    function handlePopState() {
+      const route = readRouteFromLocation();
+      setView(route.view);
+      setRouteParams(route.params);
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -65,6 +79,10 @@ function App() {
     };
   }, [desktopAuthCode]);
 
+  if (view === "download") {
+    return <CompanionDownloadPage onOpenApp={() => navigateTo("idle", setView, setRouteParams)} />;
+  }
+
   if (booting) {
     return (
       <main className="auth-shell">
@@ -81,17 +99,17 @@ function App() {
 
   return (
     <main className="app-shell">
-      <Sidebar setView={setView} user={user} view={view} />
+      <Sidebar setRouteParams={setRouteParams} setView={setView} user={user} view={view} />
       <section className="workspace">
         <Topbar error={error} view={view} />
         {view === "idle" && <IdlePage agents={visibleAgents} user={user} />}
         {view === "chat" && <ChatPage agents={visibleAgents} user={user} />}
-        {view === "work" && <WorkPage agents={visibleAgents} />}
+        {view === "work" && <WorkPage agents={visibleAgents} initialRoute={routeParams} />}
         {view === "me" && (
           <MePage
             onLogout={() => {
               setUser(null);
-              setView("idle");
+              navigateTo("idle", setView, setRouteParams);
             }}
             onUserUpdate={setUser}
             user={user}
@@ -132,7 +150,51 @@ async function completeDesktopHandoff(code, setError) {
   }
 }
 
-function Sidebar({ setView, user, view }) {
+function readRouteFromLocation() {
+  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (pathname === "/download/companion") return { view: "download", params: {} };
+  if (pathname === "/companion") return { view: "chat", params: {} };
+  if (pathname === "/work") return { view: "work", params: {} };
+  if (pathname.startsWith("/work_project/")) {
+    return { view: "work", params: { projectId: decodeRoutePart(pathname.split("/")[2]) } };
+  }
+  if (pathname.startsWith("/work_mission/")) {
+    return { view: "work", params: { missionId: decodeRoutePart(pathname.split("/")[2]) } };
+  }
+  if (pathname === "/me") return { view: "me", params: {} };
+  return { view: "idle", params: {} };
+}
+
+function decodeRoutePart(value = "") {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function navigateTo(view, setView, setRouteParams, params = {}) {
+  const path = pathForView(view, params);
+  if (window.location.pathname !== path) {
+    window.history.pushState({}, "", path);
+  }
+  setView(view);
+  setRouteParams(params);
+}
+
+function pathForView(view, params = {}) {
+  if (view === "chat") return "/companion";
+  if (view === "work") {
+    if (params.projectId) return `/work_project/${encodeURIComponent(params.projectId)}`;
+    if (params.missionId) return `/work_mission/${encodeURIComponent(params.missionId)}`;
+    return "/work";
+  }
+  if (view === "me") return "/me";
+  if (view === "download") return "/download/companion";
+  return "/idle";
+}
+
+function Sidebar({ setRouteParams, setView, user, view }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -146,7 +208,7 @@ function Sidebar({ setView, user, view }) {
             <button
               className={view === item.id ? "nav-item active" : "nav-item"}
               key={item.id}
-              onClick={() => setView(item.id)}
+              onClick={() => navigateTo(item.id, setView, setRouteParams)}
               title={item.label}
               type="button"
             >

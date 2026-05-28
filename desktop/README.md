@@ -11,6 +11,7 @@ Lst Modified by: Codex
   - V0.8 connects the polished local cat to Hackson Work Mode website state.
   - V0.8.1 makes the watched Hackson source explicit so local and public environments do not get mixed.
   - V0.8.2 removes desktop password entry and uses browser handoff login.
+  - V0.8.4 builds a Mac app zip artifact for the public website download page.
   - Keep desktop runtime separate from the existing web frontend.
   - Use React + Vite for the pet UI and Tauri for the native desktop shell.
   - Use verified Hackson APIs and keep desktop-only behavior separate from backend execution.
@@ -25,5 +26,4 @@ Lst Modified by: Codex
 |-src-tauri/ Tauri native shell folder
 
 ## 代办
-- Add native notifications after Mission watching is stable.
 - Add tray and native notifications after Mission watching is implemented.
