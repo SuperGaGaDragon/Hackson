@@ -30,7 +30,7 @@ Last Modified by: Codex
 | Public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled and active |
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
-| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, failed-window cleanup, Delegate result tolerance, Activity -> Windows -> Product -> Progress -> Diagnostics UI, and final lineage validation |
+| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, failed-window cleanup, Delegate result tolerance, Activity -> Windows -> Product -> Progress -> Diagnostics UI, final lineage validation, and final Product all-Artifact reader |
 | Public model provider | `codex_cli` through target-machine Codex CLI |
 | Public model | `gpt-5.4` |
 | Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
@@ -130,6 +130,7 @@ Last Modified by: Codex
 - On 2026-05-28, `8163` was introduced as the isolated Work V1 UI architecture service. It verifies the Work Console order `Activity -> Windows -> Product -> Progress -> Diagnostics`, Product Artifact lineage, default-collapsed Diagnostics, desktop and mobile browser smoke, and mobile no-horizontal-overflow without touching public `8145`.
 - On 2026-05-28, the Work V1 UI architecture frontend build was promoted to public `8145` by replacing only `frontend/dist`; `hackson-domain-8145.service` was not restarted. Public health, root HTML, assets `/assets/index-qPU-cMH4.js` and `/assets/index-BbzX_UAM.css`, and a public browser static Work Console order check passed.
 - On 2026-05-28, `8164` was introduced as the isolated Work V1 Product reader regression service. It verifies that a completed final Product defaults to an all-Artifact reader stack and can switch between `All`, outline, chapter drafts, and final draft.
+- On 2026-05-28, the Work V1 Product reader frontend build was promoted to public `8145` by replacing only `frontend/dist`; `hackson-domain-8145.service` was not restarted. Public health, root HTML, assets `/assets/index-3udE6cD6.js` and `/assets/index-BcI42SsQ.css`, and a public browser asset-load check passed.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
@@ -454,3 +455,8 @@ V0.5 Work Mission generation is intentionally bounded to one model pass. Long re
   - Target HTTP full smoke passed: `events=30/windows=2/products=1/artifacts=4/final_cjk=9936`.
   - Target browser smoke passed with final Product reader assertions: `All` contains `故事大纲`, `第一章草稿`, `第二章草稿`, and `最终成稿`; single Artifact selection works; returning to `All` works; final Artifact alone remains at least `8000` CJK.
   - Target `8164` live service health returned `{"status":"ok"}` and static root/assets returned `200`.
+- Work V1 Product reader public static verification on active `8145`:
+  - Public `frontend/dist` was backed up to `~/hackson_domain_8145/frontend/dist.backup_product_reader_20260527233038`, then replaced from `~/hackson_work_product_reader_8164/frontend/dist` without restarting `hackson-domain-8145.service`.
+  - Public domain `https://hackson.catachess.com/health` returned `{"status":"ok"}`.
+  - Public root and assets verified with browser UA: `/assets/index-3udE6cD6.js` and `/assets/index-BcI42SsQ.css` returned `200`.
+  - Public Playwright asset-load check verified the deployed React bundle is `index-3udE6cD6.js`.
