@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -21,6 +21,7 @@ Lst Modified by: Codex
 |-issue5-streaming.md future streaming and partial tool progress
 |-issue6-full-smoke.md full 8000 CJK character smoke acceptance
 |-issue7-long-turn-progress.md long model turn progress, bounded retry, and timeout UX
+|-issue8-delegate-result-tolerance.md tolerant Delegate result ingestion after public smoke failure
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -51,6 +51,7 @@ class DelegateResult(BaseModel):
     summary: str = Field(min_length=1, max_length=1000)
     content: str = Field(default="")
     reason: str = Field(min_length=1, max_length=240)
+    structured: bool = Field(default=True, exclude=True)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -272,7 +273,11 @@ class WorkModeToolExecutor:
             source_artifacts=source_artifacts,
         )
         try:
-            delegate_result = _parse_delegate_result(self.delegate_client.generate_delegate_result(delegate_context))
+            delegate_result = _parse_delegate_result(
+                self.delegate_client.generate_delegate_result(delegate_context),
+                fallback_title=arguments.window_title,
+                fallback_reason=arguments.reason,
+            )
         except ToolActionClientError as exc:
             failed_window = self.service.mark_work_window_failed(user_id, window["id"], exc.code)
             self.service.append_event(
@@ -296,9 +301,14 @@ class WorkModeToolExecutor:
                 event_type="WORK_WINDOW_FAILED",
                 title="Window failed",
                 message="delegate_result_invalid",
-                payload={"windowId": failed_window["id"], "error": "delegate_result_invalid", "employee": lead},
+                payload={
+                    "windowId": failed_window["id"],
+                    "error": "delegate_result_invalid",
+                    "retryable": True,
+                    "employee": lead,
+                },
             )
-            raise ToolActionClientError("delegate_result_invalid", "delegate_result_invalid", retryable=False) from exc
+            raise ToolActionClientError("delegate_result_invalid", "delegate_result_invalid", retryable=True) from exc
         if delegate_result.status == "blocked":
             blocked_window = self.service.mark_work_window_blocked(user_id, window["id"], delegate_result.summary)
             self.service.append_event(
@@ -341,7 +351,11 @@ class WorkModeToolExecutor:
             created_by=_delegate_agent_payload(arguments.agent_slot),
             source_artifact_ids=arguments.source_artifact_ids,
             work_window_id=window["id"],
-            metadata={"summary": delegate_result.summary, "delegateReason": delegate_result.reason},
+            metadata={
+                "summary": delegate_result.summary,
+                "delegateReason": delegate_result.reason,
+                "delegateStructured": delegate_result.structured,
+            },
         )
         completed_window = self.service.complete_work_window(
             user_id,
@@ -531,9 +545,152 @@ def _find_public_artifacts(artifacts: list[dict[str, Any]], artifact_ids: list[s
     return [artifact for artifact in artifacts if artifact["id"] in wanted]
 
 
-def _parse_delegate_result(raw_result: str | dict[str, Any]) -> DelegateResult:
-    try:
-        data = json.loads(raw_result) if isinstance(raw_result, str) else raw_result
-        return DelegateResult.model_validate(data)
-    except (json.JSONDecodeError, ValidationError) as exc:
-        raise ValueError("delegate_result_invalid") from exc
+def _parse_delegate_result(
+    raw_result: str | dict[str, Any],
+    fallback_title: str = "Delegate result",
+    fallback_reason: str = "Delegate returned unstructured content.",
+) -> DelegateResult:
+    if isinstance(raw_result, dict):
+        try:
+            return DelegateResult.model_validate(raw_result)
+        except ValidationError as exc:
+            coerced = _coerce_delegate_result_data(raw_result, fallback_title, fallback_reason)
+            if coerced:
+                return coerced
+            raise ValueError("delegate_result_invalid") from exc
+
+    raw_text = raw_result.strip()
+    if not raw_text:
+        raise ValueError("delegate_result_empty")
+
+    for candidate in _delegate_json_candidates(raw_text):
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        try:
+            return DelegateResult.model_validate(data)
+        except ValidationError:
+            if isinstance(data, dict):
+                coerced = _coerce_delegate_result_data(data, fallback_title, fallback_reason)
+                if coerced:
+                    return coerced
+            continue
+
+    if _looks_like_broken_json(raw_text):
+        raise ValueError("delegate_result_invalid")
+
+    return DelegateResult(
+        status="completed",
+        title=fallback_title,
+        summary=_unstructured_delegate_summary(raw_text),
+        content=_strip_markdown_fence(raw_text),
+        reason=fallback_reason,
+        structured=False,
+    )
+
+
+def _delegate_json_candidates(raw_text: str) -> list[str]:
+    candidates = [raw_text]
+    fenced = _strip_markdown_fence(raw_text)
+    if fenced != raw_text:
+        candidates.append(fenced)
+    extracted = _extract_first_json_object(raw_text)
+    if extracted:
+        candidates.append(extracted)
+    deduped: list[str] = []
+    for candidate in candidates:
+        candidate = candidate.strip()
+        if candidate and candidate not in deduped:
+            deduped.append(candidate)
+    return deduped
+
+
+def _strip_markdown_fence(raw_text: str) -> str:
+    lines = raw_text.strip().splitlines()
+    if len(lines) >= 2 and lines[0].strip().startswith("```") and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+    return raw_text.strip()
+
+
+def _extract_first_json_object(raw_text: str) -> str | None:
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(raw_text):
+        if char != "{":
+            continue
+        try:
+            value, end = decoder.raw_decode(raw_text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return raw_text[index : index + end]
+    return None
+
+
+def _looks_like_broken_json(raw_text: str) -> bool:
+    stripped = raw_text.lstrip()
+    if stripped.startswith("{") or stripped.startswith("["):
+        return True
+    first_line = stripped.splitlines()[0].strip().lower() if stripped else ""
+    return first_line.startswith("```json")
+
+
+def _unstructured_delegate_summary(raw_text: str) -> str:
+    compact = " ".join(_strip_markdown_fence(raw_text).split())
+    compact = _bounded_text(compact, 180)
+    return f"已保存委派窗口返回的正文草稿：{compact}"
+
+
+def _coerce_delegate_result_data(
+    data: dict[str, Any],
+    fallback_title: str,
+    fallback_reason: str,
+) -> DelegateResult | None:
+    content = _delegate_content_from_data(data)
+    status = data.get("status")
+    if status == "blocked":
+        summary = _bounded_text(_string_value(data.get("summary")) or _string_value(data.get("reason")) or content, 1000)
+        if not summary:
+            return None
+        return DelegateResult(
+            status="blocked",
+            title=_bounded_text(_string_value(data.get("title")) or fallback_title, 200),
+            summary=summary,
+            content="",
+            reason=_bounded_text(_string_value(data.get("reason")) or fallback_reason, 240),
+            structured=False,
+        )
+    if not content:
+        return None
+    return DelegateResult(
+        status="completed",
+        title=_bounded_text(_string_value(data.get("title")) or fallback_title, 200),
+        summary=_bounded_text(_string_value(data.get("summary")) or _unstructured_delegate_summary(content), 1000),
+        content=content,
+        reason=_bounded_text(_string_value(data.get("reason")) or fallback_reason, 240),
+        structured=False,
+    )
+
+
+def _delegate_content_from_data(data: dict[str, Any]) -> str:
+    for key in ("content", "text", "draft", "body", "chapter", "result", "output"):
+        value = _string_value(data.get(key))
+        if value:
+            return value
+    text_values = [
+        value.strip()
+        for value in data.values()
+        if isinstance(value, str) and value.strip() and len(value.strip()) > 80
+    ]
+    return "\n\n".join(text_values).strip()
+
+
+def _string_value(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _bounded_text(value: str, limit: int) -> str:
+    value = value.strip()
+    if len(value) <= limit:
+        return value
+    return f"{value[: max(limit - 3, 0)].rstrip()}..."

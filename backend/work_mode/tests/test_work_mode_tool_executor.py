@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -81,6 +81,94 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertIn("旧车站", completed["artifacts"][0]["content"])
         self.assertEqual(delegate_client.calls, 1)
         self.assertNotIn("availableTools", delegate_client.last_context)
+
+    def test_delegate_agent_persists_unstructured_text_as_window_artifact(self) -> None:
+        mission, run_id = self._started_agent_mission()
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="雨夜车站",
+            summary="长篇小说。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        delegate_client = ScriptedDelegateClient("第一章\n\n雨夜里，旧车站只剩一盏灯。")
+        executor = WorkModeToolExecutor(self.service, delegate_client=delegate_client)
+
+        result = executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "delegate_agent",
+                  "arguments": {{
+                    "reason": "让写作 Agent 起草第一章。",
+                    "agentSlot": "agent_2",
+                    "windowTitle": "第一章草稿",
+                    "brief": "写出第一章正文。",
+                    "expectedOutput": "chapter",
+                    "targetProductId": "{product["id"]}",
+                    "sourceArtifactIds": []
+                  }}
+                }}
+                """
+            ),
+        )
+
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        artifact = detail["artifacts"][0]
+
+        self.assertFalse(result.terminal)
+        self.assertEqual(detail["workWindows"][0]["status"], "completed")
+        self.assertIn("旧车站", artifact["content"])
+        self.assertFalse(artifact["metadata"]["delegateStructured"])
+
+    def test_delegate_agent_parses_fenced_json_result(self) -> None:
+        mission, run_id = self._started_agent_mission()
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="雨夜车站",
+            summary="长篇小说。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        delegate_client = ScriptedDelegateClient(
+            """
+            ```json
+            {"status":"completed","title":"第二章","summary":"完成第二章。","content":"第二章正文。","reason":"按 brief 完成。"}
+            ```
+            """
+        )
+        executor = WorkModeToolExecutor(self.service, delegate_client=delegate_client)
+
+        executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "delegate_agent",
+                  "arguments": {{
+                    "reason": "让写作 Agent 起草第二章。",
+                    "agentSlot": "agent_2",
+                    "windowTitle": "第二章草稿",
+                    "brief": "写出第二章正文。",
+                    "expectedOutput": "chapter",
+                    "targetProductId": "{product["id"]}",
+                    "sourceArtifactIds": []
+                  }}
+                }}
+                """
+            ),
+        )
+
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(detail["workWindows"][0]["status"], "completed")
+        self.assertEqual(detail["artifacts"][0]["title"], "第二章")
+        self.assertTrue(detail["artifacts"][0]["metadata"]["delegateStructured"])
 
     def test_inspect_product_is_bounded_and_visible(self) -> None:
         mission, run_id = self._started_agent_mission()

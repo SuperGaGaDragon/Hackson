@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 # Work Mode Final Version Roadmap
@@ -257,3 +257,4 @@ Known risks:
 - Streaming later without breaking tool contract: `issues/issue5-streaming.md`
 - Full smoke cost, duration, and deterministic validation: `issues/issue6-full-smoke.md`
 - Long model turn progress and timeout UX: `issues/issue7-long-turn-progress.md`
+- Delegate result tolerance after real-model wrapper misses: `issues/issue8-delegate-result-tolerance.md`

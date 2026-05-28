@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 # Model 升级工程日志
@@ -113,6 +113,13 @@ Lst Modified by: Codex
   - 推广到 public `8145`：public 目录 Work Mode `52`、model_runtime `24`、interactions `21`、frontend build、full smoke、HTTP smoke 全部通过后，重启 `hackson-domain-8145.service`。
   - 公网验证：`https://hackson.catachess.com/health` 和 `/` 返回 `200`，新 assets 为 `index-HYSRYan8.js` / `index-cInveBCH.css`。
   - 真实 Codex 小任务 Mission `6a17a145f01aad81f13bca71` 完成，事件链包含每轮 `MODEL_TURN_STARTED`、`MODEL_TURN_COMPLETED`、`TOOL_CALLED`，最终 `MISSION_COMPLETED`，没有 orphan Codex 进程。
+- 盯公网用户写小说 Mission `6a17a659f01aad81f13bca8a`：
+  - 真实链路证明 Lead Agent 没有写死流程：先 `mission_plan`，再 `work_product` 建立大纲，然后连续选择 `delegate_agent`。
+  - 第一至第二章、第三至第四章两个 Work Window 完成，说明 Codex provider 和窗口执行可用。
+  - 第五至第六章窗口失败为 `delegate_result_invalid`，不是 429、不是 401、不是 HTTP 500；根因是 Delegate 返回结果没有通过严格 JSON wrapper 校验。
+  - 新增 `docs/work_mode/issues/issue8-delegate-result-tolerance.md`，明确 Lead 仍严格 JSON tool action，但 Delegate 写作结果需要容错 ingestion。
+  - 修复：Delegate 结果支持 fenced JSON、嵌入 JSON、可用非结构化正文 canonicalize 为 completed Artifact；真正空结果或破损 JSON-like 结果标记窗口 failed，并进入 `paused_retryable` 而不是 unrecoverable `failed`。
+  - 本地验证通过：Work Mode `55`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke、HTTP full smoke、browser smoke，最终 `final_cjk=9936`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。

@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -200,6 +200,48 @@ class WorkModeLoopTest(TestCase):
         self.assertEqual(paused["workWindows"][0]["status"], "failed")
         self.assertIn("WORK_WINDOW_FAILED", event_types)
 
+    def test_loop_pauses_retryable_when_delegate_returns_invalid_structured_result(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        action_client = ScriptedActionClient(
+            [
+                """
+                {
+                  "tool": "delegate_agent",
+                  "arguments": {
+                    "reason": "让写作 Agent 起草第一章。",
+                    "agentSlot": "agent_2",
+                    "windowTitle": "第一章草稿",
+                    "brief": "写第一章。",
+                    "expectedOutput": "chapter",
+                    "targetProductId": null,
+                    "sourceArtifactIds": []
+                  }
+                }
+                """,
+            ]
+        )
+
+        MissionLoopRunner(
+            self.service,
+            action_client=action_client,
+            executor=WorkModeToolExecutor(
+                self.service,
+                delegate_client=RawDelegateClient("{not valid json"),
+            ),
+            max_retryable_turn_retries=0,
+        ).run("user_1", mission["id"], run_id)
+
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+        event_types = [event["type"] for event in paused["events"]]
+
+        self.assertEqual(paused["mission"]["status"], "paused_retryable")
+        self.assertEqual(paused["mission"]["lastError"], "delegate_result_invalid")
+        self.assertEqual(paused["workWindows"][0]["status"], "failed")
+        self.assertIn("WORK_WINDOW_FAILED", event_types)
+        self.assertEqual(event_types[-1], "MISSION_PAUSED_RETRYABLE")
+
     def test_loop_resume_continues_from_persisted_product_manifest(self) -> None:
         mission = self._mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
@@ -287,6 +329,14 @@ class FailingDelegateClient:
 
     def generate_delegate_result(self, context: dict):
         raise self.error
+
+
+class RawDelegateClient:
+    def __init__(self, result: str):
+        self.result = result
+
+    def generate_delegate_result(self, context: dict):
+        return self.result
 
 
 class FailingAfterProductActionClient:
