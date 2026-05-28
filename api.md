@@ -7,7 +7,7 @@ Last Modified by: Codex
 ## brief intro
 - This document is the current verified API and port map for Hackson.
 - Public product traffic now uses `https://hackson.catachess.com/`.
-- Public-domain rows describe the currently retained product service.
+- Public-domain rows describe the currently promoted product service.
 - The `8147` rows describe the isolated Idle Auto smoke service used for its fix.
 - The `8148` rows describe the isolated Work V0.5 artifact smoke service. It is not the public product service.
 - The `8150` rows describe the isolated Work V1 model-driven loop smoke service. It is not the public product service.
@@ -26,6 +26,7 @@ Last Modified by: Codex
 | Public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled and active |
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
+| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, retryable pause/resume, and final lineage validation |
 | Public model provider | `codex_cli` through target-machine Codex CLI |
 | Public model | `gpt-5.4` |
 | Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
@@ -69,7 +70,7 @@ Last Modified by: Codex
 ## active Hackson port map
 | Port | Service | Bind | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service` |
+| 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service`; promoted to Work V1 hardening build on 2026-05-27 |
 | 8147 | Hackson Idle Auto smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-idle-auto-8147.service` | Isolated verification for Idle Auto topic, interjection, speaker, and rate-limit behavior |
 | 8148 | Hackson Work V0.5 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v05-8148.service` | Isolated verification for Work Mission artifact persistence and Product UI render |
 | 18148 | Work V0.5 fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-work-v05-fake-model-18148.service` | Test-only model relay for deterministic Work V0.5 success smoke; not a product API |
@@ -85,6 +86,7 @@ Last Modified by: Codex
 - On 2026-05-27, `8148` and `18148` were reintroduced as Work V0.5 isolated smoke services. They are active and intentionally separate from public `8145`.
 - On 2026-05-27, `8150` was introduced as the isolated Work V1 model-driven loop smoke service. It is active and intentionally separate from public `8145`, Idle Auto `8147`, Work V0.5 `8148`, and legacy `8130`.
 - On 2026-05-27, `8160` was introduced as the isolated Work V1 hardening smoke service. It verified backend tests, frontend build, deterministic full smoke, authenticated HTTP full smoke, browser UI smoke, static frontend serving, and health check without stopping existing services.
+- On 2026-05-27, the Work V1 hardening build was promoted to public `8145` after target public-directory tests passed. Public health and static frontend checks passed, deterministic Work V1 full smoke and authenticated HTTP full smoke passed, and a real public browser-triggered Codex Mission entered `paused_retryable model_timeout` with persisted plan/product events and no orphan `codex exec` process.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
