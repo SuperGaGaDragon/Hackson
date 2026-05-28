@@ -43,6 +43,7 @@ Last Modified by: Codex
 |-issue29-research-paper-final-draft-gate.md deterministic final-draft gate for paper/research deliverables
 |-issue30-evaluator-leader-tool.md backend-owned Reliability evaluator as a model-visible Leader tool
 |-issue31-discussion-result-tolerance-and-schema-feedback.md tolerant Discussion ingestion and actionable Lead schema feedback
+|-issue32-resumable-failure-and-pause-resume-controls.md resumable invalid-turn exhaustion and stateful Start/Pause/Resume controls
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

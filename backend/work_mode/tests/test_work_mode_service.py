@@ -17,6 +17,7 @@ from work_mode.schemas import (
     EmployeeCreateRequest,
     MissionCreateRequest,
     MissionFollowUpRequest,
+    MissionPauseRequest,
     MissionStartRequest,
     MissionStopRequest,
     ProjectCreateRequest,
@@ -429,8 +430,54 @@ class WorkModeServiceTest(TestCase):
 
         self.assertEqual(resumed["mission"]["status"], "running")
         self.assertEqual(resumed["activeRun"]["status"], "running")
+        self.assertEqual(resumed["activeRun"]["metadata"]["resumeReason"], "checkpoint_resume")
+        self.assertEqual(resumed["activeRun"]["metadata"]["previousStatus"], "paused_retryable")
+        self.assertEqual(resumed["events"][-1]["title"], "Resumed")
+        self.assertEqual(resumed["events"][-1]["payload"]["previousError"], "model_timeout")
         self.assertNotEqual(resumed["activeRun"]["id"], first_run_id)
         self.assertEqual(resumed["latestRun"]["id"], resumed["activeRun"]["id"])
+
+    def test_start_allows_failed_resume_with_new_run_metadata(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        first_run_id = detail["activeRun"]["id"]
+        self.service.mark_mission_failed("user_1", mission["id"], first_run_id, "tool_action_schema_invalid")
+
+        resumed = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+
+        self.assertEqual(resumed["mission"]["status"], "running")
+        self.assertEqual(resumed["activeRun"]["metadata"]["resumeReason"], "checkpoint_resume")
+        self.assertEqual(resumed["activeRun"]["metadata"]["previousStatus"], "failed")
+        self.assertEqual(resumed["activeRun"]["metadata"]["previousError"], "tool_action_schema_invalid")
+        self.assertEqual(resumed["events"][-1]["title"], "Resumed")
+
+    def test_pause_mission_records_reversible_pause_request(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+
+        paused = self.service.pause_mission("user_1", mission["id"], MissionPauseRequest(reason="Hold"))
+
+        self.assertEqual(paused["mission"]["status"], "stopping")
+        self.assertEqual(paused["mission"]["currentStep"], "Pausing")
+        self.assertEqual(paused["mission"]["metadata"]["controlRequest"]["mode"], "pause")
+        self.assertEqual(paused["activeRun"]["id"], detail["activeRun"]["id"])
+        self.assertEqual(paused["events"][-1]["type"], "MISSION_PAUSE_REQUESTED")
+
+    def test_recover_interrupted_pausing_mission_marks_paused(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        self.service.pause_mission("user_1", mission["id"], MissionPauseRequest(reason="Hold"))
+
+        result = self.service.recover_interrupted_missions("interrupted_restart")
+        recovered = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(result["pausedMissions"], 1)
+        self.assertEqual(result["stoppedMissions"], 0)
+        self.assertEqual(recovered["mission"]["status"], "paused")
+        self.assertEqual(recovered["latestRun"]["id"], run_id)
+        self.assertEqual(recovered["latestRun"]["status"], "paused")
+        self.assertEqual(recovered["events"][-1]["type"], "MISSION_PAUSED")
 
     def test_completed_mission_requires_follow_up_instead_of_start_replay(self) -> None:
         mission = self._mission()
@@ -776,6 +823,26 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(completed["latestRun"]["status"], "stopped")
         self.assertIn("MISSION_STOP_REQUESTED", event_types)
         self.assertEqual(event_types[-1], "MISSION_STOPPED")
+
+    def test_worker_pauses_when_pause_is_requested_before_next_worker_tick(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+
+        paused_detail = self.service.pause_mission("user_1", mission["id"], MissionPauseRequest(reason="Hold"))
+        MissionWorker(self.service, runner=FakeMissionRunner("Generated result.")).run_v0_mission(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        event_types = [event["type"] for event in completed["events"]]
+        self.assertEqual(paused_detail["mission"]["status"], "stopping")
+        self.assertEqual(completed["mission"]["status"], "paused")
+        self.assertEqual(completed["latestRun"]["status"], "paused")
+        self.assertIn("MISSION_PAUSE_REQUESTED", event_types)
+        self.assertEqual(event_types[-1], "MISSION_PAUSED")
 
     def test_worker_event_delay_env_invalid_value_falls_back_to_zero(self) -> None:
         original = os.environ.get("HACKSON_WORK_MODE_V0_EVENT_DELAY_SECONDS")

@@ -68,6 +68,13 @@ export function stopMission(missionId, payload = {}) {
   });
 }
 
+export function pauseMission(missionId, payload = {}) {
+  return apiRequest(`/api/work/missions/${missionId}/pause`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function answerMission(missionId, payload) {
   return apiRequest(`/api/work/missions/${missionId}/answer`, {
     method: "POST",

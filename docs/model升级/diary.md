@@ -298,3 +298,10 @@ Last Modified by: Codex
 - `codex_cli` 是进程级调用，稳定但比直接 HTTP relay 更重；当前先完成最小闭环，后续再优化性能。
 - 真实 8000 字全量模型 smoke 成本高、时延长；当前已用 deterministic full smoke 固定产品验收，用真实模型 smoke 验证链路、暂停和恢复。
 - 当前 `8150` 是 isolated smoke，不是 public product；推广 public 前需要用户确认。
+
+- Work Mode 可恢复失败与 Pause/Resume 设计：
+  - 公网事件显示长研究 Mission 先后出现 `mission_loop_turn_budget_exceeded`、`discussion_result_invalid`、连续 `tool_action_schema_invalid`；服务日志无 traceback，问题核心是 runner 已退出但产品语义把可恢复状态展示成 `failed/Start`。
+  - 自审确认：`start_mission` 对 `failed/paused/paused_retryable/stopped/blocked` 已经是 checkpoint resume，会新建 Run，并从持久化 Product/Artifact/Event/Window 上下文继续，不会重放旧工具。
+  - 新增 `docs/work_mode/issues/issue32-resumable-failure-and-pause-resume-controls.md`：规定模型可纠正的 invalid-turn exhaustion 和 max-turn exhaustion 改为 `paused_retryable`；用户主控改为单按钮 Start/Pause/Resume；用户主动暂停落 `paused`。
+  - 同步更新 Work Mode final version、state machine、UI contract、retry/resume、tool rejection recovery、implementation plan。
+  - 下一步最小闭环：先补后端 `/pause`、runner pause 观察和可恢复 exhaustion 映射；再补前端单按钮；最后跑本地测试、目标机测试、公网部署。

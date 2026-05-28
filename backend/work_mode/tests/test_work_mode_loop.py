@@ -11,7 +11,7 @@ from work_mode.action_client import ToolActionClientError
 from work_mode.tool_protocol import ToolActionValidationError
 from work_mode.quality_checks import LONG_FORM_NOVEL_MIN_CJK
 from work_mode.loop import MissionLoopRunner
-from work_mode.schemas import MissionCreateRequest, MissionStartRequest, ProjectCreateRequest
+from work_mode.schemas import MissionCreateRequest, MissionPauseRequest, MissionStartRequest, ProjectCreateRequest
 from work_mode.service import WorkModeService
 from work_mode.tests.test_work_mode_service import FakeWorkModeRepository
 from work_mode.tool_executor import WorkModeToolExecutor
@@ -138,6 +138,35 @@ class WorkModeLoopTest(TestCase):
         self.assertEqual(paused["mission"]["status"], "paused_retryable")
         self.assertEqual(paused["latestRun"]["status"], "paused_retryable")
         self.assertEqual(paused["events"][-1]["type"], "MISSION_PAUSED_RETRYABLE")
+
+    def test_loop_honors_user_pause_request(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        self.service.pause_mission("user_1", mission["id"], MissionPauseRequest(reason="Hold"))
+        action_client = ScriptedActionClient(
+            [
+                """
+                {
+                  "tool": "block_mission",
+                  "arguments": {
+                    "reason": "Should not run after pause.",
+                    "blockedReason": "Should not run.",
+                    "neededFromUser": ""
+                  }
+                }
+                """
+            ]
+        )
+
+        MissionLoopRunner(self.service, action_client=action_client, max_turns=3).run("user_1", mission["id"], run_id)
+
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(paused["mission"]["status"], "paused")
+        self.assertEqual(paused["latestRun"]["status"], "paused")
+        self.assertEqual(paused["events"][-1]["type"], "MISSION_PAUSED")
+        self.assertEqual(action_client.calls, 0)
 
     def test_loop_retries_retryable_provider_error_before_pausing(self) -> None:
         mission = self._mission()
@@ -384,7 +413,7 @@ class WorkModeLoopTest(TestCase):
         self.assertTrue(action_client.saw_search_observation)
         self.assertIn("https://example.com/reference", product_content)
 
-    def test_loop_fails_after_repeated_tool_rejections_exceed_budget(self) -> None:
+    def test_loop_pauses_retryably_after_repeated_tool_rejections_exceed_budget(self) -> None:
         mission = self._long_novel_mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
         run_id = detail["activeRun"]["id"]
@@ -396,12 +425,43 @@ class WorkModeLoopTest(TestCase):
             run_id,
         )
 
-        failed = self.service.get_mission_detail("user_1", mission["id"])
-        invalid_events = [event for event in failed["events"] if event["type"] == "MODEL_TURN_INVALID"]
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+        invalid_events = [event for event in paused["events"] if event["type"] == "MODEL_TURN_INVALID"]
 
-        self.assertEqual(failed["mission"]["status"], "failed")
-        self.assertEqual(failed["mission"]["lastError"], "final_artifact_not_final_content")
+        self.assertEqual(paused["mission"]["status"], "paused_retryable")
+        self.assertEqual(paused["latestRun"]["status"], "paused_retryable")
+        self.assertEqual(paused["mission"]["lastError"], "final_artifact_not_final_content")
+        self.assertEqual(paused["events"][-1]["type"], "MISSION_PAUSED_RETRYABLE")
+        self.assertEqual(paused["events"][-1]["payload"]["phase"], "tool_execution")
         self.assertEqual(len(invalid_events), 2)
+
+    def test_loop_turn_budget_exhaustion_pauses_retryably(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        action_client = ScriptedActionClient(
+            [
+                """
+                {
+                  "tool": "mission_plan",
+                  "arguments": {
+                    "reason": "Keep planning.",
+                    "planTitle": "Plan",
+                    "steps": [{"title": "Again", "status": "pending", "notes": ""}]
+                  }
+                }
+                """
+            ]
+        )
+
+        MissionLoopRunner(self.service, action_client=action_client, max_turns=1).run("user_1", mission["id"], run_id)
+
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(paused["mission"]["status"], "paused_retryable")
+        self.assertEqual(paused["mission"]["lastError"], "mission_loop_turn_budget_exceeded")
+        self.assertEqual(paused["latestRun"]["status"], "paused_retryable")
+        self.assertEqual(paused["events"][-1]["payload"]["phase"], "turn_budget")
 
     def test_loop_surfaces_schema_invalid_detail_to_next_turn(self) -> None:
         mission = self._mission()
@@ -463,7 +523,7 @@ class ScriptedActionClient:
         self.last_artifact_id: str | None = None
 
     def generate_action(self, context: dict):
-        raw = self.actions[self.calls]
+        raw = self.actions[min(self.calls, len(self.actions) - 1)]
         raw = raw.replace("$LAST_PRODUCT_ID", self.last_product_id or "missing_product")
         raw = raw.replace("$LAST_ARTIFACT_ID", self.last_artifact_id or "missing_artifact")
         self.calls += 1

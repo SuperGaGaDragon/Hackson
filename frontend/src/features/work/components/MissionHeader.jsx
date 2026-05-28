@@ -4,7 +4,7 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { MessageSquarePlus, Play, ShieldCheck, Square } from "lucide-react";
+import { MessageSquarePlus, Pause, Play, RotateCcw, ShieldCheck } from "lucide-react";
 
 function MissionHeader({
   answerText = "",
@@ -17,16 +17,21 @@ function MissionHeader({
   onEvaluate,
   onFollowUp = () => {},
   onFollowUpTextChange = () => {},
+  onPause,
   onStart,
-  onStop,
 }) {
-  const canStart = mission && !["running", "stopping", "completed"].includes(mission.status);
-  const canStop = mission?.status === "running";
-  const canEvaluate = mission && !["draft", "running", "stopping"].includes(mission.status);
-  const title = mission?.title || "Create mission";
   const waiting = mission?.status === "waiting_input";
   const completed = mission?.status === "completed";
+  const resumable = ["paused", "paused_retryable", "failed", "stopped", "blocked"].includes(mission?.status);
+  const running = mission?.status === "running";
+  const stopping = mission?.status === "stopping";
+  const canPrimary = mission && !waiting && !completed && !stopping && (running || mission.status === "draft" || resumable);
+  const canEvaluate = mission && !["draft", "running", "stopping"].includes(mission.status);
+  const title = mission?.title || "Create mission";
   const suggestedOptions = inputRequest?.payload?.suggestedOptions || [];
+  const primaryLabel = running ? "Pause" : stopping ? "Pausing" : resumable ? "Resume" : "Start";
+  const PrimaryIcon = running ? Pause : resumable ? RotateCcw : Play;
+  const primaryAction = running ? onPause : onStart;
 
   return (
     <div className="panel-head mission-head">
@@ -38,13 +43,9 @@ function MissionHeader({
         </div>
         <div className="panel-actions">
           <span className="chip">{mission?.status || "empty"}</span>
-          <button className="primary-button" disabled={busy || !canStart || waiting} onClick={onStart} type="button">
-            <Play size={16} />
-            <span>Start</span>
-          </button>
-          <button className="secondary-button" disabled={busy || !canStop} onClick={onStop} type="button">
-            <Square size={16} />
-            <span>Stop</span>
+          <button className="primary-button" disabled={busy || !canPrimary} onClick={primaryAction} type="button">
+            <PrimaryIcon size={16} />
+            <span>{primaryLabel}</span>
           </button>
           <button className="secondary-button" disabled={busy || !canEvaluate} onClick={onEvaluate} type="button">
             <ShieldCheck size={16} />

@@ -26,11 +26,12 @@ The Mission loop MUST:
 - Emit `MODEL_TURN_INVALID` with `phase=tool_execution`, `tool`, `statusCode`, and stable error code.
 - Return a bounded `lastObservation` to the Lead.
 - Continue the loop until the invalid-turn budget is exhausted.
-- Mark the Mission `failed` only after repeated invalid tool turns exceed the configured budget.
+- Mark the Mission `paused_retryable` after repeated invalid tool turns exceed the configured budget, because a
+  resumed Run may recover with a fresh model turn and the persisted checkpoint.
 
 The Mission loop MUST NOT:
 
-- Mark `paused_retryable` for deterministic contract rejections.
+- Mark `failed` for deterministic contract rejections unless an actual system invariant is broken.
 - Leave a Mission stuck in `running` after the background runner exits.
 - Treat a quality gate rejection as a provider failure.
 

@@ -61,6 +61,8 @@ export function eventView(event) {
     case "MISSION_STARTED":
     case "MISSION_STOP_REQUESTED":
     case "MISSION_STOPPED":
+    case "MISSION_PAUSE_REQUESTED":
+    case "MISSION_PAUSED":
       return { ...common, icon: Circle, tone: "system", title: event.title || "Mission" };
     case "MISSION_PLAN_UPDATED":
       return { ...common, icon: ListChecks, tone: "plan", title: event.title || "Plan" };

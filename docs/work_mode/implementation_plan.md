@@ -470,6 +470,34 @@ Required tests:
 - Route test proves `/start` launches through the launcher without request-owned background tasks.
 - Public smoke verifies restart health and recoverable Mission state.
 
+## 19.1 Loop 18: Resumable Pause/Resume Controls
+
+Make model-correctable runner exits recoverable and make the UI lifecycle control match actual checkpoint semantics.
+
+Required backend behavior:
+
+- Add `POST /api/work/missions/{missionId}/pause`.
+- Pause marks a running Mission `stopping` with `controlRequest.mode=pause`.
+- Runner-observed pause marks Mission `paused` and active Run `paused`.
+- Resume from `paused`, `paused_retryable`, `failed`, `stopped`, or `blocked` creates a new Run.
+- Resumed `MISSION_STARTED` events include previous status/error metadata.
+- Repeated invalid-turn/tool-contract exhaustion marks `paused_retryable`.
+- Max-turn budget exhaustion marks `paused_retryable`.
+
+Required frontend behavior:
+
+- Replace Start/Stop pair with one stateful primary control: Start, Pause, Pausing, or Resume.
+- Keep completed continuation on the existing Continue form.
+- Keep waiting-input continuation on the existing answer form.
+
+Required tests:
+
+- Service tests for pause request, pause completion, and resumed metadata.
+- Route test for `/pause`.
+- Loop tests for invalid-turn exhaustion, turn-budget exhaustion, and pause/resume checkpoint.
+- Frontend build.
+- Public deployment smoke verifies health, root, assets, and clean logs.
+
 ## 20. Recommended Test Commands
 
 Backend scoped:

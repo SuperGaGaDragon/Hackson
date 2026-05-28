@@ -47,7 +47,11 @@ class MissionLoopRunner:
         last_observation: dict[str, Any] | None = None
         invalid_turns = 0
         for turn_index in range(self.max_turns):
-            if self.service.should_stop(user_id, mission_id):
+            stop_mode = self.service.stop_request_mode(user_id, mission_id)
+            if stop_mode == "pause":
+                self.service.mark_mission_paused(user_id, mission_id, run_id, step_id=None)
+                return self.service.get_mission_detail(user_id, mission_id)
+            if stop_mode == "stop":
                 self.service.mark_mission_stopped(user_id, mission_id, run_id, step_id=None)
                 return self.service.get_mission_detail(user_id, mission_id)
 
@@ -96,7 +100,15 @@ class MissionLoopRunner:
                     {"turn": turn_index + 1, "code": exc.code, "detail": str(exc), "attempt": invalid_turns},
                 )
                 if invalid_turns > self.max_invalid_turns:
-                    self.service.mark_mission_failed(user_id, mission_id, run_id, exc.code, step_id=None)
+                    self._pause_retryable_exhaustion(
+                        user_id,
+                        mission_id,
+                        run_id,
+                        exc.code,
+                        turn_index,
+                        phase="model_turn",
+                        tool=None,
+                    )
                     return self.service.get_mission_detail(user_id, mission_id)
                 last_observation = {
                     "tool": "validate_tool_call",
@@ -147,7 +159,15 @@ class MissionLoopRunner:
                     },
                 )
                 if invalid_turns > self.max_invalid_turns:
-                    self.service.mark_mission_failed(user_id, mission_id, run_id, code, step_id=None)
+                    self._pause_retryable_exhaustion(
+                        user_id,
+                        mission_id,
+                        run_id,
+                        code,
+                        turn_index,
+                        phase="tool_execution",
+                        tool=action.tool,
+                    )
                     return self.service.get_mission_detail(user_id, mission_id)
                 last_observation = {
                     "tool": action.tool,
@@ -176,14 +196,39 @@ class MissionLoopRunner:
             if result.terminal:
                 return self.service.get_mission_detail(user_id, mission_id)
 
-        self.service.mark_mission_failed(
+        self.service.mark_mission_paused_retryable(
             user_id,
             mission_id,
             run_id,
-            error="mission_loop_turn_budget_exceeded",
-            step_id=None,
+            "mission_loop_turn_budget_exceeded",
+            metadata={
+                "turn": self.max_turns,
+                "maxTurns": self.max_turns,
+                "retryBudgetExhausted": True,
+                "phase": "turn_budget",
+            },
         )
         return self.service.get_mission_detail(user_id, mission_id)
+
+    def _pause_retryable_exhaustion(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        code: str,
+        turn_index: int,
+        phase: str,
+        tool: str | None,
+    ) -> None:
+        metadata: dict[str, Any] = {
+            "turn": turn_index + 1,
+            "phase": phase,
+            "invalidTurns": self.max_invalid_turns + 1,
+            "retryBudgetExhausted": True,
+        }
+        if tool:
+            metadata["tool"] = tool
+        self.service.mark_mission_paused_retryable(user_id, mission_id, run_id, code, metadata=metadata)
 
     def _generate_action_with_retry(
         self,

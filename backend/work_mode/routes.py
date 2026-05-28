@@ -25,6 +25,7 @@ from work_mode.schemas import (
     MissionDetailResponse,
     MissionEvaluateRequest,
     MissionFollowUpRequest,
+    MissionPauseRequest,
     MissionResponse,
     MissionStartRequest,
     MissionStopRequest,
@@ -39,7 +40,7 @@ from work_mode.worker import launch_v1_mission_daemon
 
 router = APIRouter()
 
-TERMINAL_STREAM_STATUSES = {"completed", "failed", "stopped", "blocked"}
+TERMINAL_STREAM_STATUSES = {"completed", "failed", "stopped", "blocked", "paused", "paused_retryable", "waiting_input"}
 
 
 def get_work_mode_service() -> WorkModeService:
@@ -171,6 +172,16 @@ def stop_mission(
     service: WorkModeService = Depends(get_work_mode_service),
 ) -> dict:
     return service.stop_mission(current_user_id, mission_id, payload)
+
+
+@router.post("/missions/{mission_id}/pause", response_model=MissionDetailResponse)
+def pause_mission(
+    mission_id: str,
+    payload: MissionPauseRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.pause_mission(current_user_id, mission_id, payload)
 
 
 @router.post("/missions/{mission_id}/answer", response_model=MissionDetailResponse)

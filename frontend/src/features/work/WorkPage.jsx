@@ -15,6 +15,7 @@ import {
   listMissionEvents,
   listProjectMissions,
   listProjects,
+  pauseMission,
   startMission,
   stopMission,
   streamMissionEvents,
@@ -32,7 +33,7 @@ import WarningCard from "./components/WarningCard";
 import WorkWindowPanel from "./components/WorkWindowPanel";
 import WorkspaceView from "./components/WorkspaceView";
 
-const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked"]);
+const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked", "paused", "paused_retryable", "waiting_input"]);
 
 function WorkPage({ agents = [], initialRoute = {} }) {
   const workAgents = useMemo(() => normalizeAgents(agents).slice(0, 2), [agents]);
@@ -378,6 +379,25 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     }
   }
 
+  async function pause() {
+    if (!selectedMission || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await pauseMission(selectedMission.id, { reason: "Paused by user" });
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
+    } catch (err) {
+      setError(err.message || "Pause failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function answer(event) {
     event.preventDefault();
     if (!selectedMission || busy || !answerText.trim()) return;
@@ -486,8 +506,8 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           onEvaluate={evaluate}
           onFollowUp={continueFollowUp}
           onFollowUpTextChange={setFollowUpText}
+          onPause={pause}
           onStart={start}
-          onStop={stop}
         />
         <div className="mission-content">
           <ActivityStrip events={events} mission={selectedMission} />

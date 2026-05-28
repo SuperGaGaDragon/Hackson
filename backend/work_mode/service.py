@@ -28,6 +28,7 @@ from work_mode.schemas import (
     MissionAnswerRequest,
     MissionCreateRequest,
     MissionFollowUpRequest,
+    MissionPauseRequest,
     MissionStartRequest,
     MissionStopRequest,
     ProjectCreateRequest,
@@ -235,6 +236,8 @@ class WorkModeService:
 
     def start_mission(self, user_id: str, mission_id: str, payload: MissionStartRequest) -> dict[str, Any]:
         mission = self._require_mission(user_id, mission_id)
+        previous_status = mission["status"]
+        previous_error = mission.get("last_error")
         if mission["status"] in {"running", "stopping"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_already_running")
         if mission["status"] == "completed":
@@ -260,18 +263,25 @@ class WorkModeService:
                 "iteration": 1,
                 "started_at": timestamp,
                 "ended_at": None,
-                "metadata": payload.metadata,
+                "metadata": _resume_metadata(payload.metadata, previous_status, previous_error),
             }
         )
+        is_resume = previous_status != "draft"
         self.append_event(
             user_id,
             mission,
             run=run,
             step=None,
             event_type="MISSION_STARTED",
-            title="Started",
-            message="Mission started.",
-            payload={"maxIterations": mission.get("max_iterations", 1), "employee": _employee_payload(mission)},
+            title="Resumed" if is_resume else "Started",
+            message="Mission resumed from checkpoint." if is_resume else "Mission started.",
+            payload={
+                "maxIterations": mission.get("max_iterations", 1),
+                "resumeReason": "checkpoint_resume" if is_resume else "initial_start",
+                "previousStatus": previous_status,
+                "previousError": previous_error,
+                "employee": _employee_payload(mission),
+            },
         )
         return self.get_mission_detail(user_id, str(mission["_id"]))
 
@@ -285,11 +295,43 @@ class WorkModeService:
         recovered_windows = 0
         recovered_runs = 0
         stopped_missions = 0
+        paused_missions = 0
         timestamp = now_utc()
         for mission in self.repository.list_missions_by_status(["running", "stopping"], limit):
             user_id = mission["user_id"]
             mission_id = str(mission["_id"])
             if mission["status"] == "stopping":
+                stop_mode = _control_request_mode(mission)
+                if stop_mode == "pause":
+                    running_runs = self.repository.update_running_runs_for_mission(
+                        mission_id,
+                        user_id,
+                        {"status": "paused", "ended_at": timestamp},
+                    )
+                    recovered_runs += len(running_runs)
+                    paused = self._update_mission(
+                        user_id,
+                        mission_id,
+                        {
+                            "status": "paused",
+                            "current_step": "Paused",
+                            "last_error": None,
+                            "updated_at": timestamp,
+                        },
+                    )
+                    run = running_runs[-1] if running_runs else self.repository.find_latest_run(mission_id, user_id)
+                    self.append_event(
+                        user_id,
+                        paused,
+                        run=run,
+                        step=None,
+                        event_type="MISSION_PAUSED",
+                        title="Paused",
+                        message="Mission paused during restart recovery.",
+                        payload={"status": "paused", "reason": reason, "employee": _employee_payload(paused)},
+                    )
+                    paused_missions += 1
+                    continue
                 running_runs = self.repository.update_running_runs_for_mission(
                     mission_id,
                     user_id,
@@ -370,6 +412,7 @@ class WorkModeService:
             "recoveredRuns": recovered_runs,
             "recoveredWindows": recovered_windows,
             "stoppedMissions": stopped_missions,
+            "pausedMissions": paused_missions,
         }
 
     def stop_mission(self, user_id: str, mission_id: str, payload: MissionStopRequest) -> dict[str, Any]:
@@ -377,12 +420,14 @@ class WorkModeService:
         if mission["status"] != "running":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_not_running")
         timestamp = now_utc()
+        metadata = _with_control_request(mission.get("metadata", {}), "stop", payload.reason)
         mission = self._update_mission(
             user_id,
             mission_id,
             {
                 "status": "stopping",
                 "current_step": "Stopping",
+                "metadata": metadata,
                 "updated_at": timestamp,
             },
         )
@@ -399,6 +444,37 @@ class WorkModeService:
         )
         if run is None:
             self.mark_mission_stopped(user_id, mission_id, run_id=None, step_id=None)
+        return self.get_mission_detail(user_id, mission_id)
+
+    def pause_mission(self, user_id: str, mission_id: str, payload: MissionPauseRequest) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        if mission["status"] != "running":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_not_running")
+        timestamp = now_utc()
+        metadata = _with_control_request(mission.get("metadata", {}), "pause", payload.reason)
+        mission = self._update_mission(
+            user_id,
+            mission_id,
+            {
+                "status": "stopping",
+                "current_step": "Pausing",
+                "metadata": metadata,
+                "updated_at": timestamp,
+            },
+        )
+        run = self.repository.find_active_run(str(mission["_id"]), user_id)
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="MISSION_PAUSE_REQUESTED",
+            title="Pause requested",
+            message=payload.reason or "User requested pause.",
+            payload={"reason": payload.reason, "employee": _employee_payload(mission)},
+        )
+        if run is None:
+            self.mark_mission_paused(user_id, mission_id, run_id=None, step_id=None)
         return self.get_mission_detail(user_id, mission_id)
 
     def answer_mission_input(self, user_id: str, mission_id: str, payload: MissionAnswerRequest) -> dict[str, Any]:
@@ -937,6 +1013,31 @@ class WorkModeService:
             payload={"status": "stopped", "employee": _employee_payload(mission)},
         )
 
+    def mark_mission_paused(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str | None,
+        step_id: str | None,
+    ) -> None:
+        timestamp = now_utc()
+        mission = self._update_mission(
+            user_id,
+            mission_id,
+            {"status": "paused", "current_step": "Paused", "last_error": None, "updated_at": timestamp},
+        )
+        run = self._update_run(user_id, run_id, {"status": "paused", "ended_at": timestamp}) if run_id else None
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step={"_id": step_id} if step_id else None,
+            event_type="MISSION_PAUSED",
+            title="Paused",
+            message="Mission paused.",
+            payload={"status": "paused", "employee": _employee_payload(mission)},
+        )
+
     def append_event(
         self,
         user_id: str,
@@ -964,8 +1065,13 @@ class WorkModeService:
         return public_event(self.repository.create_event(document))
 
     def should_stop(self, user_id: str, mission_id: str) -> bool:
+        return self.stop_request_mode(user_id, mission_id) is not None
+
+    def stop_request_mode(self, user_id: str, mission_id: str) -> str | None:
         mission = self._require_mission(user_id, mission_id)
-        return mission["status"] == "stopping"
+        if mission["status"] != "stopping":
+            return None
+        return _control_request_mode(mission)
 
     def _require_project(self, user_id: str, project_id: str) -> dict[str, Any]:
         project = self.repository.find_project(project_id, user_id)
@@ -1033,3 +1139,29 @@ def _agent_lead_payload(agent_id: str, agent_profiles: list[dict[str, Any]] | No
         "name": agent["name"],
         "role": agent["voice"],
     }
+
+
+def _resume_metadata(metadata: dict[str, Any], previous_status: str, previous_error: str | None) -> dict[str, Any]:
+    values = dict(metadata)
+    if previous_status != "draft":
+        values.setdefault("resumeReason", "checkpoint_resume")
+        values.setdefault("previousStatus", previous_status)
+        if previous_error:
+            values.setdefault("previousError", previous_error)
+    return values
+
+
+def _with_control_request(metadata: dict[str, Any], mode: str, reason: str | None) -> dict[str, Any]:
+    values = dict(metadata)
+    values["controlRequest"] = {
+        "mode": mode,
+        "reason": reason,
+        "requestedAt": now_utc(),
+    }
+    return values
+
+
+def _control_request_mode(mission: dict[str, Any]) -> str:
+    control_request = mission.get("metadata", {}).get("controlRequest", {})
+    mode = control_request.get("mode")
+    return mode if mode in {"pause", "stop"} else "stop"

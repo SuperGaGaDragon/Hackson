@@ -11,6 +11,8 @@ function WarningCard({ events }) {
       "MISSION_FAILED",
       "MISSION_BLOCKED",
       "MISSION_PAUSED_RETRYABLE",
+      "MISSION_PAUSE_REQUESTED",
+      "MISSION_PAUSED",
       "MODEL_TURN_RETRYING",
       "WORK_WINDOW_FAILED",
       "USER_INPUT_REQUESTED",

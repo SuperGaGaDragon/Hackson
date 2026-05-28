@@ -51,7 +51,11 @@ class MissionWorker:
             self.service.mark_mission_failed(user_id, mission_id, run_id, str(exc))
 
     def _run(self, user_id: str, mission_id: str, run_id: str) -> None:
-        if self.service.should_stop(user_id, mission_id):
+        stop_mode = self.service.stop_request_mode(user_id, mission_id)
+        if stop_mode == "pause":
+            self.service.mark_mission_paused(user_id, mission_id, run_id, step_id=None)
+            return
+        if stop_mode == "stop":
             self.service.mark_mission_stopped(user_id, mission_id, run_id, step_id=None)
             return
 
@@ -133,7 +137,11 @@ class MissionWorker:
             time.sleep(self.event_delay_seconds)
 
     def _stop_if_needed(self, user_id: str, mission_id: str, run_id: str, step_id: str) -> None:
-        if self.service.should_stop(user_id, mission_id):
+        stop_mode = self.service.stop_request_mode(user_id, mission_id)
+        if stop_mode == "pause":
+            self.service.mark_mission_paused(user_id, mission_id, run_id, step_id)
+            raise MissionStopped()
+        if stop_mode == "stop":
             self.service.mark_mission_stopped(user_id, mission_id, run_id, step_id)
             raise MissionStopped()
 

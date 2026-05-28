@@ -204,6 +204,7 @@ Required order:
 4. V1.0.4 immutable revision lineage.
 5. V1.0.5 controlled Web Search tool.
 6. V1.0.6 Evaluator tool and research/paper final-draft gates.
+7. V1.0.7 Resumable invalid-turn exhaustion and stateful Start/Pause/Resume controls.
 
 The quality track MUST preserve the core rule that the model chooses tools. It adds better tools, checks, and UI surfaces; it does not hard-code a writing workflow.
 
@@ -213,22 +214,26 @@ V1.0.x read-only cognition tools, including `discuss_with_delegate` and `web_sea
 
 `evaluate_product` is a backend-owned quality tool. The Lead chooses it, but Evaluator Runtime writes the Reliability Report. It MUST emit evaluation lifecycle events, MUST NOT edit Product content or finish the Mission, and MUST return actionable issue ids plus a recommended next tool. For research/paper-like Missions, `finish_mission` MUST reject outline-only final deliverables and SHOULD require a current Reliability Report before completion.
 
-See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, `issues/issue13-revision-lineage.md`, `issues/issue16-web-search-tool.md`, `issues/issue29-research-paper-final-draft-gate.md`, and `issues/issue30-evaluator-leader-tool.md`.
+See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, `issues/issue13-revision-lineage.md`, `issues/issue16-web-search-tool.md`, `issues/issue29-research-paper-final-draft-gate.md`, `issues/issue30-evaluator-leader-tool.md`, and `issues/issue32-resumable-failure-and-pause-resume-controls.md`.
 
 ## 9. Failure And Resume Strategy
 
 V1.0 distinguishes:
 
 - `waiting_input`: model asked the user a question.
-- `paused_retryable`: provider timeout, rate limit, or transient runtime failure.
+- `paused`: user intentionally paused the current Run; progress is preserved and Resume starts a new Run.
+- `paused_retryable`: provider timeout, rate limit, transient runtime failure, or model-correctable budget exhaustion.
 - `blocked`: model intentionally called `block_mission`.
-- `failed`: runtime/system failure or repeated invalid model turns.
-- `stopped`: user explicitly stopped the Mission.
+- `failed`: runtime/system failure where automatic continuation is unsafe.
+- `stopped`: legacy hard stop; main UI should prefer Pause/Resume.
 - `completed`: model called `finish_mission` and backend validation passed.
 
 Transient provider failures MUST NOT destroy Mission progress.
 
-See `state_machine.md` and `issues/issue4-retry-resume.md`.
+Repeated invalid schema/tool-contract turns and max-turn budget exhaustion MUST pause retryably instead of making a
+Mission look unrecoverable. Resume MUST create a new Run against persisted checkpoint state.
+
+See `state_machine.md`, `issues/issue4-retry-resume.md`, and `issues/issue32-resumable-failure-and-pause-resume-controls.md`.
 
 ## 10. Streaming Strategy
 

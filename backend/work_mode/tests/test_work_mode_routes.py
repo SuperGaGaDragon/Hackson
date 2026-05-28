@@ -561,6 +561,28 @@ class WorkModeRoutesTest(TestCase):
             ["MISSION_CREATED", "MISSION_STARTED", "MISSION_STOP_REQUESTED"],
         )
 
+    def test_pause_route_records_pause_requested_for_running_mission(self) -> None:
+        self.client.app.dependency_overrides[get_work_mode_worker_launcher] = lambda: lambda user_id, mission_id, run_id: None
+        project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={"projectId": project["id"], "title": "Mission", "goal": "Run V0."},
+        ).json()
+        self.client.post(f"/api/work/missions/{mission['id']}/start", json={})
+
+        response = self.client.post(f"/api/work/missions/{mission['id']}/pause", json={"reason": "pause"})
+
+        self.assertEqual(response.status_code, 200)
+        detail = response.json()
+        self.assertEqual(detail["mission"]["status"], "stopping")
+        self.assertEqual(detail["mission"]["currentStep"], "Pausing")
+        self.assertEqual(detail["mission"]["metadata"]["controlRequest"]["mode"], "pause")
+        self.assertEqual(detail["activeRun"]["status"], "running")
+        self.assertEqual(
+            [event["type"] for event in detail["events"]],
+            ["MISSION_CREATED", "MISSION_STARTED", "MISSION_PAUSE_REQUESTED"],
+        )
+
     def test_employee_routes_allow_project_lead_selection(self) -> None:
         project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
         employee_response = self.client.post(

@@ -157,9 +157,11 @@ Diagnostics MUST NOT be named `Logs` in the main UI.
 
 Control Panel MUST show:
 
-- Start.
-- Stop.
-- Resume when `paused_retryable`.
+- A single primary lifecycle control:
+  - Start for `draft`.
+  - Pause for `running`.
+  - Pausing disabled for `stopping`.
+  - Resume for `paused`, `paused_retryable`, `failed`, `stopped`, and `blocked`.
 - Answer form when `waiting_input`.
 - Current status.
 - Budget summary.

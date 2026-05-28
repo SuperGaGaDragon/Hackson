@@ -21,6 +21,7 @@ draft
 running
 waiting_input
 paused_retryable
+paused
 stopping
 stopped
 blocked
@@ -47,12 +48,19 @@ completed
 `paused_retryable`:
 
 - Provider timeout, rate limit, or transient runtime failure.
+- Model-correctable invalid-turn or turn-budget exhaustion.
+- Progress is preserved.
+- User can Resume.
+
+`paused`:
+
+- User intentionally paused the Mission.
 - Progress is preserved.
 - User can Resume.
 
 `stopping`:
 
-- User requested Stop.
+- User requested Pause or legacy Stop.
 - Runner should observe and end gracefully.
 
 `stopped`:
@@ -66,7 +74,7 @@ completed
 
 `failed`:
 
-- Runtime/system failure or repeated invalid model turns.
+- Runtime/system failure where automatic continuation is unsafe.
 
 `completed`:
 
@@ -81,13 +89,17 @@ running -> waiting_input
 waiting_input -> running
 running -> paused_retryable
 paused_retryable -> running
+running -> paused
+paused -> running
 running -> stopping
 stopping -> stopped
+stopping -> paused
 running -> blocked
 running -> failed
 running -> completed
 waiting_input -> stopping
 paused_retryable -> stopping
+paused -> stopping
 blocked -> running
 failed -> running
 stopped -> running
@@ -114,6 +126,10 @@ Terminal for product success:
 User stop:
 
 - MUST produce `stopped`, not `failed`.
+
+User pause:
+
+- MUST produce `paused`, not `failed`.
 
 Model intentional block:
 
@@ -268,6 +284,8 @@ Resume from `paused_retryable`:
 - MUST use the last successful tool observation as part of context.
 - MUST NOT replay already persisted tools.
 
+Resume from `paused` follows the same checkpoint rules.
+
 Retryable provider failures:
 
 - MAY emit `MODEL_TURN_RETRYING` before Mission pause when automatic retry budget remains.
@@ -280,6 +298,7 @@ Process restart recovery:
 - Any `running` Work Window owned by that Mission MUST become `failed` with a restart/interruption summary.
 - Recovery MUST emit visible events, normally `WORK_WINDOW_FAILED` followed by `MISSION_PAUSED_RETRYABLE`.
 - A stale `stopping` Mission MUST become `stopped`.
+- If `stopping` has `controlRequest.mode=pause`, it MUST become `paused`.
 - Recovery MUST preserve existing Products, Artifacts, Work Windows, and Events so the user can resume.
 
 Resume from `waiting_input`:
@@ -297,7 +316,7 @@ Restart from `failed`, `blocked`, `stopped`, or `completed`:
 If max model turns, max windows, max Products, or max Artifacts is exceeded:
 
 - If a valid final Product exists, backend MAY ask model for `finish_mission` once.
-- If no final Product exists, backend SHOULD mark Mission `blocked` with budget reason.
+- If no final Product exists, model-turn budget exhaustion SHOULD mark Mission `paused_retryable` with budget reason.
 
 Budget exhaustion MUST NOT silently complete a Mission.
 

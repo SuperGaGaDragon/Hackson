@@ -24,7 +24,7 @@ MissionStatus = Literal[
     "failed",
     "completed",
 ]
-RunStatus = Literal["running", "waiting_input", "paused_retryable", "stopped", "failed", "completed", "blocked"]
+RunStatus = Literal["running", "waiting_input", "paused", "paused_retryable", "stopped", "failed", "completed", "blocked"]
 StepStatus = Literal["pending", "running", "failed", "completed", "skipped"]
 AutonomyLevel = Literal["supervised"]
 ArtifactKind = Literal[
@@ -77,6 +77,8 @@ EventType = Literal[
     "USER_INPUT_RECEIVED",
     "USER_FOLLOWUP_REQUESTED",
     "MISSION_PAUSED_RETRYABLE",
+    "MISSION_PAUSE_REQUESTED",
+    "MISSION_PAUSED",
     "MISSION_BLOCKED",
     "STEP_COMPLETED",
     "MISSION_STOP_REQUESTED",
@@ -189,6 +191,18 @@ class MissionStartRequest(BaseModel):
 
 
 class MissionStopRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("reason")
+    @classmethod
+    def strip_reason(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+
+class MissionPauseRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=1000)
 
     @field_validator("reason")
