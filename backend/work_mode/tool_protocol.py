@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -18,6 +18,9 @@ ToolName = Literal[
     "ask_user",
     "finish_mission",
     "block_mission",
+    "review_product",
+    "discuss_with_delegate",
+    "web_search",
 ]
 
 
@@ -121,6 +124,76 @@ class BlockMissionArguments(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class ReviewFinding(BaseModel):
+    severity: Literal["critical", "major", "minor"]
+    area: Literal["requirement", "structure", "length", "consistency", "style", "readability", "other"]
+    claim: str = Field(min_length=1, max_length=1000)
+    evidence: str = Field(default="", max_length=2000)
+    required_change: str = Field(default="", max_length=2000, alias="requiredChange")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ReviewProductArguments(BaseModel):
+    reason: str = Field(min_length=1, max_length=240)
+    product_ids: list[str] = Field(default_factory=list, alias="productIds")
+    artifact_ids: list[str] = Field(default_factory=list, alias="artifactIds")
+    review_title: str = Field(min_length=1, max_length=200, alias="reviewTitle")
+    review_profile: Literal["long_form_novel_v1", "general_text_v1"] = Field(alias="reviewProfile")
+    verdict: Literal["pass", "needs_revision", "blocked"]
+    score: int = Field(ge=0, le=100)
+    summary: str = Field(min_length=1, max_length=2000)
+    findings: list[ReviewFinding] = Field(default_factory=list, max_length=20)
+    passed_checks: list[str] = Field(default_factory=list, alias="passedChecks")
+    recommended_next_tool: Literal[
+        "work_product",
+        "discuss_with_delegate",
+        "finish_mission",
+        "ask_user",
+        "block_mission",
+    ] = Field(alias="recommendedNextTool")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="after")
+    def validate_review_target(self) -> "ReviewProductArguments":
+        if not self.product_ids and not self.artifact_ids:
+            raise ValueError("review_product_requires_product_or_artifact")
+        return self
+
+
+class DiscussWithDelegateArguments(BaseModel):
+    reason: str = Field(min_length=1, max_length=240)
+    agent_slot: Literal["agent_1", "agent_2"] = Field(alias="agentSlot")
+    discussion_title: str = Field(min_length=1, max_length=200, alias="discussionTitle")
+    window_id: str | None = Field(default=None, alias="windowId")
+    product_id: str | None = Field(default=None, alias="productId")
+    artifact_ids: list[str] = Field(default_factory=list, alias="artifactIds")
+    question: str = Field(min_length=1, max_length=4000)
+    expected_outcome: str = Field(min_length=1, max_length=2000, alias="expectedOutcome")
+    max_turns: int = Field(default=1, ge=1, le=3, alias="maxTurns")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="after")
+    def validate_discussion_binding(self) -> "DiscussWithDelegateArguments":
+        if not self.window_id and not self.product_id and not self.artifact_ids:
+            raise ValueError("discussion_requires_product_artifact_or_window")
+        return self
+
+
+class WebSearchArguments(BaseModel):
+    reason: str = Field(min_length=1, max_length=240)
+    query: str = Field(min_length=1, max_length=500)
+    search_type: Literal["general", "news", "technical", "reference"] = Field(default="general", alias="searchType")
+    max_results: int = Field(default=5, ge=1, le=10, alias="maxResults")
+    recency_days: int | None = Field(default=None, ge=0, le=3650, alias="recencyDays")
+    allowed_domains: list[str] = Field(default_factory=list, max_length=10, alias="allowedDomains")
+    blocked_domains: list[str] = Field(default_factory=list, max_length=10, alias="blockedDomains")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 ToolArguments = (
     MissionPlanArguments
     | WorkProductArguments
@@ -129,6 +202,9 @@ ToolArguments = (
     | AskUserArguments
     | FinishMissionArguments
     | BlockMissionArguments
+    | ReviewProductArguments
+    | DiscussWithDelegateArguments
+    | WebSearchArguments
 )
 
 
@@ -182,6 +258,9 @@ def _argument_model(tool: ToolName) -> type[ToolArguments]:
         "ask_user": AskUserArguments,
         "finish_mission": FinishMissionArguments,
         "block_mission": BlockMissionArguments,
+        "review_product": ReviewProductArguments,
+        "discuss_with_delegate": DiscussWithDelegateArguments,
+        "web_search": WebSearchArguments,
     }[tool]
 
 

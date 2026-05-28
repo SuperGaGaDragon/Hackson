@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -17,6 +17,9 @@ AVAILABLE_V1_TOOLS: tuple[ToolName, ...] = (
     "ask_user",
     "finish_mission",
     "block_mission",
+    "review_product",
+    "discuss_with_delegate",
+    "web_search",
 )
 
 
@@ -42,6 +45,7 @@ def build_lead_context(
         "toolActionEnvelope": {"tool": "one available tool name", "arguments": "object matching toolSchemas[tool]"},
         "toolSchemas": _tool_schemas(),
         "toolExamples": _tool_examples(),
+        "toolUseGuidance": _tool_use_guidance(),
         "hardConstraints": [
             "Return exactly one tool action.",
             "Return valid JSON only, with top-level tool and arguments.",
@@ -51,6 +55,9 @@ def build_lead_context(
             "Do not use shell, file, browser, or computer-control tools.",
             "For long writing goals, split work into Product Artifacts and Delegate windows instead of trying to finish all content in one Lead turn.",
             "Use work_product whenever you need to show or persist natural-language output.",
+            "Use review_product to persist a bounded quality review before revising or finishing when needed.",
+            "Use discuss_with_delegate for a short scoped discussion about a Product, Artifact, or Work Window.",
+            "Use web_search only for bounded external references; use work_product later to write user-visible output.",
         ],
         "productManifest": [_product_manifest(product) for product in products],
         "workWindowManifest": [_window_manifest(window) for window in work_windows],
@@ -195,6 +202,53 @@ def _tool_schemas() -> dict[str, Any]:
         "block_mission": {
             "arguments": {"reason": "string <=240", "blockedReason": "string", "neededFromUser": "string"}
         },
+        "review_product": {
+            "arguments": {
+                "reason": "string <=240",
+                "productIds": ["product id strings"],
+                "artifactIds": ["artifact id strings"],
+                "reviewTitle": "string",
+                "reviewProfile": "long_form_novel_v1|general_text_v1",
+                "verdict": "pass|needs_revision|blocked",
+                "score": "integer 0-100",
+                "summary": "string",
+                "findings": [
+                    {
+                        "severity": "critical|major|minor",
+                        "area": "requirement|structure|length|consistency|style|readability|other",
+                        "claim": "string",
+                        "evidence": "string",
+                        "requiredChange": "string",
+                    }
+                ],
+                "passedChecks": ["strings"],
+                "recommendedNextTool": "work_product|discuss_with_delegate|finish_mission|ask_user|block_mission",
+            }
+        },
+        "discuss_with_delegate": {
+            "arguments": {
+                "reason": "string <=240",
+                "agentSlot": "non-lead agent_1 or agent_2",
+                "discussionTitle": "string",
+                "windowId": "string|null",
+                "productId": "string|null",
+                "artifactIds": ["artifact id strings"],
+                "question": "string",
+                "expectedOutcome": "string",
+                "maxTurns": "integer 1-3",
+            }
+        },
+        "web_search": {
+            "arguments": {
+                "reason": "string <=240",
+                "query": "string",
+                "searchType": "general|news|technical|reference",
+                "maxResults": "integer 1-10",
+                "recencyDays": "integer|null",
+                "allowedDomains": ["domain strings"],
+                "blockedDomains": ["domain strings"],
+            }
+        },
     }
 
 
@@ -232,3 +286,13 @@ def _tool_examples() -> dict[str, Any]:
             },
         },
     }
+
+
+def _tool_use_guidance() -> list[str]:
+    return [
+        "Prefer web_search early when the Mission depends on current facts, external references, named organizations, market data, recent events, technical/source-backed claims, or niche facts not already supported by Product or Artifact context.",
+        "Prefer review_product before finish_mission when the Mission has a substantive deliverable and no recent review exists for the final candidate.",
+        "Prefer discuss_with_delegate after a review with critical or major findings, after conflicting evidence, or when a second Agent can improve structure, quality, or tradeoff decisions.",
+        "Prefer work_product after web_search, review_product, or discuss_with_delegate when the observation should become user-visible deliverable content.",
+        "Avoid ask_user when the Mission already grants autonomy, such as 题材自定 or 不限题材.",
+    ]

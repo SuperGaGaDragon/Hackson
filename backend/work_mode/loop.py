@@ -1,13 +1,15 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
 from concurrent.futures import ThreadPoolExecutor
 from time import monotonic, sleep
 from typing import Any, Protocol
+
+from fastapi import HTTPException
 
 from work_mode.action_client import ToolActionClientError
 from work_mode.context import build_lead_context
@@ -104,7 +106,6 @@ class MissionLoopRunner:
                     "instruction": "Return exactly one valid JSON Action using the available tools.",
                 }
                 continue
-            invalid_turns = 0
             self._append_model_turn_event(
                 user_id,
                 mission_id,
@@ -125,6 +126,37 @@ class MissionLoopRunner:
             )
             try:
                 result = self.executor.execute(user_id, mission_id, run_id, action)
+            except HTTPException as exc:
+                invalid_turns += 1
+                code = str(exc.detail or f"http_{exc.status_code}")
+                self._append_model_turn_event(
+                    user_id,
+                    mission_id,
+                    run_id,
+                    "MODEL_TURN_INVALID",
+                    "Tool rejected",
+                    code,
+                    {
+                        "turn": turn_index + 1,
+                        "tool": action.tool,
+                        "code": code,
+                        "statusCode": exc.status_code,
+                        "attempt": invalid_turns,
+                        "phase": "tool_execution",
+                    },
+                )
+                if invalid_turns > self.max_invalid_turns:
+                    self.service.mark_mission_failed(user_id, mission_id, run_id, code, step_id=None)
+                    return self.service.get_mission_detail(user_id, mission_id)
+                last_observation = {
+                    "tool": action.tool,
+                    "status": "rejected",
+                    "code": code,
+                    "message": code,
+                    "statusCode": exc.status_code,
+                    "instruction": _tool_rejection_instruction(action.tool, code),
+                }
+                continue
             except ToolActionClientError as exc:
                 if exc.retryable:
                     self.service.mark_mission_paused_retryable(
@@ -137,6 +169,7 @@ class MissionLoopRunner:
                     return self.service.get_mission_detail(user_id, mission_id)
                 self.service.mark_mission_failed(user_id, mission_id, run_id, exc.code, step_id=None)
                 return self.service.get_mission_detail(user_id, mission_id)
+            invalid_turns = 0
             last_observation = result.observation
             self._publish_test_visible_result(result)
             if result.terminal:
@@ -312,6 +345,8 @@ def _tool_title(tool: str) -> str:
         "ask_user": "Ask",
         "finish_mission": "Finish",
         "block_mission": "Block",
+        "review_product": "Review",
+        "discuss_with_delegate": "Discuss",
     }.get(tool, "Tool")
 
 
@@ -327,3 +362,25 @@ def _tool_event_arguments(action: ToolAction) -> dict[str, Any]:
     if "brief" in values:
         values["briefPreview"] = str(values.pop("brief"))[:320]
     return values
+
+
+def _tool_rejection_instruction(tool: str, code: str) -> str:
+    if tool == "finish_mission" and code in {
+        "final_artifact_required",
+        "final_artifact_not_in_final_product",
+        "final_artifact_not_final_content",
+        "final_artifact_cjk_too_short",
+        "missing_outline_artifact",
+        "missing_chapter_artifact",
+    }:
+        return (
+            "Repair the Product before finishing: call work_product on the existing Product, create or revise an "
+            'Artifact with artifactKind="final", include the complete final deliverable content, then call '
+            "finish_mission with that final Artifact id."
+        )
+    if code in {"product_not_found", "artifact_not_found"}:
+        return (
+            "Use only Product and Artifact ids from productManifest, recentArtifactContent, or inspect_product. "
+            "Call inspect_product if you need to confirm the correct references."
+        )
+    return "Choose the next valid tool call that repairs this rejected tool request."

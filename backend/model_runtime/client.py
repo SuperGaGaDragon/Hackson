@@ -31,7 +31,7 @@ class OpenAICompatibleClient:
             "max_completion_tokens": request.max_output_tokens or config.max_output_tokens,
             "temperature": request.temperature if request.temperature is not None else config.temperature,
         }
-        response = self._post_json(url, config.api_key, payload, config.timeout_seconds)
+        response = self._post_json(url, config.api_key, payload, _request_timeout(config, request))
         return ModelGenerateResponse(
             text=_extract_text(response),
             model_name=response.get("model") or config.model_name,
@@ -79,7 +79,7 @@ class CodexCliClient:
                 completed = _run_codex_subprocess(
                     _codex_command(config, request, workdir, output_path),
                     input=prompt,
-                    timeout_seconds=config.timeout_seconds,
+                    timeout_seconds=_request_timeout(config, request),
                     env=_codex_env(config),
                 )
                 if completed.returncode != 0:
@@ -117,20 +117,34 @@ def _run_codex_subprocess(
         start_new_session=True,
         env=env,
     )
+    timed_out = False
     try:
         stdout, stderr = process.communicate(input=input, timeout=timeout_seconds)
     except subprocess.TimeoutExpired:
-        _terminate_process_group(process)
-        process.wait(timeout=5)
+        timed_out = True
+        _terminate_process_group(process, force_after_seconds=5)
         raise
+    finally:
+        if not timed_out:
+            _terminate_process_group(process, force_after_seconds=2)
     return subprocess.CompletedProcess(command, process.returncode, stdout=stdout, stderr=stderr)
 
 
-def _terminate_process_group(process: subprocess.Popen[str]) -> None:
+def _terminate_process_group(process: subprocess.Popen[str], force_after_seconds: float = 2) -> None:
     try:
         os.killpg(process.pid, signal.SIGTERM)
     except ProcessLookupError:
         return
+    try:
+        process.wait(timeout=force_after_seconds)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    process.wait(timeout=force_after_seconds)
 
 
 def _chat_completions_url(base_url: str) -> str:
@@ -236,7 +250,7 @@ class OpenAIResponsesClient:
             payload["tools"] = [{"type": "web_search"}]
             payload["tool_choice"] = "auto"
 
-        response = self._post_json(url, config.api_key, payload, config.timeout_seconds)
+        response = self._post_json(url, config.api_key, payload, _request_timeout(config, request))
         return ModelGenerateResponse(
             text=_extract_response_text(response),
             model_name=response.get("model") or config.model_name,
@@ -336,3 +350,9 @@ def _extract_tool_events(response: dict[str, Any]) -> list[dict[str, Any]]:
                 }
             )
     return events
+
+
+def _request_timeout(config: ModelRuntimeConfig, request: ModelGenerateRequest) -> float:
+    if request.timeout_seconds is not None and request.timeout_seconds > 0:
+        return request.timeout_seconds
+    return config.timeout_seconds

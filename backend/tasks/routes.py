@@ -1,25 +1,34 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
 from fastapi import APIRouter, Depends, Query, status
 
 from context.builder import ContextBuilder
+from context.repository import ContextPackageRepository
+from context.runtime import ContextRuntime
+from context.service import ContextPackageService
 from conversations.repository import ConversationRepository
 from conversations.service import ConversationService
 from core.database import get_database
 from interactions.schemas import InteractionResponse, InteractionUserMessageRequest
 from interactions.service import InteractionService
+from memory.repository import MemoryRepository
+from memory.service import MemoryService
 from model_runtime.client import CodexCliClient, OpenAICompatibleClient, OpenAIResponsesClient
 from model_runtime.config_repository import ModelRuntimeConfigRepository
 from model_runtime.orchestrator import ModelRuntime
+from summaries.repository import SummaryRepository
+from summaries.service import SummaryService
 from tasks.repository import TaskRepository
 from tasks.schemas import TaskCreateRequest, TaskResponse
 from tasks.service import TaskService
 from users.auth import get_current_user_id
+from users.repository import UserRepository
+from users.service import UserService
 from workers.derived_jobs import DerivedJobRepository, DerivedJobService
 
 router = APIRouter()
@@ -31,7 +40,9 @@ def get_task_service() -> TaskService:
 
 
 def get_work_interaction_service() -> InteractionService:
-    conversation_service = ConversationService(ConversationRepository(get_database()))
+    database = get_database()
+    conversation_service = ConversationService(ConversationRepository(database))
+    context_builder = ContextBuilder()
     model_runtime = ModelRuntime(
         config_repository=ModelRuntimeConfigRepository(),
         client=OpenAICompatibleClient(),
@@ -40,9 +51,16 @@ def get_work_interaction_service() -> InteractionService:
     )
     return InteractionService(
         conversation_service=conversation_service,
-        context_builder=ContextBuilder(),
+        context_builder=context_builder,
+        context_runtime=ContextRuntime(
+            context_builder,
+            ContextPackageService(ContextPackageRepository(database)),
+        ),
         model_runtime=model_runtime,
-        derived_jobs=DerivedJobService(DerivedJobRepository(get_database())),
+        derived_jobs=DerivedJobService(DerivedJobRepository(database)),
+        user_service=UserService(UserRepository(database)),
+        summary_service=SummaryService(SummaryRepository(database)),
+        memory_service=MemoryService(MemoryRepository(database)),
     )
 
 

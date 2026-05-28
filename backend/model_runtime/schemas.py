@@ -32,6 +32,7 @@ class ModelGenerateRequest(BaseModel):
     messages: list[RuntimeMessage]
     max_output_tokens: int | None = None
     temperature: float | None = None
+    timeout_seconds: float | None = None
     reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = None
     tool_policy: Literal["disabled", "auto_search"] | None = None
     use_responses_api: bool | None = None

@@ -32,12 +32,13 @@ class ToolActionClientError(RuntimeError):
 class ToolActionClient:
     """Provider-agnostic JSON Action adapter over model_runtime."""
 
-    def __init__(self, model_runtime: ModelRuntimeProtocol):
+    def __init__(self, model_runtime: ModelRuntimeProtocol, timeout_seconds: float | None = None):
         self.model_runtime = model_runtime
+        self.timeout_seconds = timeout_seconds
 
     def generate_action(self, context: dict[str, Any]) -> ToolAction:
         try:
-            response = self.model_runtime.generate(_action_request(context))
+            response = self.model_runtime.generate(_action_request(context, timeout_seconds=self.timeout_seconds))
         except ModelRuntimeError as exc:
             code = exc.code
             raise ToolActionClientError(code, code, retryable=_is_retryable_model_error(exc)) from exc
@@ -51,17 +52,18 @@ class ToolActionClient:
 class DelegateResultClient:
     """Provider-agnostic structured result adapter for one-shot Delegate Agent windows."""
 
-    def __init__(self, model_runtime: ModelRuntimeProtocol):
+    def __init__(self, model_runtime: ModelRuntimeProtocol, timeout_seconds: float | None = None):
         self.model_runtime = model_runtime
+        self.timeout_seconds = timeout_seconds
 
     def generate_delegate_result(self, context: dict[str, Any]) -> str:
         try:
-            return self.model_runtime.generate(_delegate_request(context)).text
+            return self.model_runtime.generate(_delegate_request(context, timeout_seconds=self.timeout_seconds)).text
         except ModelRuntimeError as exc:
             raise ToolActionClientError(exc.code, exc.code, retryable=_is_retryable_model_error(exc)) from exc
 
 
-def _action_request(context: dict[str, Any]) -> ModelGenerateRequest:
+def _action_request(context: dict[str, Any], timeout_seconds: float | None = None) -> ModelGenerateRequest:
     return ModelGenerateRequest(
         messages=[
             RuntimeMessage(
@@ -81,11 +83,12 @@ def _action_request(context: dict[str, Any]) -> ModelGenerateRequest:
         ],
         max_output_tokens=1800,
         temperature=0.2,
+        timeout_seconds=timeout_seconds,
         reasoning_effort="low",
     )
 
 
-def _delegate_request(context: dict[str, Any]) -> ModelGenerateRequest:
+def _delegate_request(context: dict[str, Any], timeout_seconds: float | None = None) -> ModelGenerateRequest:
     return ModelGenerateRequest(
         messages=[
             RuntimeMessage(
@@ -103,6 +106,7 @@ def _delegate_request(context: dict[str, Any]) -> ModelGenerateRequest:
         ],
         max_output_tokens=3000,
         temperature=0.45,
+        timeout_seconds=timeout_seconds,
         reasoning_effort="low",
     )
 

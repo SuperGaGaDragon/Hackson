@@ -13,7 +13,7 @@ Last Modified by: Codex
 
 ## folder structure
 |-README.md backend app test folder guide
-|-test_main_static_frontend.py verifies production static frontend mounting
+|-test_main_static_frontend.py verifies production static frontend mounting and startup worker wiring
 
 ## 代办
 - Add app-level health and startup smoke tests if deployment behavior grows beyond static hosting.

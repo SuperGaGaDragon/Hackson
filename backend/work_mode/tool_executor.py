@@ -12,15 +12,20 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from work_mode.action_client import ToolActionClientError
 from work_mode.context import build_delegate_context
+from work_mode.quality_checks import validate_final_product_quality
+from work_mode.search import SearchProviderError
 from work_mode.service import WorkModeService
 from work_mode.tool_protocol import (
     AskUserArguments,
     BlockMissionArguments,
     DelegateAgentArguments,
+    DiscussWithDelegateArguments,
     FinishMissionArguments,
     InspectProductArguments,
     MissionPlanArguments,
+    ReviewProductArguments,
     ToolAction,
+    WebSearchArguments,
     WorkProductArguments,
 )
 
@@ -45,6 +50,10 @@ class DelegateClientProtocol(Protocol):
     def generate_delegate_result(self, context: dict[str, Any]) -> str | dict[str, Any]: ...
 
 
+class SearchProviderProtocol(Protocol):
+    def search(self, request: dict[str, Any]) -> dict[str, Any]: ...
+
+
 class DelegateResult(BaseModel):
     status: str = Field(pattern="^(completed|blocked)$")
     title: str = Field(min_length=1, max_length=200)
@@ -56,12 +65,60 @@ class DelegateResult(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class DiscussionTranscriptTurn(BaseModel):
+    speaker: str = Field(pattern="^(lead|delegate)$")
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class DiscussionResult(BaseModel):
+    status: str = Field(pattern="^(completed|blocked)$")
+    title: str = Field(min_length=1, max_length=200)
+    summary: str = Field(min_length=1, max_length=1000)
+    transcript: list[DiscussionTranscriptTurn] = Field(default_factory=list, max_length=12)
+    recommendation: str = Field(default="", max_length=2000)
+    reason: str = Field(min_length=1, max_length=240)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class WebSearchResultItem(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    url: str = Field(min_length=1, max_length=2000)
+    source: str = Field(default="", max_length=200)
+    snippet: str = Field(default="", max_length=1200)
+    published_at: str | None = Field(default=None, alias="publishedAt")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class WebSearchProviderResult(BaseModel):
+    status: str = Field(pattern="^(ok|failed)$")
+    results: list[WebSearchResultItem] = Field(default_factory=list, max_length=10)
+    truncated: bool = False
+    provider: str = Field(default="unknown", max_length=120)
+    query: str | None = Field(default=None, max_length=500)
+    effective_query: str | None = Field(default=None, max_length=500, alias="effectiveQuery")
+    fallback_applied: bool = Field(default=False, alias="fallbackApplied")
+    fallback_reason: str | None = Field(default=None, max_length=120, alias="fallbackReason")
+    attempt_count: int = Field(default=1, ge=1, le=5, alias="attemptCount")
+    code: str | None = Field(default=None, max_length=120)
+    retryable: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class WorkModeToolExecutor:
     """Execute V1.0 database-only Work Mode tools."""
 
-    def __init__(self, service: WorkModeService, delegate_client: DelegateClientProtocol | None = None):
+    def __init__(
+        self,
+        service: WorkModeService,
+        delegate_client: DelegateClientProtocol | None = None,
+        search_provider: SearchProviderProtocol | None = None,
+    ):
         self.service = service
         self.delegate_client = delegate_client
+        self.search_provider = search_provider
 
     def execute(self, user_id: str, mission_id: str, run_id: str, action: ToolAction) -> ToolExecutionResult:
         if action.tool == "mission_plan":
@@ -78,6 +135,12 @@ class WorkModeToolExecutor:
             return self._finish_mission(user_id, mission_id, run_id, action.arguments)
         if action.tool == "block_mission":
             return self._block_mission(user_id, mission_id, run_id, action.arguments)
+        if action.tool == "review_product":
+            return self._review_product(user_id, mission_id, run_id, action.arguments)
+        if action.tool == "discuss_with_delegate":
+            return self._discuss_with_delegate(user_id, mission_id, run_id, action.arguments)
+        if action.tool == "web_search":
+            return self._web_search(user_id, mission_id, run_id, action.arguments)
         return ToolExecutionResult(
             {"tool": action.tool, "status": "unsupported", "message": "tool_not_implemented"},
             terminal=True,
@@ -418,7 +481,7 @@ class WorkModeToolExecutor:
         arguments: AskUserArguments,
     ) -> ToolExecutionResult:
         mission = self.service._require_mission(user_id, mission_id)
-        mission = self.service.mark_mission_waiting_input(user_id, mission_id, arguments.question)
+        mission = self.service.mark_mission_waiting_input(user_id, mission_id, arguments.question, run_id=run_id)
         self.service.append_event(
             user_id,
             mission,
@@ -454,6 +517,12 @@ class WorkModeToolExecutor:
             raise _http_not_found("product_not_found")
         for artifact_id in arguments.final_artifact_ids:
             self.service.require_artifact(user_id, mission_id, artifact_id)
+        quality = validate_final_product_quality(
+            mission,
+            self.service.get_mission_detail(user_id, mission_id),
+            arguments.final_product_ids,
+            arguments.final_artifact_ids,
+        )
         for product_id in arguments.final_product_ids:
             self.service.mark_product_final(user_id, product_id)
         self.service.mark_mission_completed(
@@ -473,6 +542,7 @@ class WorkModeToolExecutor:
                 "finalProductIds": arguments.final_product_ids,
                 "finalArtifactIds": arguments.final_artifact_ids,
                 "missionStatus": "completed",
+                "quality": quality,
                 "employee": _employee_payload(mission),
             },
             terminal=True,
@@ -505,6 +575,366 @@ class WorkModeToolExecutor:
             {"tool": "block_mission", "status": "blocked", "blockedReason": arguments.blocked_reason},
             terminal=True,
         )
+
+    def _review_product(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        arguments: ReviewProductArguments,
+    ) -> ToolExecutionResult:
+        mission = self.service._require_mission(user_id, mission_id)
+        run = {"_id": run_id}
+        detail = self.service.get_mission_detail(user_id, mission_id)
+        product_ids = _require_public_products(detail["products"], arguments.product_ids)
+        artifact_ids = _require_public_artifacts_by_ids(detail["artifacts"], arguments.artifact_ids)
+        if not artifact_ids:
+            artifact_ids = [
+                artifact_id
+                for product in detail["products"]
+                if product["id"] in product_ids
+                for artifact_id in product.get("artifactIds", [])
+            ]
+        primary_product_id = product_ids[0] if product_ids else _product_id_for_artifact(detail, artifact_ids[0])
+        content = _review_content(arguments)
+        artifact = self.service.create_product_artifact(
+            user_id,
+            mission_id,
+            run_id,
+            primary_product_id,
+            kind="report",
+            title=arguments.review_title,
+            content=content,
+            summary=arguments.summary,
+            created_by=_employee_payload(mission),
+            source_artifact_ids=artifact_ids,
+            work_window_id=None,
+            metadata={
+                "summary": arguments.summary,
+                "artifactRole": "review",
+                "reviewProfile": arguments.review_profile,
+                "verdict": arguments.verdict,
+                "score": arguments.score,
+                "findings": [finding.model_dump(by_alias=True) for finding in arguments.findings],
+                "passedChecks": arguments.passed_checks,
+                "recommendedNextTool": arguments.recommended_next_tool,
+            },
+        )
+        self.service.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="PRODUCT_REVIEWED",
+            title=arguments.review_title,
+            message=arguments.summary,
+            payload={
+                "reason": arguments.reason,
+                "productIds": product_ids,
+                "artifactIds": artifact_ids,
+                "reviewArtifactId": artifact["id"],
+                "verdict": arguments.verdict,
+                "score": arguments.score,
+                "findings": [finding.model_dump(by_alias=True) for finding in arguments.findings],
+                "recommendedNextTool": arguments.recommended_next_tool,
+                "employee": _employee_payload(mission),
+            },
+        )
+        return ToolExecutionResult(
+            {
+                "tool": "review_product",
+                "status": "ok",
+                "reviewArtifactId": artifact["id"],
+                "verdict": arguments.verdict,
+                "score": arguments.score,
+                "summary": arguments.summary,
+            },
+            artifact_id=artifact["id"],
+            product_id=primary_product_id,
+        )
+
+    def _discuss_with_delegate(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        arguments: DiscussWithDelegateArguments,
+    ) -> ToolExecutionResult:
+        if self.delegate_client is None:
+            return ToolExecutionResult(
+                {"tool": "discuss_with_delegate", "status": "error", "message": "delegate_client_unavailable"},
+                terminal=True,
+            )
+        mission = self.service._require_mission(user_id, mission_id)
+        lead = _employee_payload(mission)
+        if arguments.agent_slot == lead["id"]:
+            return ToolExecutionResult(
+                {"tool": "discuss_with_delegate", "status": "error", "message": "delegate_target_must_be_non_lead"},
+                terminal=True,
+            )
+        detail = self.service.get_mission_detail(user_id, mission_id)
+        product_id = _require_optional_product(detail["products"], arguments.product_id)
+        artifact_ids = _require_public_artifacts_by_ids(detail["artifacts"], arguments.artifact_ids)
+        if product_id is None and artifact_ids:
+            product_id = _product_id_for_artifact(detail, artifact_ids[0])
+        window = self.service.create_work_window(
+            user_id,
+            mission_id,
+            run_id,
+            agent_slot=arguments.agent_slot,
+            title=arguments.discussion_title,
+            brief=arguments.question,
+            metadata={
+                "windowType": "discussion",
+                "reason": arguments.reason,
+                "sourceWindowId": arguments.window_id,
+                "productId": product_id,
+                "sourceArtifactIds": artifact_ids,
+                "expectedOutcome": arguments.expected_outcome,
+                "maxTurns": arguments.max_turns,
+            },
+        )
+        self.service.append_event(
+            user_id,
+            mission,
+            run={"_id": run_id},
+            step=None,
+            event_type="DISCUSSION_WINDOW_OPENED",
+            title=arguments.discussion_title,
+            message=arguments.question,
+            payload={"windowId": window["id"], "agentSlot": arguments.agent_slot, "employee": lead},
+        )
+        discussion_context = {
+            "mission": detail["mission"],
+            "delegateAgent": _delegate_agent_payload(arguments.agent_slot),
+            "discussionTitle": arguments.discussion_title,
+            "question": arguments.question,
+            "expectedOutcome": arguments.expected_outcome,
+            "maxTurns": arguments.max_turns,
+            "sourceWindowId": arguments.window_id,
+            "targetProduct": _find_public_product(detail["products"], product_id),
+            "sourceArtifacts": _find_public_artifacts(detail["artifacts"], artifact_ids),
+            "responseContract": (
+                "Return structured discussion JSON with status, title, summary, transcript, recommendation, and reason. "
+                "Do not modify product content or finish the mission."
+            ),
+        }
+        try:
+            discussion_result = _parse_discussion_result(
+                self.delegate_client.generate_delegate_result(discussion_context),
+                fallback_title=arguments.discussion_title,
+                fallback_reason=arguments.reason,
+            )
+        except ToolActionClientError as exc:
+            failed_window = self.service.mark_work_window_failed(user_id, window["id"], exc.code)
+            self.service.append_event(
+                user_id,
+                mission,
+                run={"_id": run_id},
+                step=None,
+                event_type="DISCUSSION_WINDOW_FAILED",
+                title="Discussion failed",
+                message=exc.code,
+                payload={"windowId": failed_window["id"], "error": exc.code, "employee": lead},
+            )
+            raise
+        except ValueError as exc:
+            failed_window = self.service.mark_work_window_failed(user_id, window["id"], "discussion_result_invalid")
+            self.service.append_event(
+                user_id,
+                mission,
+                run={"_id": run_id},
+                step=None,
+                event_type="DISCUSSION_WINDOW_FAILED",
+                title="Discussion failed",
+                message="discussion_result_invalid",
+                payload={"windowId": failed_window["id"], "error": "discussion_result_invalid", "employee": lead},
+            )
+            raise ToolActionClientError("discussion_result_invalid", "discussion_result_invalid", retryable=True) from exc
+        if discussion_result.status == "blocked":
+            blocked_window = self.service.mark_work_window_blocked(user_id, window["id"], discussion_result.summary)
+            self.service.append_event(
+                user_id,
+                mission,
+                run={"_id": run_id},
+                step=None,
+                event_type="DISCUSSION_WINDOW_BLOCKED",
+                title=discussion_result.title,
+                message=discussion_result.summary,
+                payload={"windowId": blocked_window["id"], "reason": discussion_result.reason, "employee": lead},
+            )
+            return ToolExecutionResult(
+                {
+                    "tool": "discuss_with_delegate",
+                    "status": "blocked",
+                    "windowId": blocked_window["id"],
+                    "summary": discussion_result.summary,
+                }
+            )
+        if product_id is None:
+            product = self.service.create_product(
+                user_id,
+                mission_id,
+                title=discussion_result.title,
+                summary=discussion_result.summary,
+                created_by=_delegate_agent_payload(arguments.agent_slot),
+                metadata={"artifactRole": "discussion"},
+            )
+            product_id = product["id"]
+        artifact = self.service.create_product_artifact(
+            user_id,
+            mission_id,
+            run_id,
+            product_id,
+            kind="notes",
+            title=discussion_result.title,
+            content=_discussion_content(discussion_result),
+            summary=discussion_result.summary,
+            created_by=_delegate_agent_payload(arguments.agent_slot),
+            source_artifact_ids=artifact_ids,
+            work_window_id=window["id"],
+            metadata={
+                "summary": discussion_result.summary,
+                "artifactRole": "discussion",
+                "sourceWindowId": arguments.window_id,
+                "recommendation": discussion_result.recommendation,
+                "transcript": [turn.model_dump() for turn in discussion_result.transcript],
+            },
+        )
+        completed_window = self.service.complete_work_window(
+            user_id,
+            window["id"],
+            result_artifact_id=artifact["id"],
+            summary=discussion_result.summary,
+        )
+        self.service.append_event(
+            user_id,
+            mission,
+            run={"_id": run_id},
+            step=None,
+            event_type="DISCUSSION_WINDOW_COMPLETED",
+            title=discussion_result.title,
+            message=discussion_result.summary,
+            payload={
+                "windowId": completed_window["id"],
+                "artifactId": artifact["id"],
+                "productId": product_id,
+                "recommendation": discussion_result.recommendation,
+                "employee": lead,
+            },
+        )
+        return ToolExecutionResult(
+            {
+                "tool": "discuss_with_delegate",
+                "status": "ok",
+                "windowId": completed_window["id"],
+                "discussionArtifactId": artifact["id"],
+                "summary": discussion_result.summary,
+                "recommendation": discussion_result.recommendation,
+            },
+            product_id=product_id,
+            artifact_id=artifact["id"],
+        )
+
+    def _web_search(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        arguments: WebSearchArguments,
+    ) -> ToolExecutionResult:
+        mission = self.service._require_mission(user_id, mission_id)
+        request = {
+            "query": arguments.query,
+            "searchType": arguments.search_type,
+            "maxResults": arguments.max_results,
+            "recencyDays": arguments.recency_days,
+            "allowedDomains": arguments.allowed_domains,
+            "blockedDomains": arguments.blocked_domains,
+        }
+        if self.search_provider is None:
+            observation = {
+                "tool": "web_search",
+                "status": "failed",
+                "code": "search_provider_unavailable",
+                "query": arguments.query,
+                "retryable": False,
+            }
+            self.service.append_event(
+                user_id,
+                mission,
+                run={"_id": run_id},
+                step=None,
+                event_type="WEB_SEARCH_FAILED",
+                title="Search failed",
+                message="search_provider_unavailable",
+                payload={**observation, "reason": arguments.reason, "employee": _employee_payload(mission)},
+            )
+            return ToolExecutionResult(observation)
+        try:
+            provider_result = _parse_search_provider_result(self.search_provider.search(request))
+        except SearchProviderError as exc:
+            provider_result = WebSearchProviderResult(
+                status="failed",
+                results=[],
+                truncated=False,
+                provider=self.search_provider.__class__.__name__,
+                query=arguments.query,
+                effectiveQuery=arguments.query,
+                code=exc.code,
+                retryable=exc.retryable,
+            )
+        if provider_result.status == "failed":
+            code = provider_result.code or "search_provider_unavailable"
+            observation = {
+                "tool": "web_search",
+                "status": "failed",
+                "code": code,
+                "query": arguments.query,
+                "effectiveQuery": provider_result.effective_query or arguments.query,
+                "fallbackApplied": provider_result.fallback_applied,
+                "fallbackReason": provider_result.fallback_reason,
+                "attemptCount": provider_result.attempt_count,
+                "retryable": provider_result.retryable,
+                "provider": provider_result.provider,
+            }
+            self.service.append_event(
+                user_id,
+                mission,
+                run={"_id": run_id},
+                step=None,
+                event_type="WEB_SEARCH_FAILED",
+                title="Search failed",
+                message=code,
+                payload={**observation, "reason": arguments.reason, "employee": _employee_payload(mission)},
+            )
+            return ToolExecutionResult(observation)
+
+        results = [item.model_dump(by_alias=True) for item in provider_result.results[: arguments.max_results]]
+        observation = {
+            "tool": "web_search",
+            "status": "ok",
+            "query": arguments.query,
+            "effectiveQuery": provider_result.effective_query or provider_result.query or arguments.query,
+            "searchType": arguments.search_type,
+            "results": results,
+            "truncated": provider_result.truncated or len(provider_result.results) > arguments.max_results,
+            "provider": provider_result.provider,
+            "fallbackApplied": provider_result.fallback_applied,
+            "fallbackReason": provider_result.fallback_reason,
+            "attemptCount": provider_result.attempt_count,
+        }
+        self.service.append_event(
+            user_id,
+            mission,
+            run={"_id": run_id},
+            step=None,
+            event_type="WEB_SEARCH_COMPLETED",
+            title="Search",
+            message=arguments.query,
+            payload={**observation, "reason": arguments.reason, "employee": _employee_payload(mission)},
+        )
+        return ToolExecutionResult(observation)
 
 
 def _employee_payload(mission: dict[str, Any]) -> dict[str, str]:
@@ -543,6 +973,116 @@ def _find_public_product(products: list[dict[str, Any]], product_id: str | None)
 def _find_public_artifacts(artifacts: list[dict[str, Any]], artifact_ids: list[str]) -> list[dict[str, Any]]:
     wanted = set(artifact_ids)
     return [artifact for artifact in artifacts if artifact["id"] in wanted]
+
+
+def _require_public_products(products: list[dict[str, Any]], product_ids: list[str]) -> list[str]:
+    available = {product["id"] for product in products}
+    missing = [product_id for product_id in product_ids if product_id not in available]
+    if missing:
+        raise _http_not_found("product_not_found")
+    return product_ids
+
+
+def _require_optional_product(products: list[dict[str, Any]], product_id: str | None) -> str | None:
+    if product_id is None:
+        return None
+    _require_public_products(products, [product_id])
+    return product_id
+
+
+def _require_public_artifacts_by_ids(artifacts: list[dict[str, Any]], artifact_ids: list[str]) -> list[str]:
+    available = {artifact["id"] for artifact in artifacts}
+    missing = [artifact_id for artifact_id in artifact_ids if artifact_id not in available]
+    if missing:
+        raise _http_not_found("artifact_not_found")
+    return artifact_ids
+
+
+def _product_id_for_artifact(detail: dict[str, Any], artifact_id: str) -> str:
+    artifact = next((item for item in detail["artifacts"] if item["id"] == artifact_id), None)
+    product_id = artifact.get("metadata", {}).get("productId") if artifact else None
+    if product_id:
+        return product_id
+    for product in detail["products"]:
+        if artifact_id in product.get("artifactIds", []):
+            return product["id"]
+    raise _http_not_found("product_not_found")
+
+
+def _review_content(arguments: ReviewProductArguments) -> str:
+    findings = "\n".join(
+        f"- [{finding.severity}/{finding.area}] {finding.claim} Evidence: {finding.evidence} Required: {finding.required_change}"
+        for finding in arguments.findings
+    )
+    if not findings:
+        findings = "- No findings."
+    checks = ", ".join(arguments.passed_checks) if arguments.passed_checks else "none"
+    return (
+        f"# {arguments.review_title}\n\n"
+        f"Verdict: {arguments.verdict}\n"
+        f"Score: {arguments.score}\n"
+        f"Profile: {arguments.review_profile}\n"
+        f"Summary: {arguments.summary}\n"
+        f"Passed checks: {checks}\n"
+        f"Recommended next tool: {arguments.recommended_next_tool}\n\n"
+        f"Findings:\n{findings}"
+    )
+
+
+def _parse_discussion_result(
+    raw_result: str | dict[str, Any],
+    fallback_title: str,
+    fallback_reason: str,
+) -> DiscussionResult:
+    if isinstance(raw_result, dict):
+        try:
+            return DiscussionResult.model_validate(raw_result)
+        except ValidationError as exc:
+            raise ValueError("discussion_result_invalid") from exc
+
+    raw_text = raw_result.strip()
+    if not raw_text:
+        raise ValueError("discussion_result_empty")
+    for candidate in _delegate_json_candidates(raw_text):
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        try:
+            return DiscussionResult.model_validate(data)
+        except ValidationError:
+            continue
+    if _looks_like_broken_json(raw_text):
+        raise ValueError("discussion_result_invalid")
+    return DiscussionResult(
+        status="completed",
+        title=fallback_title,
+        summary=_unstructured_delegate_summary(raw_text),
+        transcript=[
+            DiscussionTranscriptTurn(speaker="lead", content="Discussion requested."),
+            DiscussionTranscriptTurn(speaker="delegate", content=_strip_markdown_fence(raw_text)),
+        ],
+        recommendation=_bounded_text(_strip_markdown_fence(raw_text), 2000),
+        reason=fallback_reason,
+    )
+
+
+def _discussion_content(result: DiscussionResult) -> str:
+    transcript = "\n".join(f"{turn.speaker}: {turn.content}" for turn in result.transcript)
+    return (
+        f"# {result.title}\n\n"
+        f"Summary: {result.summary}\n\n"
+        f"Transcript:\n{transcript}\n\n"
+        f"Recommendation: {result.recommendation}\n"
+        f"Reason: {result.reason}"
+    )
+
+
+def _parse_search_provider_result(raw_result: dict[str, Any]) -> WebSearchProviderResult:
+    try:
+        return WebSearchProviderResult.model_validate(raw_result)
+    except ValidationError as exc:
+        raise ToolActionClientError("search_result_invalid", "search_result_invalid", retryable=True) from exc
 
 
 def _parse_delegate_result(

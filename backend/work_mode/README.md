@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -18,6 +18,9 @@ Lst Modified by: Codex
   - V1.0 introduces a model-driven text Mission loop where the Lead Agent must choose exactly one validated tool per turn.
   - V1.0 emits safe lifecycle events for long Lead turns and supports bounded retry for transient provider failures before pausing.
   - V1.0 tools are backend database actions only; shell, file, browser, and Codex CLI computer-control tools remain out of scope.
+  - V1.0.5 `web_search` is a read-only backend search provider wrapper; it is not browser automation or a model-visible Codex CLI tool.
+  - V1.0.x startup recovery converts interrupted `running` Missions to `paused_retryable` and failed running Work Windows so public restarts do not leave the UI stuck.
+  - V1.2 backend streaming exposes the persisted Mission event log over SSE while polling remains the fallback.
   - Routes expose `/api/work/*` while existing `/api/tasks` remains available until the Mission Runtime is verified.
 
 ## folder structure
@@ -29,6 +32,10 @@ Lst Modified by: Codex
 |-context.py V1.0 Lead and Delegate Agent context builders
 |-action_client.py V1.0 JSON Action adapter around `model_runtime`
 |-tool_executor.py V1.0 backend executor for validated model tool actions
+|-search.py V1.0.5 read-only search provider boundary and DuckDuckGo Lite provider
+|-quality_checks.py deterministic Product acceptance gates for long-form Work Mode output
+|-evaluator_schemas.py Evaluator Runtime report, issue, requirement, claim, and evidence schemas
+|-evaluator.py Evaluator Runtime trace-backed Research Mission reliability checks
 |-loop.py V1.0 Lead Agent Mission loop runner
 |-repository.py MongoDB persistence adapter
 |-service.py Mission Runtime business rules and state transitions
@@ -68,6 +75,11 @@ Lst Modified by: Codex
 - First tool protocol implementation uses provider-agnostic JSON Action; provider-native tool calling is a later adapter over the same backend schema.
 - `HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES` controls bounded automatic retry for retryable Lead turn provider errors; default is `1`.
 - `HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS` controls non-streaming heartbeat event cadence; default is `20`.
+- `HACKSON_WORK_MODE_V1_LEAD_TIMEOUT_SECONDS` controls Lead tool-selection model calls; default is `180`.
+- `HACKSON_WORK_MODE_V1_DELEGATE_TIMEOUT_SECONDS` controls Delegate one-shot model calls; default is `900`.
+- `HACKSON_WORK_MODE_V1_SEARCH_TIMEOUT_SECONDS` controls backend Web Search provider timeout; default is `10`.
+- Work Mission execution is launched by a process-local daemon worker, not FastAPI `BackgroundTasks`; durable queueing remains a later upgrade.
+- `GET /api/work/missions/{missionId}/events/stream` streams persisted public Mission events as `text/event-stream`; it does not stream raw model tokens or hidden reasoning.
 
 ## 代办
 - Implement V1.0 Product, Artifact lineage, Work Window, context, and loop layers from `docs/work_mode/final_version.md`.

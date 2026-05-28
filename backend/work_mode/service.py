@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -25,6 +25,7 @@ from work_mode.model import (
 )
 from work_mode.schemas import (
     EmployeeCreateRequest,
+    MissionAnswerRequest,
     MissionCreateRequest,
     MissionStartRequest,
     MissionStopRequest,
@@ -56,13 +57,16 @@ class WorkModeRepositoryProtocol(Protocol):
     def find_mission(self, mission_id: str, user_id: str) -> dict[str, Any] | None: ...
     def list_missions(self, user_id: str, project_id: str, limit: int) -> list[dict[str, Any]]: ...
     def update_mission(self, mission_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
+    def list_missions_by_status(self, statuses: list[str], limit: int) -> list[dict[str, Any]]: ...
     def create_run(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def find_active_run(self, mission_id: str, user_id: str) -> dict[str, Any] | None: ...
     def find_latest_run(self, mission_id: str, user_id: str) -> dict[str, Any] | None: ...
     def update_run(self, run_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
+    def update_running_runs_for_mission(self, mission_id: str, user_id: str, values: dict[str, Any]) -> list[dict[str, Any]]: ...
     def create_step(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def update_step(self, step_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
     def create_artifact(self, document: dict[str, Any]) -> dict[str, Any]: ...
+    def update_artifact(self, artifact_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
     def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
     def create_product(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def find_product(self, product_id: str, user_id: str) -> dict[str, Any] | None: ...
@@ -70,6 +74,12 @@ class WorkModeRepositoryProtocol(Protocol):
     def list_products(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
     def create_work_window(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def update_work_window(self, window_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
+    def update_running_work_windows_for_mission(
+        self,
+        mission_id: str,
+        user_id: str,
+        values: dict[str, Any],
+    ) -> list[dict[str, Any]]: ...
     def list_work_windows(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
     def next_event_sequence(self, mission_id: str) -> int: ...
     def create_event(self, document: dict[str, Any]) -> dict[str, Any]: ...
@@ -262,6 +272,103 @@ class WorkModeService:
         )
         return self.get_mission_detail(user_id, str(mission["_id"]))
 
+    def recover_interrupted_missions(
+        self,
+        reason: str = "interrupted_restart",
+        limit: int = 200,
+    ) -> dict[str, int]:
+        """Move stale process-owned Mission work into visible, resumable states."""
+        recovered_missions = 0
+        recovered_windows = 0
+        recovered_runs = 0
+        stopped_missions = 0
+        timestamp = now_utc()
+        for mission in self.repository.list_missions_by_status(["running", "stopping"], limit):
+            user_id = mission["user_id"]
+            mission_id = str(mission["_id"])
+            if mission["status"] == "stopping":
+                running_runs = self.repository.update_running_runs_for_mission(
+                    mission_id,
+                    user_id,
+                    {"status": "stopped", "ended_at": timestamp},
+                )
+                recovered_runs += len(running_runs)
+                stopped = self._update_mission(
+                    user_id,
+                    mission_id,
+                    {"status": "stopped", "current_step": "Stopped", "updated_at": timestamp},
+                )
+                run = running_runs[-1] if running_runs else self.repository.find_latest_run(mission_id, user_id)
+                self.append_event(
+                    user_id,
+                    stopped,
+                    run=run,
+                    step=None,
+                    event_type="MISSION_STOPPED",
+                    title="Stopped",
+                    message="Mission stopped during restart recovery.",
+                    payload={"status": "stopped", "reason": reason, "employee": _employee_payload(stopped)},
+                )
+                stopped_missions += 1
+                continue
+
+            failed_windows = self.repository.update_running_work_windows_for_mission(
+                mission_id,
+                user_id,
+                {"status": "failed", "summary": reason, "updated_at": timestamp},
+            )
+            recovered_windows += len(failed_windows)
+            running_runs = self.repository.update_running_runs_for_mission(
+                mission_id,
+                user_id,
+                {"status": "paused_retryable", "ended_at": timestamp},
+            )
+            recovered_runs += len(running_runs)
+            recovered = self._update_mission(
+                user_id,
+                mission_id,
+                {
+                    "status": "paused_retryable",
+                    "current_step": "Paused",
+                    "last_error": reason,
+                    "updated_at": timestamp,
+                },
+            )
+            run = running_runs[-1] if running_runs else self.repository.find_latest_run(mission_id, user_id)
+            for window in failed_windows:
+                self.append_event(
+                    user_id,
+                    recovered,
+                    run=run,
+                    step=None,
+                    event_type="WORK_WINDOW_FAILED",
+                    title=window.get("title", "Work window failed"),
+                    message=reason,
+                    payload={
+                        "windowId": str(window["_id"]),
+                        "status": "failed",
+                        "reason": reason,
+                        "employee": _employee_payload(recovered),
+                    },
+                )
+            self.append_event(
+                user_id,
+                recovered,
+                run=run,
+                step=None,
+                event_type="MISSION_PAUSED_RETRYABLE",
+                title="Paused",
+                message=reason,
+                payload={"error": reason, "recovered": True, "employee": _employee_payload(recovered)},
+            )
+            recovered_missions += 1
+        return {
+            "recoveredMissions": recovered_missions,
+            "recoveredRuns": recovered_runs,
+            "recoveredWindows": recovered_windows,
+            "stoppedMissions": stopped_missions,
+        }
+
     def stop_mission(self, user_id: str, mission_id: str, payload: MissionStopRequest) -> dict[str, Any]:
         mission = self._require_mission(user_id, mission_id)
         if mission["status"] != "running":
@@ -290,6 +397,63 @@ class WorkModeService:
         if run is None:
             self.mark_mission_stopped(user_id, mission_id, run_id=None, step_id=None)
         return self.get_mission_detail(user_id, mission_id)
+
+    def answer_mission_input(self, user_id: str, mission_id: str, payload: MissionAnswerRequest) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        if mission["status"] != "waiting_input":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_not_waiting_input")
+        timestamp = now_utc()
+        previous_question = mission.get("last_error")
+        mission = self._update_mission(
+            user_id,
+            mission_id,
+            {
+                "status": "running",
+                "current_step": "Resuming from input",
+                "last_error": None,
+                "updated_at": timestamp,
+            },
+        )
+        run = self.repository.create_run(
+            {
+                "user_id": user_id,
+                "mission_id": mission["_id"],
+                "status": "running",
+                "iteration": 1,
+                "started_at": timestamp,
+                "ended_at": None,
+                "metadata": {
+                    **payload.metadata,
+                    "resumeReason": "user_input",
+                    "previousQuestion": previous_question,
+                },
+            }
+        )
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="USER_INPUT_RECEIVED",
+            title="Input received",
+            message=payload.answer,
+            payload={
+                "answer": payload.answer,
+                "question": previous_question,
+                "employee": _employee_payload(mission),
+            },
+        )
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="MISSION_STARTED",
+            title="Resumed",
+            message="Mission resumed with user input.",
+            payload={"resumeReason": "user_input", "employee": _employee_payload(mission)},
+        )
+        return self.get_mission_detail(user_id, str(mission["_id"]))
 
     def list_events(
         self,
@@ -361,6 +525,12 @@ class WorkModeService:
         }
         return public_artifact(self.repository.create_artifact(document))
 
+    def update_artifact_metadata(self, user_id: str, artifact_id: str, metadata: dict[str, Any]) -> dict[str, Any]:
+        artifact = self.repository.update_artifact(artifact_id, user_id, {"metadata": metadata})
+        if artifact is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="artifact_not_found")
+        return public_artifact(artifact)
+
     def create_product(
         self,
         user_id: str,
@@ -412,6 +582,9 @@ class WorkModeService:
             "sourceArtifactIds": source_artifact_ids,
             "workWindowId": work_window_id,
         }
+        if artifact_metadata.get("operation") == "revise_artifact" and source_artifact_ids:
+            artifact_metadata.setdefault("revisionOf", source_artifact_ids[0])
+            artifact_metadata.setdefault("changeSummary", summary)
         artifact = self.create_artifact(
             user_id,
             mission_id,
@@ -541,12 +714,16 @@ class WorkModeService:
         user_id: str,
         mission_id: str,
         question: str,
+        run_id: str | None = None,
     ) -> dict[str, Any]:
-        return self._update_mission(
+        mission = self._update_mission(
             user_id,
             mission_id,
             {"status": "waiting_input", "current_step": "Waiting for input", "last_error": question, "updated_at": now_utc()},
         )
+        if run_id:
+            self._update_run(user_id, run_id, {"status": "waiting_input", "ended_at": now_utc()})
+        return mission
 
     def mark_mission_blocked(
         self,

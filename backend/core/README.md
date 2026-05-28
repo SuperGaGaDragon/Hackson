@@ -12,6 +12,7 @@ Lst Modified by: Codex
   - `database.py` owns MongoDB connection lifecycle and the `mongomock://` in-memory test URI.
   - `security.py` owns password hashing and JWT primitives.
   - Production static frontend hosting is controlled by `HACKSON_STATIC_FRONTEND_DIR`.
+  - Derived worker freshness is controlled by `HACKSON_DERIVED_WORKER_ENABLED`, `HACKSON_DERIVED_WORKER_INTERVAL_SECONDS`, and `HACKSON_DERIVED_WORKER_BATCH_SIZE`.
   - User-selected model endpoint configuration is intentionally absent from user-facing settings in V1.
 
 ## folder structure

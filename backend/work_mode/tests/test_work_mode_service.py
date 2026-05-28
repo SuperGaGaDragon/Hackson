@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -27,6 +27,8 @@ from work_mode.worker import (
     ModelMissionRunner,
     _event_delay_seconds,
     _v1_heartbeat_seconds,
+    _v1_delegate_timeout_seconds,
+    _v1_lead_timeout_seconds,
     _v1_max_retryable_turn_retries,
 )
 
@@ -125,6 +127,9 @@ class FakeWorkModeRepository:
         row.update(values)
         return row
 
+    def list_missions_by_status(self, statuses: list[str], limit: int) -> list[dict[str, Any]]:
+        return [row for row in self.missions.values() if row["status"] in statuses][:limit]
+
     def create_run(self, document: dict[str, Any]) -> dict[str, Any]:
         row = dict(document)
         row["_id"] = self._id("run")
@@ -150,6 +155,21 @@ class FakeWorkModeRepository:
         row.update(values)
         return row
 
+    def update_running_runs_for_mission(
+        self,
+        mission_id: str,
+        user_id: str,
+        values: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        rows = [
+            row
+            for row in self.runs.values()
+            if row["mission_id"] == mission_id and row["user_id"] == user_id and row["status"] == "running"
+        ]
+        for row in rows:
+            row.update(values)
+        return rows
+
     def create_step(self, document: dict[str, Any]) -> dict[str, Any]:
         row = dict(document)
         row["_id"] = self._id("step")
@@ -167,6 +187,13 @@ class FakeWorkModeRepository:
         row = dict(document)
         row["_id"] = self._id("artifact")
         self.artifacts[row["_id"]] = row
+        return row
+
+    def update_artifact(self, artifact_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None:
+        row = self.artifacts.get(artifact_id)
+        if row is None or row["user_id"] != user_id:
+            return None
+        row.update(values)
         return row
 
     def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
@@ -212,6 +239,21 @@ class FakeWorkModeRepository:
             return None
         row.update(values)
         return row
+
+    def update_running_work_windows_for_mission(
+        self,
+        mission_id: str,
+        user_id: str,
+        values: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        rows = [
+            row
+            for row in self.work_windows.values()
+            if row["mission_id"] == mission_id and row["user_id"] == user_id and row["status"] == "running"
+        ]
+        for row in rows:
+            row.update(values)
+        return rows
 
     def list_work_windows(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
         return [
@@ -386,6 +428,51 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(resumed["activeRun"]["status"], "running")
         self.assertNotEqual(resumed["activeRun"]["id"], first_run_id)
         self.assertEqual(resumed["latestRun"]["id"], resumed["activeRun"]["id"])
+
+    def test_recover_interrupted_running_mission_marks_resumeable_and_window_failed(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        window = self.service.create_work_window(
+            "user_1",
+            mission["id"],
+            run_id,
+            agent_slot="agent_2",
+            title="Draft interrupted chapter",
+            brief="Write chapter.",
+        )
+
+        result = self.service.recover_interrupted_missions("interrupted_restart")
+        recovered = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(result["recoveredMissions"], 1)
+        self.assertEqual(result["recoveredRuns"], 1)
+        self.assertEqual(result["recoveredWindows"], 1)
+        self.assertEqual(recovered["mission"]["status"], "paused_retryable")
+        self.assertEqual(recovered["mission"]["lastError"], "interrupted_restart")
+        self.assertEqual(recovered["latestRun"]["status"], "paused_retryable")
+        self.assertEqual(recovered["activeRun"], None)
+        recovered_window = next(item for item in recovered["workWindows"] if item["id"] == window["id"])
+        self.assertEqual(recovered_window["status"], "failed")
+        self.assertEqual(recovered_window["summary"], "interrupted_restart")
+        event_types = [event["type"] for event in recovered["events"]]
+        self.assertIn("WORK_WINDOW_FAILED", event_types)
+        self.assertEqual(event_types[-1], "MISSION_PAUSED_RETRYABLE")
+
+    def test_recover_interrupted_stopping_mission_marks_stopped(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        self.service.stop_mission("user_1", mission["id"], MissionStopRequest(reason="user stop"))
+
+        result = self.service.recover_interrupted_missions("interrupted_restart")
+        recovered = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(result["stoppedMissions"], 1)
+        self.assertEqual(recovered["mission"]["status"], "stopped")
+        self.assertEqual(recovered["latestRun"]["id"], run_id)
+        self.assertEqual(recovered["latestRun"]["status"], "stopped")
+        self.assertEqual(recovered["events"][-1]["type"], "MISSION_STOPPED")
 
     def test_worker_completes_v0_event_sequence(self) -> None:
         mission = self._mission()
@@ -597,11 +684,17 @@ class WorkModeServiceTest(TestCase):
     def test_v1_progress_env_invalid_values_fall_back(self) -> None:
         original_retry = os.environ.get("HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES")
         original_heartbeat = os.environ.get("HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS")
+        original_lead_timeout = os.environ.get("HACKSON_WORK_MODE_V1_LEAD_TIMEOUT_SECONDS")
+        original_delegate_timeout = os.environ.get("HACKSON_WORK_MODE_V1_DELEGATE_TIMEOUT_SECONDS")
         os.environ["HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES"] = "not-a-number"
         os.environ["HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS"] = "not-a-number"
+        os.environ["HACKSON_WORK_MODE_V1_LEAD_TIMEOUT_SECONDS"] = "0"
+        os.environ["HACKSON_WORK_MODE_V1_DELEGATE_TIMEOUT_SECONDS"] = "not-a-number"
         try:
             self.assertEqual(_v1_max_retryable_turn_retries(), 1)
             self.assertEqual(_v1_heartbeat_seconds(), 20.0)
+            self.assertEqual(_v1_lead_timeout_seconds(), 180.0)
+            self.assertEqual(_v1_delegate_timeout_seconds(), 900.0)
         finally:
             if original_retry is None:
                 os.environ.pop("HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES", None)
@@ -611,6 +704,14 @@ class WorkModeServiceTest(TestCase):
                 os.environ.pop("HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS", None)
             else:
                 os.environ["HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS"] = original_heartbeat
+            if original_lead_timeout is None:
+                os.environ.pop("HACKSON_WORK_MODE_V1_LEAD_TIMEOUT_SECONDS", None)
+            else:
+                os.environ["HACKSON_WORK_MODE_V1_LEAD_TIMEOUT_SECONDS"] = original_lead_timeout
+            if original_delegate_timeout is None:
+                os.environ.pop("HACKSON_WORK_MODE_V1_DELEGATE_TIMEOUT_SECONDS", None)
+            else:
+                os.environ["HACKSON_WORK_MODE_V1_DELEGATE_TIMEOUT_SECONDS"] = original_delegate_timeout
 
     def test_model_mission_runner_supports_codex_cli_provider(self) -> None:
         codex_client = RecordingModelClient("codex_cli")

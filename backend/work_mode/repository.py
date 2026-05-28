@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -155,6 +155,13 @@ class WorkModeRepository:
             return_document=ReturnDocument.AFTER,
         )
 
+    def list_missions_by_status(self, statuses: list[str], limit: int) -> list[dict[str, Any]]:
+        return list(
+            self.missions.find({"status": {"$in": statuses}})
+            .sort("updated_at", ASCENDING)
+            .limit(limit)
+        )
+
     def create_run(self, document: dict[str, Any]) -> dict[str, Any]:
         document = dict(document)
         document["mission_id"] = _object_id(document["mission_id"])
@@ -191,6 +198,24 @@ class WorkModeRepository:
             return_document=ReturnDocument.AFTER,
         )
 
+    def update_running_runs_for_mission(
+        self,
+        mission_id: str,
+        user_id: str,
+        values: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        query_id = _object_id_or_none(mission_id)
+        if query_id is None:
+            return []
+        run_ids = [
+            row["_id"]
+            for row in self.runs.find({"mission_id": query_id, "user_id": user_id, "status": "running"})
+        ]
+        if not run_ids:
+            return []
+        self.runs.update_many({"_id": {"$in": run_ids}, "user_id": user_id}, {"$set": dict(values)})
+        return list(self.runs.find({"_id": {"$in": run_ids}, "user_id": user_id}))
+
     def create_step(self, document: dict[str, Any]) -> dict[str, Any]:
         document = dict(document)
         document["mission_id"] = _object_id(document["mission_id"])
@@ -218,6 +243,16 @@ class WorkModeRepository:
         created = self.artifacts.find_one({"_id": result.inserted_id})
         assert created is not None
         return created
+
+    def update_artifact(self, artifact_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None:
+        query_id = _object_id_or_none(artifact_id)
+        if query_id is None:
+            return None
+        return self.artifacts.find_one_and_update(
+            {"_id": query_id, "user_id": user_id},
+            {"$set": dict(values)},
+            return_document=ReturnDocument.AFTER,
+        )
 
     def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
         query_id = _object_id_or_none(mission_id)
@@ -290,6 +325,24 @@ class WorkModeRepository:
             {"$set": values},
             return_document=ReturnDocument.AFTER,
         )
+
+    def update_running_work_windows_for_mission(
+        self,
+        mission_id: str,
+        user_id: str,
+        values: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        query_id = _object_id_or_none(mission_id)
+        if query_id is None:
+            return []
+        window_ids = [
+            row["_id"]
+            for row in self.work_windows.find({"mission_id": query_id, "user_id": user_id, "status": "running"})
+        ]
+        if not window_ids:
+            return []
+        self.work_windows.update_many({"_id": {"$in": window_ids}, "user_id": user_id}, {"$set": dict(values)})
+        return list(self.work_windows.find({"_id": {"$in": window_ids}, "user_id": user_id}))
 
     def list_work_windows(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
         query_id = _object_id_or_none(mission_id)

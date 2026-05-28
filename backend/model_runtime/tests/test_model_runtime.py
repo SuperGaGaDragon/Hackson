@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from model_runtime.client import (
     CodexCliClient,
@@ -267,6 +267,16 @@ class ModelRuntimeTest(TestCase):
         self.assertEqual(error.exception.code, "model_http_error:429")
         self.assertEqual(error.exception.http_status, 429)
 
+    def test_openai_compatible_client_uses_request_timeout_override(self) -> None:
+        client = OpenAICompatibleClient()
+        with patch.object(client, "_post_json", return_value={"id": "chat_1", "model": "gpt-test", "choices": [{"message": {"content": "hello"}}]}) as fake_post:
+            client.generate(
+                StaticConfigRepository().get_enabled_config(),
+                ModelGenerateRequest(messages=[RuntimeMessage(role="user", content="hello")], timeout_seconds=12),
+            )
+
+        self.assertEqual(fake_post.call_args.args[3], 12)
+
     def test_responses_client_builds_reasoning_payload_and_normalizes_response(self) -> None:
         client = OpenAIResponsesClient()
         fake_response = FakeHTTPXResponse(
@@ -294,6 +304,16 @@ class ModelRuntimeTest(TestCase):
         self.assertEqual(response.text, "hello")
         self.assertEqual(response.provider_response_id, "resp_123")
         self.assertEqual(response.reasoning_summary, "safe summary")
+
+    def test_responses_client_uses_request_timeout_override(self) -> None:
+        client = OpenAIResponsesClient()
+        with patch.object(client, "_post_json", return_value={"id": "resp_1", "model": "gpt-test", "output_text": "hello"}) as fake_post:
+            client.generate(
+                StaticConfigRepository(api_mode="responses").get_enabled_config(),
+                ModelGenerateRequest(messages=[RuntimeMessage(role="user", content="hello")], timeout_seconds=34),
+            )
+
+        self.assertEqual(fake_post.call_args.args[3], 34)
 
     def test_codex_cli_command_is_ephemeral_read_only_and_non_interactive(self) -> None:
         request = ModelGenerateRequest(
@@ -340,14 +360,42 @@ class ModelRuntimeTest(TestCase):
         self.assertEqual(response.model_name, "codex-test-model")
         self.assertEqual(response.provider, "codex_cli")
 
+    def test_codex_client_uses_request_timeout_override(self) -> None:
+        config = StaticConfigRepository(provider="codex_cli").get_enabled_config()
+        request = ModelGenerateRequest(messages=[RuntimeMessage(role="user", content="hello")], timeout_seconds=56)
+
+        def fake_run(command, input, timeout_seconds, env):
+            output_path = command[command.index("-o") + 1]
+            Path(output_path).write_text("codex reply\n", encoding="utf-8")
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+        with patch("model_runtime.client._run_codex_subprocess", side_effect=fake_run) as fake_subprocess:
+            response = CodexCliClient().generate(config, request)
+
+        self.assertEqual(response.text, "codex reply")
+        self.assertEqual(fake_subprocess.call_args.kwargs["timeout_seconds"], 56)
+
+    def test_codex_subprocess_success_cleans_process_group(self) -> None:
+        process = FakePopen(stdout_text="codex reply")
+        with patch("model_runtime.client.subprocess.Popen", return_value=process):
+            with patch("model_runtime.client.os.killpg") as fake_killpg:
+                result = _run_codex_subprocess(["codex"], "prompt", timeout_seconds=1, env={})
+
+        self.assertEqual(result.stdout, "codex reply")
+        fake_killpg.assert_called_once_with(process.pid, signal.SIGTERM)
+        self.assertTrue(process.wait_called)
+
     def test_codex_subprocess_timeout_kills_process_group(self) -> None:
-        process = TimeoutPopen()
+        process = TimeoutPopen(wait_timeouts=1)
         with patch("model_runtime.client.subprocess.Popen", return_value=process):
             with patch("model_runtime.client.os.killpg") as fake_killpg:
                 with self.assertRaises(subprocess.TimeoutExpired):
                     _run_codex_subprocess(["codex"], "prompt", timeout_seconds=1, env={})
 
-        fake_killpg.assert_called_once_with(process.pid, signal.SIGTERM)
+        self.assertEqual(
+            fake_killpg.call_args_list,
+            [call(process.pid, signal.SIGTERM), call(process.pid, signal.SIGKILL)],
+        )
         self.assertTrue(process.wait_called)
 
     def test_codex_reasoning_maps_minimal_to_low(self) -> None:
@@ -373,24 +421,30 @@ class FakePopen:
         self.returncode = returncode
         self.stdout_text = stdout_text
         self.stderr_text = stderr_text
+        self.wait_called = False
 
     def communicate(self, input: str, timeout: float):
         return self.stdout_text, self.stderr_text
 
     def wait(self, timeout: float | None = None) -> int:
+        self.wait_called = True
         return self.returncode
 
 
 class TimeoutPopen:
-    def __init__(self):
+    def __init__(self, wait_timeouts: int = 0):
         self.pid = 54321
         self.wait_called = False
+        self.wait_timeouts = wait_timeouts
 
     def communicate(self, input: str, timeout: float):
         raise subprocess.TimeoutExpired(cmd="codex", timeout=timeout)
 
     def wait(self, timeout: float | None = None) -> int:
         self.wait_called = True
+        if self.wait_timeouts > 0:
+            self.wait_timeouts -= 1
+            raise subprocess.TimeoutExpired(cmd="codex", timeout=timeout)
         return -signal.SIGTERM
 
 

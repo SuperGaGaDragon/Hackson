@@ -6,6 +6,7 @@ Last Modified by: Codex
 """
 
 import os
+import threading
 import time
 from typing import Any, Protocol
 
@@ -17,6 +18,7 @@ from model_runtime.schemas import ModelGenerateRequest, RuntimeMessage
 from work_mode.action_client import DelegateResultClient, ToolActionClient
 from work_mode.loop import MissionLoopRunner
 from work_mode.repository import WorkModeRepository
+from work_mode.search import DuckDuckGoLiteSearchProvider
 from work_mode.service import WorkModeService
 from work_mode.tool_executor import WorkModeToolExecutor
 
@@ -245,16 +247,31 @@ def run_v1_mission_from_database(user_id: str, mission_id: str, run_id: str) -> 
     """Run the V1 model-selected tool loop using the configured MongoDB database."""
     service = WorkModeService(WorkModeRepository(get_database()))
     model_runtime = _model_runtime()
-    executor = WorkModeToolExecutor(service, delegate_client=DelegateResultClient(model_runtime))
+    executor = WorkModeToolExecutor(
+        service,
+        delegate_client=DelegateResultClient(model_runtime, timeout_seconds=_v1_delegate_timeout_seconds()),
+        search_provider=DuckDuckGoLiteSearchProvider(timeout_seconds=_v1_search_timeout_seconds()),
+    )
     MissionLoopRunner(
         service,
-        action_client=ToolActionClient(model_runtime),
+        action_client=ToolActionClient(model_runtime, timeout_seconds=_v1_lead_timeout_seconds()),
         executor=executor,
         max_turns=_v1_max_turns(),
         max_invalid_turns=_v1_max_invalid_turns(),
         max_retryable_turn_retries=_v1_max_retryable_turn_retries(),
         heartbeat_seconds=_v1_heartbeat_seconds(),
     ).run(user_id, mission_id, run_id)
+
+
+def launch_v1_mission_daemon(user_id: str, mission_id: str, run_id: str) -> None:
+    """Launch Work V1 Mission execution outside FastAPI request-owned background tasks."""
+    thread = threading.Thread(
+        target=run_v1_mission_from_database,
+        args=(user_id, mission_id, run_id),
+        name=f"work-v1-mission-{mission_id[:8]}",
+        daemon=True,
+    )
+    thread.start()
 
 
 def _model_runtime() -> ModelRuntime:
@@ -290,6 +307,18 @@ def _v1_heartbeat_seconds() -> float:
     return _nonnegative_float_env("HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS", 20.0)
 
 
+def _v1_search_timeout_seconds() -> float:
+    return _nonnegative_float_env("HACKSON_WORK_MODE_V1_SEARCH_TIMEOUT_SECONDS", 10.0)
+
+
+def _v1_lead_timeout_seconds() -> float:
+    return _positive_float_env("HACKSON_WORK_MODE_V1_LEAD_TIMEOUT_SECONDS", 180.0)
+
+
+def _v1_delegate_timeout_seconds() -> float:
+    return _positive_float_env("HACKSON_WORK_MODE_V1_DELEGATE_TIMEOUT_SECONDS", 900.0)
+
+
 def _positive_int_env(name: str, default: int) -> int:
     raw_value = os.getenv(name, str(default))
     try:
@@ -312,3 +341,14 @@ def _nonnegative_float_env(name: str, default: float) -> float:
         return max(float(raw_value), 0.0)
     except ValueError:
         return default
+
+
+def _positive_float_env(name: str, default: float) -> float:
+    raw_value = os.getenv(name, str(default))
+    try:
+        value = float(raw_value)
+    except ValueError:
+        return default
+    if value <= 0:
+        return default
+    return value

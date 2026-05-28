@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -197,6 +197,131 @@ class WorkModeToolProtocolTest(TestCase):
                     "productIds": [],
                     "artifactIds": [],
                     "focus": "全部"
+                  }
+                }
+                """
+            )
+
+        self.assertEqual(error.exception.code, "tool_action_schema_invalid")
+
+    def test_parses_valid_review_product_action(self) -> None:
+        action = parse_tool_action(
+            """
+            {
+              "tool": "review_product",
+              "arguments": {
+                "reason": "终稿前需要审核。",
+                "productIds": ["product_1"],
+                "artifactIds": ["artifact_1"],
+                "reviewTitle": "长篇小说审核",
+                "reviewProfile": "long_form_novel_v1",
+                "verdict": "needs_revision",
+                "score": 76,
+                "summary": "长度接近要求，但第二章衔接需要加强。",
+                "findings": [
+                  {
+                    "severity": "major",
+                    "area": "structure",
+                    "claim": "第二章转折过快。",
+                    "evidence": "第二章摘要缺少父亲线索。",
+                    "requiredChange": "补足线索过渡。"
+                  }
+                ],
+                "passedChecks": ["has_outline_artifact"],
+                "recommendedNextTool": "discuss_with_delegate"
+              }
+            }
+            """
+        )
+
+        self.assertEqual(action.tool, "review_product")
+        self.assertEqual(action.arguments.verdict, "needs_revision")
+        self.assertEqual(action.arguments.findings[0].severity, "major")
+
+    def test_parses_valid_discuss_with_delegate_action(self) -> None:
+        action = parse_tool_action(
+            """
+            {
+              "tool": "discuss_with_delegate",
+              "arguments": {
+                "reason": "需要和章节作者确认修订方向。",
+                "agentSlot": "agent_2",
+                "discussionTitle": "第二章修订讨论",
+                "windowId": "window_1",
+                "productId": "product_1",
+                "artifactIds": ["artifact_2"],
+                "question": "第二章怎样补足父亲线索？",
+                "expectedOutcome": "给出三条可执行修订建议。",
+                "maxTurns": 1
+              }
+            }
+            """
+        )
+
+        self.assertEqual(action.tool, "discuss_with_delegate")
+        self.assertEqual(action.arguments.agent_slot, "agent_2")
+        self.assertEqual(action.arguments.max_turns, 1)
+
+    def test_rejects_discussion_without_source_binding(self) -> None:
+        with self.assertRaises(ToolActionValidationError) as error:
+            parse_tool_action(
+                """
+                {
+                  "tool": "discuss_with_delegate",
+                  "arguments": {
+                    "reason": "泛泛讨论。",
+                    "agentSlot": "agent_2",
+                    "discussionTitle": "讨论",
+                    "windowId": null,
+                    "productId": null,
+                    "artifactIds": [],
+                    "question": "你怎么看？",
+                    "expectedOutcome": "建议。",
+                    "maxTurns": 1
+                  }
+                }
+                """
+            )
+
+        self.assertEqual(error.exception.code, "tool_action_schema_invalid")
+
+    def test_parses_valid_web_search_action(self) -> None:
+        action = parse_tool_action(
+            """
+            {
+              "tool": "web_search",
+              "arguments": {
+                "reason": "需要查找最新资料。",
+                "query": "2026 Chinese science fiction award winners",
+                "searchType": "reference",
+                "maxResults": 5,
+                "recencyDays": 30,
+                "allowedDomains": ["example.com"],
+                "blockedDomains": []
+              }
+            }
+            """
+        )
+
+        self.assertEqual(action.tool, "web_search")
+        self.assertEqual(action.arguments.query, "2026 Chinese science fiction award winners")
+        self.assertEqual(action.arguments.max_results, 5)
+        self.assertEqual(action.arguments.allowed_domains, ["example.com"])
+
+    def test_rejects_web_search_over_result_limit(self) -> None:
+        with self.assertRaises(ToolActionValidationError) as error:
+            parse_tool_action(
+                """
+                {
+                  "tool": "web_search",
+                  "arguments": {
+                    "reason": "搜索过多结果。",
+                    "query": "latest AI news",
+                    "searchType": "news",
+                    "maxResults": 20,
+                    "recencyDays": 7,
+                    "allowedDomains": [],
+                    "blockedDomains": []
                   }
                 }
                 """

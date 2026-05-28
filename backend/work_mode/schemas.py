@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -24,7 +24,7 @@ MissionStatus = Literal[
     "failed",
     "completed",
 ]
-RunStatus = Literal["running", "paused_retryable", "stopped", "failed", "completed", "blocked"]
+RunStatus = Literal["running", "waiting_input", "paused_retryable", "stopped", "failed", "completed", "blocked"]
 StepStatus = Literal["pending", "running", "failed", "completed", "skipped"]
 AutonomyLevel = Literal["supervised"]
 ArtifactKind = Literal[
@@ -55,14 +55,24 @@ EventType = Literal[
     "MODEL_TURN_HEARTBEAT",
     "MODEL_TURN_COMPLETED",
     "MODEL_TURN_RETRYING",
+    "MODEL_TURN_INVALID",
     "TOOL_CALLED",
     "PRODUCT_UPDATED",
     "PRODUCT_INSPECTED",
+    "PRODUCT_REVIEWED",
     "WORK_WINDOW_OPENED",
     "WORK_WINDOW_COMPLETED",
     "WORK_WINDOW_BLOCKED",
     "WORK_WINDOW_FAILED",
+    "DISCUSSION_WINDOW_OPENED",
+    "DISCUSSION_WINDOW_COMPLETED",
+    "DISCUSSION_WINDOW_BLOCKED",
+    "DISCUSSION_WINDOW_FAILED",
+    "WEB_SEARCH_COMPLETED",
+    "WEB_SEARCH_FAILED",
+    "RELIABILITY_REPORTED",
     "USER_INPUT_REQUESTED",
+    "USER_INPUT_RECEIVED",
     "MISSION_PAUSED_RETRYABLE",
     "MISSION_BLOCKED",
     "STEP_COMPLETED",
@@ -185,6 +195,24 @@ class MissionStopRequest(BaseModel):
             return None
         value = value.strip()
         return value or None
+
+
+class MissionAnswerRequest(BaseModel):
+    answer: str = Field(min_length=1, max_length=8000)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("answer")
+    @classmethod
+    def strip_answer(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("required_text_empty")
+        return value
+
+
+class MissionEvaluateRequest(BaseModel):
+    profile: Literal["research_reliability_v1"] = "research_reliability_v1"
+    mode: Literal["live", "replay"] = "live"
 
 
 class ProjectResponse(BaseModel):
