@@ -109,6 +109,7 @@ Issue types should be human-readable:
 - Tool failure ignored.
 - Unsafe action.
 - Evaluation limitation.
+- Mission incomplete.
 
 ## 6. Requirement Coverage
 

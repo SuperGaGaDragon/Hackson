@@ -2,7 +2,7 @@
 Created at: 2026-05-27
 Created by: Codex
 Last Modified at: 2026-05-28
-Lst Modified by: Codex
+Last Modified by: Codex
 
 ## brief intro
 - goal for this folder.
@@ -35,6 +35,13 @@ Lst Modified by: Codex
 |-issue21-v12-streaming-execution-spec.md SSE event-log streaming contract and implementation constraints
 |-issue22-web-search-query-fallback.md web search query fallback, domain post-filtering, and effective query visibility
 |-issue23-product-reader-polish.md Product reader split layout and fixed-rhythm Artifact navigation
+|-issue24-empty-model-output-retryable.md empty model output maps to retryable pause instead of hard Mission failure
+|-issue25-model-context-json-safety.md model-call context serialization boundary for datetime/ObjectId safety
+|-issue26-latest-event-window.md Mission detail must return the latest bounded event window
+|-issue27-completed-mission-follow-up.md completed Missions can continue through user follow-up runs
+|-issue28-requirement-grill.md bounded Lead requirement clarification protocol
+|-issue29-research-paper-final-draft-gate.md deterministic final-draft gate for paper/research deliverables
+|-issue30-evaluator-leader-tool.md backend-owned Reliability evaluator as a model-visible Leader tool
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

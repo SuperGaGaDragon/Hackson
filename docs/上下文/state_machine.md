@@ -14,10 +14,10 @@ This document defines the product state transitions that affect Context Runtime.
 
 | Mode | Meaning | Context Source |
 | --- | --- | --- |
-| `idle` | Two Agents talk in the visible world timeline. | idle transcript, topic direction, Agent profiles, idle summaries, idle relationship memory |
-| `companion_1` | User explicitly joins an idle conversation. | child transcript, parent idle transcript, transition context, user profile, selected memory scopes |
-| `companion_2` | User opens direct companion chat. | companion transcript, user profile, companion memory |
-| `work` | User starts structured task execution. | Work Mode mission state, tool trace, work memory |
+| `idle` | Two Agents talk in the visible world timeline. | idle transcript, topic direction, Agent profiles, idle summaries, account memory, idle relationship memory |
+| `companion_1` | User explicitly joins an idle conversation. | child transcript, parent idle transcript, transition context, user profile, account memory |
+| `companion_2` | User opens direct companion chat. | companion transcript, user profile, account memory |
+| `work` | User starts structured task execution. | Work Mode mission state, tool trace, account memory, work-private memory |
 
 ## 3. Idle Turn States
 
@@ -39,6 +39,11 @@ Background Idle:
 - If Background Idle is disabled, browser-closed sessions MUST NOT schedule new idle turns.
 - If Background Idle is enabled, the server MAY schedule new idle turns only within budget, cooldown, and failure limits.
 - Provider failures MUST move the runner to cooldown instead of retrying in a loop.
+
+Collaborative convergence:
+
+- Each generated Idle turn keeps the conversation in `generating`, but the prompt must test whether the previous disagreement still changes action, risk, or decision criteria.
+- If no new decision-relevant disagreement remains, the Agent settles the point instead of adding another debate turn.
 
 ## 4. Idle Say States
 
@@ -92,6 +97,11 @@ Follow-up turns use child transcript as direct history and parent idle as backgr
 | memory card | MemoryWorker or RelationshipWorker | source message ids | rejected without evidence |
 | diary entry | DiaryWorker | source messages or memory ids | user-visible only after persisted |
 | relationship memory | RelationshipWorker | Agent-authored idle evidence | cannot rewrite core persona |
+
+Account-continuity rule:
+
+- Account memory can enter every mode.
+- Mode-private trace remains local until a worker promotes a concise, evidence-backed memory into account scope.
 
 ## 7. 代办
 

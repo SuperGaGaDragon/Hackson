@@ -251,6 +251,34 @@ Exit criteria:
 - Public `8145` serves `POST /api/users/desktop-handoff/claim` as `200`, not frontend fallback `405`.
 - Browser smoke covers both already-logged-in and login-then-bind `desktopAuth` flows.
 
+## 6.3. V0.8.3: Bubble Progress Glance
+
+Goal: let the user click the desktop pet bubble to see the same current Progress area that the website is reacting to.
+
+Likely files:
+
+- `desktop/src/App.jsx`
+- `desktop/src/domain/missionState.js`
+- `desktop/src/features/pet/PetWindow.jsx`
+- `desktop/src/styles.css`
+
+Required behavior:
+
+- Single-click the speech bubble to expand or collapse a compact Progress glance.
+- Expanded glance shows current state, Mission title, and the full recent Progress event list from the selected Mission detail.
+- Event rows show event title, short detail, sequence, and time when available.
+- The Progress event list scrolls vertically when content exceeds the expanded window.
+- Double-clicking the bubble or cat still opens the Hackson website.
+- Expanded window resizes only while the glance is open, then returns to the compact pet size.
+- No Work Mode commands, text input, raw JSON, or full Work Console clone.
+
+Exit criteria:
+
+- With a running Mission, clicking the bubble shows the recent Progress event list from real Mission events, not only the latest three.
+- With several Progress events, the expanded view can scroll without moving the whole pet window.
+- With no active Mission, the expanded view shows `No progress yet`.
+- `npm test`, `npm run build`, and `npm run tauri:build` pass.
+
 ## 7. Loop 1: Runtime Spike
 
 Goal: prove the desktop shell.

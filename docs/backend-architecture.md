@@ -357,7 +357,8 @@ V1.3/V1.4 逐步加入 memory、diary、relationship worker。
 - 保存长期 memory card。
 - 审核 memory candidate。
 - 给 context 提供少量可用记忆。
-- 通过 `user_id + scope + owner_type + owner_id` 隔离 companion、idle、work memory。
+- 通过 `account` scope 给 Idle、Companion、Work 提供账号级连续记忆。
+- 通过 `user_id + scope + owner_type + owner_id` 隔离 mode-private memory，避免 raw Work trace 污染 Companion。
 
 不负责：
 

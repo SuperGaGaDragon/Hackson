@@ -30,7 +30,7 @@ Last Modified by: Codex
 - Build deterministic compact summaries when raw history exceeds the recent window.
 - Build context through `context/`.
 - Build and persist context packages through `ContextRuntime`.
-- Read scoped active memory cards for context injection.
+- Read account-continuity and mode-private active memory cards for context injection.
 - Protect idle tick generation with a per-transcript turn lock before model generation.
 - Gate future Background Idle with server-side setting, budget, and cooldown checks.
 - Generate model replies through `orchestration/`, which delegates provider calls to `model_runtime/`.

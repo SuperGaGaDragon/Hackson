@@ -284,6 +284,7 @@ Read-only cognition tools:
 - `review_product`
 - `discuss_with_delegate`
 - `web_search`
+- `evaluate_product`
 
 These tools help the Lead think with better evidence. They MUST NOT directly mutate Product content, finish a Mission, or bypass `work_product`.
 
@@ -476,6 +477,62 @@ Rules:
 - Providers MAY run bounded internal fallback attempts, but returned results MUST still respect `allowedDomains` and `blockedDomains`.
 - `query` is the model-requested query. `effectiveQuery` is the provider query that produced the returned result set.
 - If the Mission needs a citation or source trail, the Lead SHOULD preserve the relevant URLs in Product content or a Research Artifact.
+
+### 13.6 Tool: evaluate_product
+
+Purpose:
+
+- Let the Lead request a backend-owned Reliability Report for the current Mission and final Product candidate.
+
+Schema:
+
+```json
+{
+  "reason": "string",
+  "profile": "research_reliability_v1",
+  "productIds": ["string"],
+  "artifactIds": ["string"],
+  "focus": "string"
+}
+```
+
+Constraints:
+
+- MUST be read-only against Product content.
+- MUST run Evaluator Runtime against the visible Mission trace.
+- MUST persist a Reliability Report Artifact.
+- MUST emit `RELIABILITY_REPORTED`.
+- MUST return score, status, issue counts, top issues, report Artifact id, and recommended next tool.
+- MUST NOT modify Product content.
+- MUST NOT mark Mission completed.
+- For research/paper-like Missions, a current report after the latest Product update is required before `finish_mission`.
+
+### 13.7 Evaluate Product Observation
+
+```json
+{
+  "tool": "evaluate_product",
+  "status": "ok",
+  "profile": "research_reliability_v1",
+  "score": 80,
+  "reliabilityStatus": "needs_human_review",
+  "issueCounts": {
+    "high": 1,
+    "medium": 1
+  },
+  "reportArtifactId": "artifact_id",
+  "topIssues": [
+    {
+      "id": "I1",
+      "type": "missing_requirement",
+      "severity": "high",
+      "title": "Missing requirement",
+      "suggestedFix": "Revise the final answer."
+    }
+  ],
+  "recommendedNextTool": "work_product"
+}
+```
 
 ## 14. Invalid Turns
 

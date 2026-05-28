@@ -22,6 +22,7 @@ Last Modified by: Codex
 - Keep idle user topic direction separate from visible transcript messages.
 - Treat idle topic direction as the selected topic anchor for the next Agent turn.
 - Preserve speaker boundaries between the User, current Agent, and other Agent.
+- Apply Collaborative Convergence Protocol in Idle so Agent-Agent debate acknowledges agreement, avoids repeated objections, and stops when only emphasis remains.
 - Record context package metadata for debugging.
 - Persist auditable context package records before model generation.
 - Store full model-visible prompt text only when the user has Full Prompt Logging enabled.
@@ -66,7 +67,7 @@ conversations decides: how does the product flow proceed?
 - v1.0: `builder.py` and `recipes.py` for idle and companion_2. Implemented as pure context construction.
 - v1.1: `transition.py` and companion_1 recipe. Implemented as pure Transition Context generation.
 - v1.2: `compaction.py` and `packages.py`. Implemented as lightweight recent-message selection and context package metadata.
-- v1.3: Read lightweight scoped memory cards.
+- v1.3: Read lightweight account-continuity memory plus mode-private memory cards.
 - v1.5: Add work recipe.
 
 ## implementation notes

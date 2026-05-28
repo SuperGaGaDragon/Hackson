@@ -2,7 +2,7 @@
 Created at: 2026-05-26
 Created by: Codex
 Last Modified at: 2026-05-28
-Lst Modified by: Codex
+Last Modified by: Codex
 
 ## brief intro
 - goal for this folder.
@@ -13,6 +13,7 @@ Lst Modified by: Codex
   - Mission console cards are vertical siblings; cards must not overlap or nest inside each other.
   - Main order is Activity, optional Reliability, Windows, Product, Progress, then Diagnostics.
   - `MissionHeader` mirrors the selected Mission status and disables actions that the user should not take from a terminal state.
+  - `MissionHeader` owns waiting-input replies and completed-Mission follow-up input.
   - `ProductPanel` uses persisted Products and Artifacts as the source of truth and exposes Artifact lineage as readable content, including after Done.
   - `ProductPanel` uses a fixed-rhythm Artifact Navigator plus reader layout so generated title length does not control the page shape.
   - `WorkWindowPanel` renders persisted Delegate windows collapsed by default.

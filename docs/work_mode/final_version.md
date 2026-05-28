@@ -2,7 +2,7 @@
 Created at: 2026-05-27
 Created by: Codex
 Last Modified at: 2026-05-28
-Lst Modified by: Codex
+Last Modified by: Codex
 
 # Work Mode Final Version Roadmap
 
@@ -58,6 +58,8 @@ Mission goal
 - V1.0 MUST use one tool call per Lead model turn.
 - V1.0 child work windows MUST run sequentially, not in parallel.
 - V1.0 full product acceptance MUST include the full 8000 CJK character novel smoke.
+- Completed Missions MUST support explicit user follow-up runs without mutating prior Artifacts.
+- The Lead Agent SHOULD ask focused clarifying questions only when missing requirements materially change the deliverable.
 
 ## 4. Version Summary
 
@@ -158,6 +160,7 @@ See `issues/issue1-native-tool-calling.md`.
 V1.0 context MUST include:
 
 - Mission goal.
+- Latest user follow-up request when present.
 - Lead Agent profile.
 - Available tools and schemas.
 - Current Mission status.
@@ -200,6 +203,7 @@ Required order:
 3. V1.0.3 Lead review and Delegate discussion tools.
 4. V1.0.4 immutable revision lineage.
 5. V1.0.5 controlled Web Search tool.
+6. V1.0.6 Evaluator tool and research/paper final-draft gates.
 
 The quality track MUST preserve the core rule that the model chooses tools. It adds better tools, checks, and UI surfaces; it does not hard-code a writing workflow.
 
@@ -207,7 +211,9 @@ V1.0.x read-only cognition tools, including `discuss_with_delegate` and `web_sea
 
 `web_search` is not a browser, shell, Codex CLI, or computer-control tool. It is a backend-owned search provider wrapper with bounded results and visible source links.
 
-See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, `issues/issue13-revision-lineage.md`, and `issues/issue16-web-search-tool.md`.
+`evaluate_product` is a backend-owned quality tool. The Lead chooses it, but Evaluator Runtime writes the Reliability Report. It MUST NOT edit Product content or finish the Mission. For research/paper-like Missions, `finish_mission` MUST reject outline-only final deliverables and SHOULD require a current Reliability Report before completion.
+
+See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, `issues/issue13-revision-lineage.md`, `issues/issue16-web-search-tool.md`, `issues/issue29-research-paper-final-draft-gate.md`, and `issues/issue30-evaluator-leader-tool.md`.
 
 ## 9. Failure And Resume Strategy
 

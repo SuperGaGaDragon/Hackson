@@ -2,7 +2,7 @@
 Created at: 2026-05-27
 Created by: Codex
 Last Modified at: 2026-05-28
-Lst Modified by: Codex
+Last Modified by: Codex
 
 # Model 升级工程日志
 
@@ -188,6 +188,29 @@ Lst Modified by: Codex
   - 目标机 `8165` 通过：frontend build、Work Mode `85` tests、full/search smoke。
   - 推广到 public `8145`：public 目录 build、Work Mode `85` tests、full/search smoke 通过；重启后 `https://hackson.catachess.com/health` 正常，前端 assets 为 `/assets/index-CG4wOHJC.js` 和 `/assets/index-DTBHuMeq.css`。
   - 公网 SSE 探针通过：新建草稿 Mission 后，`/events/stream?afterSequence=0` 返回 `text/event-stream` 和 `MISSION_CREATED` 的 `work_event`。
+- 修复 Work Mode 搜索、失败恢复和 Evaluator 误判：
+  - 搜索根因：长查询叠加 `allowedDomains` 可能让 DuckDuckGo Lite 无结果；新增 query fallback 与 effective query 诊断，并在 Lead context 里软提示短查询、少用不必要 domain 硬过滤。
+  - 失败恢复语义：`web_search` 失败仍是非终止 observation，Lead 可以继续换搜索、委托或产出；模型空输出改为 retryable pause，模型上下文写入前统一做 JSON-safe 序列化，避免 datetime/ObjectId 触发硬失败。
+  - Evaluator 根因：旧实现只看最终 Artifact，不把 Mission 状态纳入质量门禁；暂停 Mission `6a184171a816f35aa141e6a8` 被错误评成 `100 / 100 ship_ready`。
+  - 新增 `docs/evaluator/issues/issue6-incomplete-mission-gate.md`：非 `completed` Mission 必须产生 `mission_incomplete`，状态封顶为 `needs_human_review`；报告带 `evaluatorVersion`，重复 Evaluate 在无新 trace 时幂等。
+  - 新增 `docs/work_mode/issues/issue26-latest-event-window.md`：`get_mission_detail` 对长 Mission 返回最新 100 条事件并保持 sequence 升序，避免 evaluator 和 UI 只看到最早事件。
+  - 本地通过：Work Mode `93` tests、model_runtime `28` tests、`work_mode_v1_search_smoke.py`。
+  - Public `8145` 目录通过：Work Mode `93` tests、model_runtime `28` tests、search smoke；重启后公网健康。
+  - 生产验证：暂停 Mission 新报告为 `75 / 100 needs_human_review`，issue 包含 `mission_incomplete`；重复 Evaluate 没有生成第二份 current-version 报告。
+  - 搜索现场探针通过：长海地革命查询、Britannica domain 查询、JSTOR/Cambridge/Taylor domain 查询均返回结果，其中学术 domain 查询通过 fallback 命中 JSTOR。
+  - 新建公网真实 Mission `6a1848f8186876148dc42b99` 正常完成，模型自主选择 `delegate_agent -> work_product -> review_product -> finish_mission`，日志无 traceback、500、search/evaluator 错误。
+- 完成 Work Mode completed follow-up 和 Requirement Grill：
+  - 自审后新增 `docs/work_mode/issues/issue27-completed-mission-follow-up.md` 和 `issue28-requirement-grill.md`，明确完成态继续必须是显式 follow-up，不允许普通 Start 静默重跑旧目标。
+  - 后端新增 `MissionFollowUpRequest`、`USER_FOLLOWUP_REQUESTED`、`POST /api/work/missions/{missionId}/follow-up`；follow-up 会创建新的 `running` Run，写入 `resumeReason=user_followup`，保留旧 Product / Artifact lineage，并启动 daemon worker。
+  - `start_mission` 对 `completed` 返回 `409 mission_followup_required`，避免用户误以为是在继续但实际重放旧目标。
+  - Lead context 新增 `latestUserFollowUp` 和 `requirementGrill`：模型可在需求会实质改变交付时调用 `ask_user`，但用户说 `随你`、`不限`、`你决定`、`题材自定` 时要默认推进。
+  - 前端 `MissionHeader` 在 `completed` 状态展示独立 Continue 输入，和 Start/Reply 分离。
+  - 本地验证通过：Work Mode `98` tests、frontend build。
+  - 目标机 `8165` 验证通过：Work Mode `98` tests（unittest）、frontend build。
+  - 推广到 public `8145` 前确认 active-like Mission 为 `0`；public source 备份到 `~/hackson_backups/work_followup_public_20260528101743`；public 目录 Work Mode `98` tests、frontend build 通过。
+  - 重启 `hackson-domain-8145.service` 后，内网和公网 `/health` 均返回 `{"status":"ok"}`；补齐前端父级 state 同步后，最终公网 assets 为 `/assets/index-OVTNRPWP.js` 和 `/assets/index-QOvacDKh.css`。
+  - 公网 API smoke 通过：completed Mission 的 `/start` 返回 `409 mission_followup_required`；`/follow-up` 返回 `200 running user_followup`；保留 `1` 个 Product 和 `1` 个 Artifact；worker launcher 触发 `1` 次。
+  - 公网 UI smoke 通过：completed 状态 Start 禁用，Continue 输入可提交，页面切到 `running`，截图 `/tmp/work_followup_public_ui_smoke.png`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。

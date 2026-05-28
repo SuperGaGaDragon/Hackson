@@ -18,6 +18,8 @@ Last Modified by: Codex
 |-issue3-evidence-ledger-boundary.md what can count as evidence
 |-issue4-llm-judge-discipline.md how model-assisted checks stay structured and auditable
 |-issue5-demo-replay-and-live-mode.md how deterministic demo data stays credible
+|-issue6-incomplete-mission-gate.md why unfinished Missions cannot be ship-ready
+|-issue7-research-paper-evidence-gate.md why research/paper work without trace evidence cannot be minor review
 
 ## 代办
 - Add new issue notes only when a decision would otherwise be surprising to future implementers.

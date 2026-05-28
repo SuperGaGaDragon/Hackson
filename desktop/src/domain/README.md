@@ -10,11 +10,12 @@ Lst Modified by: Codex
 - 架构思路
   - Keep V0.6 behavior deterministic and backend-free.
   - Later Work Mode event mapping can build on this state model.
+  - Keep V0.8.3 Progress glance summarization in pure domain code so the tiny pet UI only renders prepared rows.
 
 ## folder structure
 |-README.md desktop pet domain folder guide
 |-missionState.js Work Mode Mission and event to pet state mapping
-|-missionState.test.mjs node tests for active Mission selection and pet state copy
+|-missionState.test.mjs node tests for active Mission selection, pet state copy, and Progress glance summary
 |-petStates.js local cat state labels, messages, timing, and movement rules
 
 ## 代办

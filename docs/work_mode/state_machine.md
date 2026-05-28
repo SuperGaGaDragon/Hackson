@@ -2,7 +2,7 @@
 Created at: 2026-05-27
 Created by: Codex
 Last Modified at: 2026-05-28
-Lst Modified by: Codex
+Last Modified by: Codex
 
 # Work Mode State Machine
 
@@ -71,6 +71,7 @@ completed
 `completed`:
 
 - `finish_mission` validated final Product references and completed the Mission.
+- User may continue by submitting a follow-up request, which creates a new Run and returns the Mission to `running`.
 
 ## 4. Allowed Mission Transitions
 
@@ -94,6 +95,8 @@ completed -> running
 ```
 
 Restarting terminal Missions is allowed only as a new Run attempt. The previous Run, Events, Products, and Artifacts MUST remain persisted.
+
+Completed Mission continuation MUST use a follow-up request event rather than silently replaying the original goal.
 
 ## 5. Terminal Status Rules
 
@@ -242,6 +245,7 @@ WEB_SEARCH_COMPLETED
 WEB_SEARCH_FAILED
 USER_INPUT_REQUESTED
 USER_INPUT_RECEIVED
+USER_FOLLOWUP_REQUESTED
 MISSION_PAUSED_RETRYABLE
 MISSION_STOP_REQUESTED
 MISSION_STOPPED

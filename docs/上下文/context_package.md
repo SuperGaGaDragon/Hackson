@@ -82,13 +82,15 @@ Idle includes:
 - topic direction as steering metadata.
 - latest idle transcript.
 - idle summary.
+- account memory.
 - idle relationship memory.
 - relationship stance between the two Agents.
 - one turn intent for the current reply.
+- collaborative convergence protocol for agreement, meaningful disagreement, and stop conditions.
 
 Idle must not include:
 
-- Work task memory.
+- raw Work task trace.
 - Companion-only private memory by default.
 - hidden debug notes as visible output.
 - stacked advice frameworks unless the user directly asks for a method.
@@ -98,6 +100,10 @@ Idle dialogue rules:
 - Respond to the previous Agent's concrete line.
 - Make one conversational move, not a full essay.
 - Allow disagreement, softening, or uncertainty when it fits persona.
+- Acknowledge valid prior reasoning before disagreeing.
+- Disagree only when the disagreement changes action, risk, assumption, tradeoff, or decision criteria.
+- Stop debating when remaining disagreement is only emphasis.
+- If the previous visible message is from the user, answer the user first instead of forcing an Agent-Agent agreement ritual.
 - Prefer short human turns over polished coaching.
 
 ### Companion 1
@@ -109,10 +115,11 @@ Companion 1 includes:
 - child conversation recent messages.
 - parent idle recent messages as background.
 - parent idle summary.
+- account memory.
 - idle relationship memory for parent Idle background.
-- companion user memory for user preferences.
+- legacy companion user memory as account-continuity input.
 
-Companion 1 must not include Work memory by default.
+Companion 1 must not include raw Work task trace by default.
 
 ### Companion 2
 
@@ -122,7 +129,20 @@ Companion 2 includes:
 - current companion recent messages.
 - target Agent persona.
 - user profile.
-- companion memory.
+- account memory.
+- legacy companion user memory as account-continuity input.
+
+### Work
+
+Work includes:
+
+- task state.
+- target Agent persona.
+- recent work messages.
+- account memory.
+- work-private memory.
+
+Work must not export raw task trace to Idle or Companion. A later worker may promote completed Work outcomes into account memory with source evidence.
 
 ## 5. Budget Rules
 

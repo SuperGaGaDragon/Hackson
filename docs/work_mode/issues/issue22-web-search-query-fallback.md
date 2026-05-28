@@ -2,7 +2,7 @@
 Created at: 2026-05-28
 Created by: Codex
 Last Modified at: 2026-05-28
-Lst Modified by: Codex
+Last Modified by: Codex
 
 # Issue 22: Web Search Query Fallback And Effective Query Visibility
 
@@ -33,6 +33,8 @@ Domain constraints remain hard constraints for returned results:
 - `blockedDomains` MUST always be excluded.
 - `allowedDomains`, when non-empty, MUST be respected by backend post-filtering.
 - The provider MUST NOT return disallowed domains simply to avoid an empty result set.
+
+The Lead context SHOULD still encourage concise queries. Provider fallback is a safety net, not a reason to pack many topics and domain restrictions into one search request.
 
 ## Product Contract
 

@@ -98,7 +98,7 @@ Each mode has a recipe:
 - `companion_2`
 - `work`
 
-Recipes define priority, allowed memory scopes, and output constraints.
+Recipes define priority, account-continuity memory, allowed mode-private memory scopes, and output constraints.
 
 ### 3.5 ContextBudgeter
 

@@ -14,7 +14,7 @@ Last Modified by: Codex
   - V1 keeps two backend-owned fixed Agent slots and uses the catalog to seed each user's editable Agent profiles.
 
 ## responsibilities
-- Store default Agent name, color, short label, voice label, core persona, speaking style, and episode state.
+- Store default Agent name, color, short label, voice label, core persona, speaking style, and detailed editable origin story.
 - Provide stable Agent records to conversations and context.
 - Provide frontend-safe display profiles without exposing hidden prompt-only fields.
 - Seed and normalize user-owned Agent profiles without allowing extra slots.
@@ -43,6 +43,7 @@ Last Modified by: Codex
 - `core_persona`
 - `speaking_style`
 - `episode_state`
+- `episode_state` seeds the editable Agent `story`; it should be a product-grade origin story, not a transient demo status line.
 
 ## version plan
 - v1.0: List the backend-owned two fixed demo Agents.

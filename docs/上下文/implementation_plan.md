@@ -150,9 +150,11 @@ V1.3 public release requires Memory Control. V1.0 does not.
 
 Required tests:
 
-- Companion memory enters Companion 2.
-- Companion 1 imports idle relationship memory and companion user memory.
-- Work memory stays out of Idle and Companion.
+- Account memory enters Companion 2, Idle, and Work.
+- Companion 1 imports account memory plus parent Idle background.
+- Legacy companion user memory and idle relationship memory remain readable through account-continuity retrieval.
+- Work turns enqueue memory-candidate jobs so explicit user preferences learned during Work become account memory.
+- Raw Work trace and task-private memory stay out of Idle and Companion.
 - User can disable or delete a memory.
 
 Exit criteria:
@@ -205,11 +207,14 @@ Required behavior:
 - Idle prompt includes one Turn Intent.
 - Idle prompt asks the Agent to respond to the previous Agent's concrete line.
 - Idle prompt blocks stacked advice/checklists by default.
+- Idle prompt includes Collaborative Convergence Protocol.
+- Idle prompt requires agreement acknowledgment, decision-relevant disagreement, non-repetition, shared-conclusion checks, and an emphasis-only stop condition.
+- Idle prompt explicitly prioritizes a user interjection over Agent-Agent convergence.
 - Context eval covers the human dialogue contract.
 
 Exit criteria:
 
-- Eval and fake-model smoke prove the prompt contract is active before production deployment.
+- Eval and HTTP prompt-log smoke prove the prompt contract is active before production deployment.
 
 ## 13. Loop 11: Me Page Product IA And Memory Quality
 
@@ -218,6 +223,7 @@ Required behavior:
 - `Me` first viewport prioritizes account basics and Agent editing.
 - User profile context is labeled `Style` and `Background`.
 - Memory controls are compact and below profile editing.
+- Nora and Vale seed with detailed editable Agent Origin Stories instead of one-line demo status text.
 - Prompt Logs live inside collapsed `Debug`.
 - Prompt Logs remain expandable and readable after opening Debug.
 - Relationship worker does not generate generic filler cards.

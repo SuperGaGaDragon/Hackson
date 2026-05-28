@@ -98,7 +98,10 @@ Animation must stay calm. Work Mode is a productivity product, not a toy-only su
 
 Default pet window text should be minimal:
 
+- Default system text must be English.
+- Mission titles remain user content and should be shown exactly as stored.
 - `No active work`
+- `Sign in`
 - `Thinking`
 - `Working`
 - `Delegate`

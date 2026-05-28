@@ -15,6 +15,7 @@ Lst Modified by: Codex
 |-README.md smoke folder guide
 |-work_mode_v1_browser_smoke.mjs Playwright smoke for Work Mode V1 UI contract and Reliability panel
 |-work_mode_agentlens_public_ui_smoke.mjs Playwright smoke for public AgentLens Reliability panel
+|-work_mode_product_reader_public_ui_smoke.mjs Playwright smoke for production-bundle Product reader layout using API mocks
 |-context_runtime_me_smoke.mjs Playwright smoke for Me IA, Agent editor priority, collapsed Debug, prompt-log access, and memory controls
 |-idle_interruption_smoke.mjs Playwright smoke for typing during Idle Working state; `HACKSON_SMOKE_TIMEOUT_MS` covers slower public model turns
 

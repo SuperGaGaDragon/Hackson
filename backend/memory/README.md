@@ -11,7 +11,8 @@ Last Modified by: Codex
   - V1.3 introduces memory slowly and only for high-value, evidence-backed facts.
   - Raw messages remain the source of truth.
   - Memory is a derived layer used by context, not a replacement for conversation history.
-  - Memory is isolated by `user_id`, `scope`, `owner_type`, and `owner_id` so Work Mode task memory cannot pollute Companion Mode.
+  - `account` memory is shared across Idle, Companion, and Work for user-level continuity.
+  - Mode-private memory is still isolated by `user_id`, `scope`, `owner_type`, and `owner_id` so raw Work trace cannot pollute Companion Mode.
 
 ## responsibilities
 - Store memory cards.
@@ -62,7 +63,8 @@ Last Modified by: Codex
 ## write rule
 - No source message id, no long-term memory write.
 - User fact and preference memory must come from user-authored evidence, not Agent guesses.
-- `work` scoped memory cannot be read by idle or companion recipes by default.
+- `account` scoped memory can be read by Idle, Companion, and Work recipes.
+- `work` scoped task-private memory cannot be read by idle or companion recipes by default.
 - Disabled or deleted memory cannot enter context packages.
 - Delete is a soft delete to preserve audit metadata until a later privacy policy defines hard delete.
 - Deprecated generic relationship cards are hidden from user-facing reads; they are legacy noise, not useful memory.

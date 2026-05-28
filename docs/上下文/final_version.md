@@ -29,6 +29,8 @@ Current issue notes:
 - `issues/issue4-companion1-memory-scope.md`
 - `issues/issue6-idle-interruption-queue.md`
 - `issues/issue7-idle-human-relationship-dialogue.md`
+- `issues/issue11-account-agent-continuity.md`
+- `issues/issue12-idle-collaborative-convergence.md`
 
 ## 2. Product North Star
 
@@ -56,13 +58,16 @@ User action or idle cadence
 - Context Package construction MUST be deterministic for the same inputs.
 - Context Package records MUST be auditable by prompt hash, included source ids, and budget decisions.
 - Full prompt text MAY be stored only through user-controlled Full Prompt Logging.
-- Idle, Companion, and Work memory MUST stay isolated by scope unless a recipe explicitly imports a scope.
+- Account memory MUST be available across Idle, Companion, and Work because Nora and Vale are account-level Agents.
+- Mode-private memory and raw Work trace MUST stay isolated unless a governed worker promotes it into account memory.
 - User facts and preferences MUST require user-authored evidence before becoming long-term memory.
 - Agent core persona MUST NOT be overwritten by model output.
-- Work Mode task memory MUST NOT enter Idle or Companion prompts by default.
+- Default Agent Origin Stories SHOULD be detailed editable profile material, not transient demo status lines.
+- Raw Work Mode task trace MUST NOT enter Idle or Companion prompts by default.
 - Idle Auto MUST have stable failure behavior and MUST NOT loop provider failures.
 - Idle input MUST stay available during generation by queueing Idle Interruption.
 - Idle Agents MUST respond as a relationship-aware pair, not as alternating advice generators.
+- Idle Agents MUST use Collaborative Convergence Protocol so disagreement stops when it no longer changes action, risk, or decision criteria.
 - Raw chain-of-thought MUST NOT be stored or shown.
 
 ## 4. Version Summary
@@ -72,10 +77,10 @@ User action or idle cadence
 | V1.0 | Auditable Context Package | Idle, Say, Join, and Companion turns expose traceable context inputs. | Persisted context package records, deterministic recipe metadata, token budget notes. | A failed or bad turn can be reproduced from persisted context package metadata and source ids. |
 | V1.1 | Server-Owned Idle Cadence | Idle can run with backend-owned cadence, locks, budget, retry state, and user-controlled Background Idle. | Idle runner state, Background Idle setting, per-conversation turn lock, idempotent tick requests. | Multi-tab and retry smoke cannot create duplicate next turns; browser-closed generation happens only when enabled. |
 | V1.2 | Persisted Summary Runtime | Long conversations use rebuildable persisted summaries instead of only synchronous compact snippets. | Summary worker runner, source ranges, summary selection policy. | Idle over 50 turns keeps latest raw turns and old material through persisted summary. |
-| V1.3 | Governed Memory Runtime | User preferences, relationship summaries, and mode-scoped memory become usable and controllable. | Memory worker runner, memory governance, scope-aware retrieval, user-visible memory controls. | A user-authored preference becomes memory with evidence and can be disabled or deleted. |
+| V1.3 | Governed Memory Runtime | User preferences, relationship summaries, account memory, and mode-private memory become usable and controllable. | Memory worker runner, memory governance, account-continuity retrieval, user-visible memory controls. | A user-authored preference becomes account memory with evidence and can be disabled or deleted. |
 | V1.4 | Relationship And Diary Layer | Idle produces durable Agent relationship state and user-visible diary artifacts without destabilizing chat. | Relationship worker, diary worker, evidence references, low-priority background jobs. | Idle relationship memory improves continuity but cannot rewrite core persona. |
 | V1.5 | Context Evaluation Gate | Context changes are scored before release. | Fixed eval set for mode fit, speaker boundary, topic adherence, repetition, memory use, latency. | CI or smoke command reports pass/fail against the fixed context eval set. |
-| V1.6 | Human Idle Interaction | User can interrupt while Agents generate, and Idle replies use relationship-aware turn intent. | Idle Say lock/idempotency, queued interjection UI, relationship stance, turn intent, anti-advice eval. | User input during generation is accepted and the next turn responds to it; eval catches advice-list regressions. |
+| V1.6 | Human Idle Interaction | User can interrupt while Agents generate, and Idle replies use relationship-aware turn intent plus convergence rules. | Idle Say lock/idempotency, queued interjection UI, relationship stance, turn intent, collaborative convergence, anti-advice eval. | User input during generation is accepted and the next turn responds to it; eval catches advice-list and endless-disagreement regressions. |
 
 ## 5. V1.0 Auditable Context Package
 
@@ -175,10 +180,11 @@ Decision:
 
 - V1.0 does not need user-facing Memory Control.
 - V1.3 must ship Memory Control before governed memory is treated as a public product feature.
-- Companion 1 may import idle relationship memory for parent Idle background and companion user memory for user preferences.
-- Work memory stays out of Idle and Companion by default.
+- Nora and Vale use Account Agent Continuity: account memory enters Idle, Companion, and Work.
+- Legacy Companion user memories and Idle relationship memories remain readable as account-continuity input until migrated.
+- Raw Work trace and task-private memory stay out of Idle and Companion until promoted into account memory.
 
-See `issues/issue4-companion1-memory-scope.md`.
+See `issues/issue4-companion1-memory-scope.md` and `issues/issue11-account-agent-continuity.md`.
 
 Allowed first memory types:
 
@@ -193,7 +199,7 @@ Required controls:
 - disable memory.
 - delete memory.
 - show evidence source ids internally.
-- keep Work memory out of Companion and Idle by default.
+- keep raw Work trace and task-private memory out of Companion and Idle by default.
 
 ## 9. Latency Targets
 
@@ -219,9 +225,10 @@ Required behavior:
 - Backend serializes Idle Say with the same transcript lock used by Idle Tick.
 - Idle Say supports idempotency keys.
 - Idle prompt includes Relationship Stance and Turn Intent.
+- Idle prompt includes Collaborative Convergence Protocol.
 - Idle prompt forbids stacked frameworks, repeated exercises, and generic advice lists unless the user explicitly asks.
 
-See `issues/issue6-idle-interruption-queue.md` and `issues/issue7-idle-human-relationship-dialogue.md`.
+See `issues/issue6-idle-interruption-queue.md`, `issues/issue7-idle-human-relationship-dialogue.md`, and `issues/issue12-idle-collaborative-convergence.md`.
 
 ## 11. Implementation Decisions
 

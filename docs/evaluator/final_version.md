@@ -21,6 +21,8 @@ Current issue notes:
 - `issues/issue3-evidence-ledger-boundary.md`
 - `issues/issue4-llm-judge-discipline.md`
 - `issues/issue5-demo-replay-and-live-mode.md`
+- `issues/issue6-incomplete-mission-gate.md`
+- `issues/issue7-research-paper-evidence-gate.md`
 
 ## 2. Product North Star
 
@@ -50,6 +52,7 @@ Evaluator Runtime does not replace the Lead Agent. It is a separate quality gate
 - V1.0 MUST NOT claim to prove correctness.
 - V1.0 MUST distinguish unsupported, weakly supported, and supported claims.
 - V1.0 MUST produce actionable Reliability Issues with severity and suggested fixes.
+- V1.0 MUST NOT mark an incomplete Mission as `ship_ready`.
 - V1.0 MUST keep search/read evidence bounded.
 - V1.0 MUST support deterministic fallback demo data.
 - V1.0 MUST render reports in the Work Console without requiring a new app surface.
@@ -79,6 +82,7 @@ For each, provide a one-sentence summary, source link, and personalized outreach
 
 V1.0 checks:
 
+- Mission completion gate.
 - Requirement Coverage.
 - Evidence support for factual claims.
 - Tool Failure Ignored.
@@ -144,6 +148,12 @@ Every Reliability Report MUST include:
 - Evaluator limitations.
 
 Scores are decision support, not truth labels.
+
+`ship_ready` also requires `mission.status == completed`. Score bands cannot override this gate.
+
+`research_reliability_v1` with an empty Evidence Ledger MUST cap status at `needs_human_review`. A numeric score in the 70-84 range cannot make no-evidence research work a minor review.
+
+Paper-like research Missions MUST check that the final Artifact is a final draft, not only a plan, outline, or chapter map.
 
 Initial status bands:
 

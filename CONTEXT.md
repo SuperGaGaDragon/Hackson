@@ -60,6 +60,18 @@ _Avoid_: settings main content, default prompt dump
 The primary Me-page surface where the user edits Nora and Vale's names, voices, personalities, and stories. It is more central to daily product behavior than debug logs.
 _Avoid_: hidden agent config, low-priority advanced setting
 
+**Agent Origin Story**:
+The editable life-history field seeded for Nora and Vale so their behavior has continuity beyond a one-line demo status. It is user-owned profile material, not model-generated memory and not a skill list.
+_Avoid_: demo tagline, mutable core persona, skill config
+
+**Account Agent Continuity**:
+The rule that Nora and Vale are account-level Agents whose identity and governed account memory travel across Idle, Companion, and Work. Mode recipes can change what they are doing, but not whether they remember account-visible user preferences, facts, and durable relationship state.
+_Avoid_: per-chat Agent, mode-only memory, raw task leak
+
+**Collaborative Convergence Protocol**:
+The Idle-only reasoning guardrail that makes Nora and Vale acknowledge valid prior reasoning, disagree only when the disagreement changes the decision, avoid repeating the same objection, and stop debating when only emphasis remains.
+_Avoid_: endless debate, performative disagreement, meeting-minutes output
+
 **Evaluator Runtime**:
 The product layer that checks a completed or in-progress Work Mission against its goal, visible trace, Products, Artifacts, and retrieved evidence. It flags reliability risks; it does not prove truth.
 _Avoid_: hallucination detector, universal agent safety platform
@@ -122,9 +134,21 @@ Developer: "Can Relationship Stance change an Agent's core persona?"
 
 Domain expert: "No. Relationship Stance is scene context for how Agents relate to each other. Core persona remains user-owned source data."
 
+Developer: "Should Nora and Vale default to one-line demo stories?"
+
+Domain expert: "No. Their Agent Origin Stories should be detailed enough to explain their psychological contrast and relationship tension. A default story can be edited by the user, but it should not feel like scaffolding."
+
 Developer: "What memory can Companion 1 use?"
 
-Domain expert: "Companion 1 can use idle relationship memory for the parent Idle background and companion user memory for the user's preferences. Work memory stays out."
+Domain expert: "Companion 1 must use account memory plus parent Idle background. The old Companion-only user memories are treated as legacy account-continuity input, but raw Work task trace stays out unless a governed worker promotes it into account memory."
+
+Developer: "Should Vale remember user preferences learned in Companion when Work starts?"
+
+Domain expert: "Yes. Nora and Vale are account Agents. User preferences and durable shared history belong to account memory, so Work, Idle, and Companion can all use them under the same user controls."
+
+Developer: "Should Nora and Vale keep disagreeing if the difference is only emphasis?"
+
+Domain expert: "No. Collaborative Convergence Protocol requires them to acknowledge valid points, disagree only when the disagreement changes action or criteria, and settle once no new decision-relevant disagreement remains."
 
 Developer: "Does Evaluator Runtime certify that a research answer is true?"
 

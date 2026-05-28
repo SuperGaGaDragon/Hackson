@@ -85,6 +85,8 @@ Memory controls belong below the primary user and Agent profile editing surface.
 
 Editable Agent profiles are the core daily control surface and MUST appear before Prompt Logs.
 
+Agent `Story` fields SHOULD seed with detailed origin stories for Nora and Vale. Empty or demo-placeholder stories SHOULD normalize to product-grade defaults, while user-authored edits MUST be preserved.
+
 User profile context labels SHOULD use user-facing terms:
 
 - `Style` for the user's own interaction style.

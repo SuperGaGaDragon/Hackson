@@ -49,12 +49,15 @@ Popover content:
 
 - Mission title.
 - Current state.
-- Latest event title.
-- Latest event time.
+- Compact Progress glance with the current state and the latest Progress events.
+- Latest event title, detail, sequence, and time.
 - Latest Product title when available.
 - Buttons: `Open`, `Product`, `Pause alerts`.
 
 Popover must not become a full Work Console clone.
+The first Desktop Pet implementation may attach this popover directly to the speech bubble and resize the tiny window while expanded.
+If Progress content exceeds the expanded window, the Progress event list must scroll vertically inside the popover.
+Double-clicking the cat or bubble must still open the website.
 
 ## 5. Tray Menu
 
@@ -127,6 +130,8 @@ Required:
 - Click-through mode can be considered after drag and recovery controls are reliable.
 
 ## 10. Copy Rules
+
+Default system copy must be English. Mission and Project names remain user-authored content and should not be translated by the pet.
 
 Allowed short labels:
 

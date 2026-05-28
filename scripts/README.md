@@ -23,8 +23,8 @@ Lst Modified by: Codex
 |-work_mode_v1_smoke_helpers.py shared deterministic smoke model clients and assertions
 |-work_mode_v1_smoke_server.py isolated FastAPI app for browser smoke
 |-context_runtime_fake_model.py deterministic OpenAI-compatible fake model relay for Context Runtime smoke
-|-context_runtime_http_smoke.py authenticated HTTP and MongoDB smoke for Context Runtime V1.0-V1.6; supports optional fake-model first-content assertion
-|-context_runtime_eval.py deterministic context-package eval gate for mode, speaker, topic, transition, memory, and latency metadata
+|-context_runtime_http_smoke.py authenticated HTTP and MongoDB smoke for Context Runtime V1.0-V1.6; verifies prompt-log contracts and supports optional fake-model first-content assertion
+|-context_runtime_eval.py deterministic context-package eval gate for mode, speaker, topic, transition, convergence, account memory, and latency metadata
 |-context_runtime_smoke_server.py in-memory API server for local browser smoke of Idle interruption behavior
 |-artifacts/ generated smoke artifacts folder
 

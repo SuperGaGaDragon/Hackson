@@ -23,6 +23,7 @@ This is soft guidance:
 
 ## Guidance Rules
 - Prefer `web_search` early when the Mission depends on current facts, external references, technical/source-backed claims, named organizations, market data, recent events, or niche facts not present in Product/Artifact context.
+- For `web_search`, prefer short 3-6 term queries and leave `allowedDomains` empty unless a domain restriction is essential.
 - Prefer `review_product` before `finish_mission` when the Mission has a substantive deliverable and no recent review exists for the final candidate.
 - Prefer `discuss_with_delegate` after a review with critical or major findings, after conflicting evidence, or when a second Agent's judgment can improve structure, quality, or tradeoff decisions.
 - Prefer `work_product` after `web_search`, `review_product`, or `discuss_with_delegate` when the observation should become user-visible deliverable content.
@@ -36,7 +37,7 @@ This is soft guidance:
 
 ## Acceptance
 - Lead context includes explicit soft guidance for `web_search`, `review_product`, and `discuss_with_delegate`.
+- Lead context tells the model to use short `web_search` queries and avoid unnecessary domain filters.
 - Unit tests assert the guidance is present.
 - Existing Work Mode full smoke and search smoke still pass.
 - Public deployment can use the guidance without data migration.
-

@@ -8,7 +8,7 @@ Lst Modified by: Codex
 - goal for this folder.
   - Store memory module tests.
 - 架构思路
-  - Tests focus on observable memory behavior: evidence requirements, user isolation, accepted memory reads, mode scope filtering, and user controls.
+  - Tests focus on observable memory behavior: evidence requirements, user isolation, account-continuity reads, private mode scope filtering, and user controls.
 
 ## folder structure
 |-README.md tests folder guide

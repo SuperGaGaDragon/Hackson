@@ -2,7 +2,7 @@
 Created at: 2026-05-25
 Created by: Codex
 Last Modified at: 2026-05-28
-Lst Modified by: Codex
+Last Modified by: Codex
 
 ## brief intro
 - goal for this folder.
@@ -18,6 +18,7 @@ Lst Modified by: Codex
   - `RawLogPanel` is the collapsed Diagnostics surface for raw event payloads.
   - Running Missions use the SSE event stream when available and fall back to event polling if streaming fails.
   - Terminal mission actions must be truthful; a completed mission cannot present an enabled `Start` action.
+  - Completed missions may present a separate Continue with Leader input that creates a follow-up run.
   - Do not expose Work-only Employee or Team creation in the current product UI.
   - Do not expose autonomous tool execution before backend safety gates exist.
 

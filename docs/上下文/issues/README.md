@@ -17,12 +17,15 @@ Lst Modified by: Codex
 |-issue1-context-package-storage.md context package storage and lookup boundary
 |-issue2-full-prompt-logging.md full prompt logging privacy, retention, and user controls
 |-issue3-background-idle-budget.md background idle budget, cooldown, and default-off constraints
-|-issue4-companion1-memory-scope.md companion_1 memory import scope and isolation rule
+|-issue4-companion1-memory-scope.md historical companion_1 import scope risk, superseded by account continuity
 |-issue5-idle-turn-lock.md idle turn lock and idempotency constraints before background cadence
 |-issue6-idle-interruption-queue.md user interjection while idle generation is in flight
 |-issue7-idle-human-relationship-dialogue.md relationship-aware idle dialogue quality rules
 |-issue8-me-page-information-architecture.md Me page hierarchy, Debug placement, and memory quality
 |-issue9-derived-worker-backlog.md derived worker backlog, scoped smoke, and memory freshness
+|-issue10-agent-origin-stories.md default Nora and Vale story depth and normalization rules
+|-issue11-account-agent-continuity.md account-level Agent continuity and shared memory contract
+|-issue12-idle-collaborative-convergence.md Idle agreement, meaningful disagreement, and stop condition protocol
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Context Runtime architecture.

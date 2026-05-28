@@ -17,7 +17,7 @@ Last Modified by: Codex
 
 ## responsibilities
 - Generate session and idle summaries.
-- Generate memory candidates.
+- Generate account memory candidates from explicit user-authored facts and preferences in Companion or Work.
 - Generate diary entries.
 - Generate relationship summaries only when enough Agent-message evidence exists.
 - Retry derived work when safe.
