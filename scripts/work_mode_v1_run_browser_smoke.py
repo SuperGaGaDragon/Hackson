@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -24,7 +25,7 @@ FRONTEND_PORT = int(os.getenv("HACKSON_SMOKE_FRONTEND_PORT", "5127"))
 def main() -> None:
     backend = _start(
         [
-            "python",
+            sys.executable,
             "-m",
             "uvicorn",
             "scripts.work_mode_v1_smoke_server:app",
