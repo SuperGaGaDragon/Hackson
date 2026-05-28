@@ -184,9 +184,9 @@ V1.0 UI surfaces:
 - Diagnostics.
 - Control Panel.
 
-The Mission Console MUST render Work Windows and Product before the Progress audit trail. Large text events MUST be collapsed by default. Users MUST be able to expand Work Windows and Diagnostics. The Product Panel is the canonical full-content reading surface and MUST expose Artifact lineage instead of only the latest Artifact.
+The Mission Console MUST render Work Windows and Product before the Progress audit trail. Large text events MUST be collapsed by default. Users MUST be able to expand Work Windows and Diagnostics. The Product Panel is the canonical full-content reading surface and MUST expose Artifact lineage as readable content instead of only the latest Artifact.
 
-See `ui_contract.md`, `issues/issue3-delegate-window.md`, and `issues/issue9-work-ui-information-architecture.md`.
+See `ui_contract.md`, `issues/issue3-delegate-window.md`, `issues/issue9-work-ui-information-architecture.md`, and `issues/issue10-product-reader-final-lineage.md`.
 
 ## 9. Failure And Resume Strategy
 
@@ -261,3 +261,4 @@ Known risks:
 - Long model turn progress and timeout UX: `issues/issue7-long-turn-progress.md`
 - Delegate result tolerance after real-model wrapper misses: `issues/issue8-delegate-result-tolerance.md`
 - Work UI hierarchy, Product lineage, and diagnostics clarity: `issues/issue9-work-ui-information-architecture.md`
+- Final Product reader hiding earlier Artifacts after Done: `issues/issue10-product-reader-final-lineage.md`

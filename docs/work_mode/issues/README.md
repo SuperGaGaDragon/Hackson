@@ -23,6 +23,7 @@ Lst Modified by: Codex
 |-issue7-long-turn-progress.md long model turn progress, bounded retry, and timeout UX
 |-issue8-delegate-result-tolerance.md tolerant Delegate result ingestion after public smoke failure
 |-issue9-work-ui-information-architecture.md Work UI hierarchy, Product lineage, Progress, and Diagnostics decisions
+|-issue10-product-reader-final-lineage.md final Product reader must keep all Artifacts readable after Done
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

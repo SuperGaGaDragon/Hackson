@@ -13,7 +13,7 @@ Lst Modified by: Codex
   - Mission console cards are vertical siblings; cards must not overlap or nest inside each other.
   - Main order is Activity, Windows, Product, Progress, then Diagnostics.
   - `MissionHeader` mirrors the selected Mission status and disables actions that the user should not take from a terminal state.
-  - `ProductPanel` uses persisted Products and Artifacts as the source of truth and exposes Artifact lineage.
+  - `ProductPanel` uses persisted Products and Artifacts as the source of truth and exposes Artifact lineage as readable content, including after Done.
   - `WorkWindowPanel` renders persisted Delegate windows collapsed by default.
   - `ProgressTimeline` is an audit trail, not the primary product reader.
   - `RawLogPanel` is the collapsed Diagnostics surface, not normal user content.

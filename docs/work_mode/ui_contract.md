@@ -88,7 +88,7 @@ Product Panel MUST NOT rely on Timeline payloads as the source of truth for full
 
 Product Panel MUST NOT show only the latest Artifact as if it were the whole deliverable.
 
-If a final Product exists, Product Panel SHOULD default to the final Artifact. If no final Product exists, Product Panel MUST keep all Product Artifacts visible in order so partially completed long-form output does not appear lost.
+If a final Product exists, Product Panel MUST default to an all-Artifact reader stack. The final Artifact should be visible inside that stack, and the user must be able to isolate a single Artifact from the lineage controls. If no final Product exists, Product Panel MUST keep all Product Artifacts visible in order so partially completed long-form output does not appear lost.
 
 ## 6. Mission Progress
 

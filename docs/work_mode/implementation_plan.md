@@ -232,7 +232,8 @@ Browser checks:
 - Current Activity renders.
 - Work Windows render above Mission Progress.
 - Product Panel renders before Mission Progress.
-- Product Panel exposes Artifact lineage and does not hide earlier partial Artifacts.
+- Product Panel exposes readable Artifact lineage and does not hide earlier partial Artifacts after Done.
+- Product Panel can switch between all Artifacts and one selected Artifact.
 - Mission Progress renders clock time and compact sequence metadata.
 - Diagnostics renders collapsed raw event detail.
 - Large content collapsed by default.
