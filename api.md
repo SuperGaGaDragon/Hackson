@@ -29,7 +29,7 @@ Last Modified by: Codex
 | Public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled and active |
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
-| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, failed-window cleanup, Delegate result tolerance, Activity UI, and final lineage validation |
+| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, failed-window cleanup, Delegate result tolerance, Activity -> Windows -> Product -> Progress -> Diagnostics UI, and final lineage validation |
 | Public model provider | `codex_cli` through target-machine Codex CLI |
 | Public model | `gpt-5.4` |
 | Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
@@ -119,6 +119,7 @@ Last Modified by: Codex
 - On 2026-05-28, `8162` was introduced as the isolated Work V1 Delegate tolerance service. It fixes the public Mission `6a17a659f01aad81f13bca8a` failure mode where a Delegate window returned useful writing but missed the strict JSON wrapper. Target Work Mode `55`, model_runtime `24`, interactions `21`, frontend build, full smoke, HTTP smoke, Delegate unstructured-prose HTTP regression, browser smoke, health, and static React checks passed.
 - On 2026-05-28, the Work V1 Delegate tolerance build was promoted to public `8145`. Public-directory Work Mode `55`, model_runtime `24`, interactions `21`, frontend build, deterministic full smoke, HTTP smoke, and Delegate unstructured-prose regression passed before restart. After restart, `https://hackson.catachess.com/health` and `/` returned `200`, assets `index-HYSRYan8.js` and `index-cInveBCH.css` were served, public runtime Delegate parse returned `completed` with `delegateStructured=false`, and no orphan `codex exec` process was present.
 - On 2026-05-28, `8163` was introduced as the isolated Work V1 UI architecture service. It verifies the Work Console order `Activity -> Windows -> Product -> Progress -> Diagnostics`, Product Artifact lineage, default-collapsed Diagnostics, desktop and mobile browser smoke, and mobile no-horizontal-overflow without touching public `8145`.
+- On 2026-05-28, the Work V1 UI architecture frontend build was promoted to public `8145` by replacing only `frontend/dist`; `hackson-domain-8145.service` was not restarted. Public health, root HTML, assets `/assets/index-qPU-cMH4.js` and `/assets/index-BbzX_UAM.css`, and a public browser static Work Console order check passed.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
@@ -427,3 +428,9 @@ V0.5 Work Mission generation is intentionally bounded to one model pass. Long re
   - Target HTTP full smoke passed: `events=30/windows=2/products=1/artifacts=4/final_cjk=9936`.
   - Target browser smoke passed with desktop and mobile screenshots, verified Work Console order, Artifact lineage, default-collapsed Diagnostics, final CJK count `9936`, and no mobile horizontal overflow.
   - Target `8163` live service health returned `{"status":"ok"}` and static root/assets returned `200`.
+- Work V1 UI architecture public static verification on active `8145`:
+  - Public `frontend/dist` was backed up to `~/hackson_domain_8145/frontend/dist.backup_work_ui_20260527230937`, then replaced from `~/hackson_work_ui_8163/frontend/dist` without restarting `hackson-domain-8145.service`.
+  - Public domain `https://hackson.catachess.com/health` returned `{"status":"ok"}`.
+  - Public root and assets verified with browser UA: `/assets/index-qPU-cMH4.js` and `/assets/index-BbzX_UAM.css` returned `200`.
+  - Public Playwright static check registered a test user, created a Project and draft Mission without starting the model, and verified Work Console order `activity>windows>product>progress>diagnostics` with Diagnostics collapsed.
+  - Screenshot: `scripts/artifacts/work_mode_public_ui_static_check.png`.
