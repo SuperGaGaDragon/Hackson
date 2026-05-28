@@ -120,6 +120,9 @@ Lst Modified by: Codex
   - 新增 `docs/work_mode/issues/issue8-delegate-result-tolerance.md`，明确 Lead 仍严格 JSON tool action，但 Delegate 写作结果需要容错 ingestion。
   - 修复：Delegate 结果支持 fenced JSON、嵌入 JSON、可用非结构化正文 canonicalize 为 completed Artifact；真正空结果或破损 JSON-like 结果标记窗口 failed，并进入 `paused_retryable` 而不是 unrecoverable `failed`。
   - 本地验证通过：Work Mode `55`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke、HTTP full smoke、browser smoke，最终 `final_cjk=9936`。
+  - 目标机隔离服务 `hackson-work-v1-delegate-8162.service` 通过：Work Mode `55`、model_runtime `24`、interactions `21`、frontend build、full smoke、HTTP smoke、Delegate unstructured-prose HTTP regression、browser smoke。
+  - 推广到 public `8145`：public 目录测试、build、full smoke、HTTP smoke、Delegate tolerance regression 全部通过后重启 `hackson-domain-8145.service`。
+  - 公网验证：`https://hackson.catachess.com/health` 和 `/` 返回 `200`，runtime Delegate 纯文本解析返回 `completed/delegateStructured=false`，没有 orphan Codex 进程。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。

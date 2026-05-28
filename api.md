@@ -28,7 +28,7 @@ Last Modified by: Codex
 | Public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled and active |
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
-| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, failed-window cleanup, Activity UI, and final lineage validation |
+| Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, failed-window cleanup, Delegate result tolerance, Activity UI, and final lineage validation |
 | Public model provider | `codex_cli` through target-machine Codex CLI |
 | Public model | `gpt-5.4` |
 | Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
@@ -86,7 +86,7 @@ Last Modified by: Codex
 ## active Hackson port map
 | Port | Service | Bind | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service`; promoted to Work V1 progress hardening build on 2026-05-27 |
+| 8145 | Hackson public domain FastAPI + React app | `127.0.0.1` | Active as `hackson-domain-8145.service` | Serves `https://hackson.catachess.com/` through `hackson-cloudflared.service`; promoted to Work V1 Delegate tolerance build on 2026-05-28 |
 | 8147 | Hackson Idle Auto smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-idle-auto-8147.service` | Isolated verification for Idle Auto topic, interjection, speaker, and rate-limit behavior |
 | 8148 | Hackson Work V0.5 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v05-8148.service` | Isolated verification for Work Mission artifact persistence and Product UI render |
 | 18148 | Work V0.5 fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-work-v05-fake-model-18148.service` | Test-only model relay for deterministic Work V0.5 success smoke; not a product API |
@@ -108,6 +108,7 @@ Last Modified by: Codex
 - On 2026-05-27, `8161` was introduced as the isolated Work V1 progress hardening service. It added safe lifecycle events, bounded automatic retry before `paused_retryable`, failed-window cleanup for delegate provider errors, and a compact Work UI activity strip. Target tests, frontend build, full smoke, HTTP smoke, browser smoke, health, and static React checks passed.
 - On 2026-05-27, the Work V1 progress hardening build was promoted to public `8145`. Public-directory Work Mode `52`, model_runtime `24`, interactions `21`, frontend build, deterministic full smoke, and HTTP smoke passed before restart. After restart, `https://hackson.catachess.com/health` and `/` returned `200`, assets `index-HYSRYan8.js` and `index-cInveBCH.css` were served, and real Codex Mission `6a17a145f01aad81f13bca71` completed with lifecycle events around each tool call.
 - On 2026-05-28, `8162` was introduced as the isolated Work V1 Delegate tolerance service. It fixes the public Mission `6a17a659f01aad81f13bca8a` failure mode where a Delegate window returned useful writing but missed the strict JSON wrapper. Target Work Mode `55`, model_runtime `24`, interactions `21`, frontend build, full smoke, HTTP smoke, Delegate unstructured-prose HTTP regression, browser smoke, health, and static React checks passed.
+- On 2026-05-28, the Work V1 Delegate tolerance build was promoted to public `8145`. Public-directory Work Mode `55`, model_runtime `24`, interactions `21`, frontend build, deterministic full smoke, HTTP smoke, and Delegate unstructured-prose regression passed before restart. After restart, `https://hackson.catachess.com/health` and `/` returned `200`, assets `index-HYSRYan8.js` and `index-cInveBCH.css` were served, public runtime Delegate parse returned `completed` with `delegateStructured=false`, and no orphan `codex exec` process was present.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
