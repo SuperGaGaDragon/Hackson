@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 
 ## brief intro
@@ -29,16 +29,22 @@ Last Modified by: Codex
 - Label Agent messages with the user's two Agent profile names when building context.
 - Build deterministic compact summaries when raw history exceeds the recent window.
 - Build context through `context/`.
+- Build and persist context packages through `ContextRuntime`.
+- Read scoped active memory cards for context injection.
+- Protect idle tick generation with a per-transcript turn lock before model generation.
+- Gate future Background Idle with server-side setting, budget, and cooldown checks.
 - Generate model replies through `orchestration/`, which delegates provider calls to `model_runtime/`.
 - Convert model runtime failures into stable API errors before they reach the client.
 - Save Agent replies through `conversations/`.
+- Link saved Agent replies to `context_package_id`, `prompt_hash`, and safe model metadata.
 
 ## not responsible for
 - Raw conversation/message persistence implementation.
 - Model provider request details.
 - Context recipe implementation.
+- Context package persistence internals.
 - User-owned model settings.
-- Long-term memory, diary, or relationship workers.
+- Long-term memory, diary, or relationship worker execution.
 
 ## folder structure
 |-README.md interactions module guide
@@ -46,6 +52,8 @@ Last Modified by: Codex
 |-routes.py FastAPI interaction routes
 |-schemas.py interaction request and response schemas
 |-service.py interaction orchestration logic
+|-locks.py idle turn lock repository and service
+|-idle_cadence.py Background Idle eligibility policy and runner-state repository
 |-tests/ interaction tests
 
 ## route plan
@@ -57,3 +65,4 @@ Last Modified by: Codex
 ## 代办
 - Add streaming support after the frontend is ready.
 - Replace deterministic compact summaries with persisted worker summaries when summary worker is ready.
+- Promote idle turn lock storage to a shared runner boundary when Background Idle starts.

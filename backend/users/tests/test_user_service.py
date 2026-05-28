@@ -1,13 +1,14 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
 from typing import Any
 from unittest import TestCase
 
+from users.schemas import DesktopHandoffBindRequest, DesktopHandoffClaimRequest
 from users.schemas import UserRegisterRequest, UserUpdateRequest
 from users.service import UserService
 
@@ -15,6 +16,7 @@ from users.service import UserService
 class FakeUserRepository:
     def __init__(self) -> None:
         self.documents: dict[str, dict[str, Any]] = {}
+        self.handoffs: dict[str, dict[str, Any]] = {}
         self.indexes_ready = False
 
     def ensure_indexes(self) -> None:
@@ -47,6 +49,18 @@ class FakeUserRepository:
         document.update(changes)
         return document
 
+    def bind_desktop_handoff(self, code: str, user_id: str, expires_at: Any) -> dict[str, Any]:
+        handoff = {"code": code, "user_id": user_id, "expires_at": expires_at, "claimed_at": None}
+        self.handoffs[code] = handoff
+        return handoff
+
+    def claim_desktop_handoff(self, code: str, claimed_at: Any) -> dict[str, Any] | None:
+        handoff = self.handoffs.get(code)
+        if handoff is None or handoff["claimed_at"] is not None or handoff["expires_at"] <= claimed_at:
+            return None
+        handoff["claimed_at"] = claimed_at
+        return handoff
+
 
 class UserServiceTest(TestCase):
     def test_register_creates_public_user_without_model_config(self) -> None:
@@ -63,6 +77,8 @@ class UserServiceTest(TestCase):
         self.assertEqual(user["username"], "demo_user")
         self.assertEqual(user["email"], "demo@example.com")
         self.assertTrue(user["idleOn"])
+        self.assertFalse(user["backgroundIdleOn"])
+        self.assertTrue(user["fullPromptLoggingOn"])
         self.assertEqual(user["personality"], "")
         self.assertEqual(user["story"], "")
         self.assertEqual([agent["slot"] for agent in user["agentProfiles"]], ["agent_1", "agent_2"])
@@ -85,6 +101,8 @@ class UserServiceTest(TestCase):
             UserUpdateRequest(
                 display_name="Demo",
                 idle_on=False,
+                background_idle_on=True,
+                full_prompt_logging_on=False,
                 language_preference="en",
                 personality="quiet, direct, product-minded",
                 story="I am building a demo and want concise practical help.",
@@ -109,6 +127,8 @@ class UserServiceTest(TestCase):
 
         self.assertEqual(updated["displayName"], "Demo")
         self.assertFalse(updated["idleOn"])
+        self.assertTrue(updated["backgroundIdleOn"])
+        self.assertFalse(updated["fullPromptLoggingOn"])
         self.assertEqual(updated["languagePreference"], "en")
         self.assertEqual(updated["personality"], "quiet, direct, product-minded")
         self.assertEqual(updated["story"], "I am building a demo and want concise practical help.")
@@ -117,3 +137,37 @@ class UserServiceTest(TestCase):
         self.assertEqual(updated["agentProfiles"][0]["color"], "teal")
         self.assertEqual(updated["agentProfiles"][0]["personality"], "A careful skeptic who notices missing assumptions.")
         self.assertEqual(updated["agentProfiles"][1]["name"], "Rook")
+
+    def test_desktop_handoff_claim_is_pending_until_browser_binds_code(self) -> None:
+        service = UserService(FakeUserRepository())
+
+        response = service.claim_desktop_handoff(DesktopHandoffClaimRequest(code="desktop-code-123456"))
+
+        self.assertEqual(response, {"status": "pending"})
+
+    def test_desktop_handoff_claim_returns_token_once(self) -> None:
+        repository = FakeUserRepository()
+        service = UserService(repository)
+        registered = service.register(
+            UserRegisterRequest(
+                username="desktop_user",
+                email="desktop@example.com",
+                password="password123",
+            )
+        )
+        code = "desktop-code-abcdef"
+
+        self.assertEqual(
+            service.bind_desktop_handoff(
+                registered["user"]["id"],
+                DesktopHandoffBindRequest(code=code),
+            ),
+            {"status": "linked"},
+        )
+        first_claim = service.claim_desktop_handoff(DesktopHandoffClaimRequest(code=code))
+        second_claim = service.claim_desktop_handoff(DesktopHandoffClaimRequest(code=code))
+
+        self.assertEqual(first_claim["status"], "authorized")
+        self.assertEqual(first_claim["user"]["username"], "desktop_user")
+        self.assertTrue(first_claim["accessToken"])
+        self.assertEqual(second_claim, {"status": "pending"})

@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -11,16 +11,20 @@ from typing import Protocol
 from conversations.schemas import ConversationCreateRequest, MessageAppendRequest
 from conversations.service import ConversationService
 from context.builder import ContextBuilder
+from context.runtime import ContextRuntime
 from context.schemas import (
     ContextBuildInput,
     ContextMode,
+    ContextPackage,
     ConversationMessage,
     ConversationSummary,
+    MemoryCardSnapshot,
     SenderType,
     UserProfileSnapshot,
 )
 from agents.catalog import DEFAULT_TARGET_AGENT_ID, default_agent_snapshots, ensure_agent_id, user_agent_snapshots
 from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionUserMessageRequest
+from interactions.locks import IdleTurnLockService
 from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelGenerateRequest, ModelGenerateResponse, RuntimeMessage
 from orchestration.schemas import OrchestrationRequest, OrchestrationResponse
@@ -38,6 +42,36 @@ class OrchestratorProtocol(Protocol):
 
 class UserServiceProtocol(Protocol):
     def get_user(self, user_id: str) -> dict: ...
+
+
+class ContextRuntimeProtocol(Protocol):
+    def build(
+        self,
+        input_data: ContextBuildInput,
+        *,
+        user_id: str,
+        full_prompt_logging_enabled: bool,
+    ) -> ContextPackage: ...
+
+
+class SummaryServiceProtocol(Protocol):
+    def get_latest_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        summary_type: str,
+    ) -> ConversationSummary | None: ...
+
+
+class MemoryServiceProtocol(Protocol):
+    def list_context_memory(
+        self,
+        user_id: str,
+        scope: str,
+        owner_type: str | None = None,
+        owner_id: str | None = None,
+        limit: int = 5,
+    ) -> list[MemoryCardSnapshot]: ...
 
 
 @dataclass(frozen=True)
@@ -59,19 +93,58 @@ class InteractionService:
         orchestrator: OrchestratorProtocol | None = None,
         derived_jobs: DerivedJobService | None = None,
         user_service: UserServiceProtocol | None = None,
+        context_runtime: ContextRuntimeProtocol | None = None,
+        summary_service: SummaryServiceProtocol | None = None,
+        memory_service: MemoryServiceProtocol | None = None,
+        idle_turn_locks: IdleTurnLockService | None = None,
     ):
         self.conversation_service = conversation_service
         self.context_builder = context_builder
+        self.context_runtime = context_runtime or ContextRuntime(context_builder)
         self.model_runtime = model_runtime
         self.orchestrator = orchestrator or HacksonOrchestrator(model_runtime)
         self.derived_jobs = derived_jobs
         self.user_service = user_service
+        self.summary_service = summary_service
+        self.memory_service = memory_service
+        self.idle_turn_locks = idle_turn_locks
 
     def run_idle_tick(self, user_id: str, conversation_id: str, payload: IdleTickRequest) -> dict:
         conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        if self.idle_turn_locks is not None:
+            acquired, lock = self.idle_turn_locks.acquire(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_count=conversation.get("messageCount") or 0,
+                idempotency_key=payload.idempotency_key,
+            )
+            if not acquired:
+                completed_response = lock.get("response") if lock.get("status") == "completed" else None
+                if completed_response is not None:
+                    return completed_response
+                from fastapi import HTTPException, status
+
+                raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="idle_turn_locked")
+            try:
+                response = self._run_idle_tick_locked(user_id, conversation_id, payload, conversation)
+            except Exception as exc:
+                self.idle_turn_locks.fail(lock["_id"], _exception_detail(exc))
+                raise
+            self.idle_turn_locks.complete(lock["_id"], response)
+            return response
+        return self._run_idle_tick_locked(user_id, conversation_id, payload, conversation)
+
+    def _run_idle_tick_locked(
+        self,
+        user_id: str,
+        conversation_id: str,
+        payload: IdleTickRequest,
+        conversation: dict,
+    ) -> dict:
         context_window = self._context_window(user_id, conversation_id)
         target_agent_id = self._next_idle_agent_id(context_window.recent_messages, payload.target_agent_id)
-        package = self.context_builder.build(
+        package = self._build_context(
+            user_id,
             ContextBuildInput(
                 mode=ContextMode.IDLE,
                 conversation_id=conversation_id,
@@ -80,6 +153,7 @@ class InteractionService:
                 recent_messages=context_window.recent_messages,
                 summary=context_window.summary,
                 user_profile=self._user_profile(user_id),
+                memory_cards=self._memory_cards(user_id, ContextMode.IDLE),
                 user_direction=self._idle_direction(conversation, payload.discussion_direction),
                 idle_seed=payload.idle_seed or "继续 idle 对话，保持自然、简短、有生活感。",
                 token_budget=6000,
@@ -99,7 +173,16 @@ class InteractionService:
             package,
             extra_metadata=payload.metadata,
         )
-        self._enqueue_derived_work(user_id, conversation_id, [agent_message["id"]], conversation["mode"])
+        self._enqueue_derived_work(
+            user_id,
+            conversation_id,
+            [agent_message["id"]],
+            conversation["mode"],
+            relationship_source_message_ids=_relationship_source_ids(
+                context_window.recent_messages,
+                agent_message["id"],
+            ),
+        )
         updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
         return self._response(updated_conversation, None, agent_message, package, model_response)
 
@@ -110,6 +193,36 @@ class InteractionService:
         payload: IdleUserMessageRequest,
     ) -> dict:
         conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        if self.idle_turn_locks is not None:
+            acquired, lock = self.idle_turn_locks.acquire(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_count=conversation.get("messageCount") or 0,
+                idempotency_key=payload.idempotency_key,
+            )
+            if not acquired:
+                completed_response = lock.get("response") if lock.get("status") == "completed" else None
+                if completed_response is not None:
+                    return completed_response
+                from fastapi import HTTPException, status
+
+                raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="idle_turn_locked")
+            try:
+                response = self._run_idle_user_message_locked(user_id, conversation_id, payload, conversation)
+            except Exception as exc:
+                self.idle_turn_locks.fail(lock["_id"], _exception_detail(exc))
+                raise
+            self.idle_turn_locks.complete(lock["_id"], response)
+            return response
+        return self._run_idle_user_message_locked(user_id, conversation_id, payload, conversation)
+
+    def _run_idle_user_message_locked(
+        self,
+        user_id: str,
+        conversation_id: str,
+        payload: IdleUserMessageRequest,
+        conversation: dict,
+    ) -> dict:
         if conversation["mode"] != "idle":
             from fastapi import HTTPException, status
 
@@ -129,7 +242,8 @@ class InteractionService:
             ),
         ]
         target_agent_id = self._next_idle_agent_id(context_window.recent_messages, None)
-        package = self.context_builder.build(
+        package = self._build_context(
+            user_id,
             ContextBuildInput(
                 mode=ContextMode.IDLE,
                 conversation_id=conversation_id,
@@ -138,6 +252,7 @@ class InteractionService:
                 recent_messages=context_messages,
                 summary=context_window.summary,
                 user_profile=self._user_profile(user_id),
+                memory_cards=self._memory_cards(user_id, ContextMode.IDLE),
                 user_direction=self._idle_direction(conversation, payload.discussion_direction),
                 idle_seed="用户刚刚自然插入了 idle 对话。请接住用户的话，再把两位 Agent 的讨论继续推进。",
                 token_budget=6000,
@@ -173,6 +288,10 @@ class InteractionService:
             conversation_id,
             [user_message["id"], agent_message["id"]],
             conversation["mode"],
+            relationship_source_message_ids=_relationship_source_ids(
+                context_window.recent_messages,
+                agent_message["id"],
+            ),
         )
         updated_conversation = self.conversation_service.get_conversation(user_id, conversation_id)
         return self._response(updated_conversation, user_message, agent_message, package, model_response)
@@ -206,7 +325,8 @@ class InteractionService:
         )
         idle_window = self._context_window(user_id, idle_conversation_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
-        package = self.context_builder.build(
+        package = self._build_context(
+            user_id,
             ContextBuildInput(
                 mode=ContextMode.COMPANION_1,
                 conversation_id=companion["id"],
@@ -216,6 +336,7 @@ class InteractionService:
                 idle_recent_messages=idle_window.recent_messages,
                 idle_summary=idle_window.summary,
                 user_profile=self._user_profile(user_id),
+                memory_cards=self._memory_cards(user_id, ContextMode.COMPANION_1),
                 token_budget=6000,
             )
         )
@@ -280,7 +401,8 @@ class InteractionService:
         )
         context_window = self._context_window(user_id, conversation_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
-        package = self.context_builder.build(
+        package = self._build_context(
+            user_id,
             ContextBuildInput(
                 mode=ContextMode.COMPANION_2,
                 conversation_id=conversation_id,
@@ -290,6 +412,7 @@ class InteractionService:
                 recent_messages=context_window.recent_messages,
                 summary=context_window.summary,
                 user_profile=self._user_profile(user_id),
+                memory_cards=self._memory_cards(user_id, ContextMode.COMPANION_2),
                 token_budget=6000,
             )
         )
@@ -345,7 +468,8 @@ class InteractionService:
         if parent_id:
             idle_window = self._context_window(user_id, parent_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
-        package = self.context_builder.build(
+        package = self._build_context(
+            user_id,
             ContextBuildInput(
                 mode=ContextMode.COMPANION_1,
                 conversation_id=conversation_id,
@@ -357,6 +481,7 @@ class InteractionService:
                 idle_recent_messages=idle_window.recent_messages,
                 idle_summary=idle_window.summary,
                 user_profile=self._user_profile(user_id),
+                memory_cards=self._memory_cards(user_id, ContextMode.COMPANION_1),
                 token_budget=6000,
             )
         )
@@ -411,7 +536,8 @@ class InteractionService:
         )
         context_window = self._context_window(user_id, conversation_id)
         target_agent_id = ensure_agent_id(payload.target_agent_id)
-        package = self.context_builder.build(
+        package = self._build_context(
+            user_id,
             ContextBuildInput(
                 mode=ContextMode.WORK,
                 conversation_id=conversation_id,
@@ -421,6 +547,7 @@ class InteractionService:
                 recent_messages=context_window.recent_messages,
                 summary=context_window.summary,
                 user_profile=self._user_profile(user_id),
+                memory_cards=self._memory_cards(user_id, ContextMode.WORK),
                 task_state=task_state,
                 token_budget=6000,
             )
@@ -468,10 +595,26 @@ class InteractionService:
         recent = [_context_message(row, speaker_names, user_name) for row in page["messages"]]
         return _ContextWindow(
             recent_messages=recent,
-            summary=self._compact_summary(user_id, conversation_id, after_sequence, speaker_names, user_name),
+            summary=self._summary_context(user_id, conversation_id, after_sequence, speaker_names, user_name),
             speaker_names=speaker_names,
             user_name=user_name,
         )
+
+    def _summary_context(
+        self,
+        user_id: str,
+        conversation_id: str,
+        before_or_at_sequence: int,
+        speaker_names: dict[str, str],
+        user_name: str,
+    ) -> ConversationSummary | None:
+        if before_or_at_sequence <= 0:
+            return None
+        if self.summary_service is not None:
+            summary = self.summary_service.get_latest_summary(user_id, conversation_id, "session")
+            if summary is not None:
+                return summary
+        return self._compact_summary(user_id, conversation_id, before_or_at_sequence, speaker_names, user_name)
 
     def _compact_summary(
         self,
@@ -519,6 +662,19 @@ class InteractionService:
             story=user.get("story") or None,
         )
 
+    def _build_context(self, user_id: str, input_data: ContextBuildInput) -> ContextPackage:
+        return self.context_runtime.build(
+            input_data,
+            user_id=user_id,
+            full_prompt_logging_enabled=self._full_prompt_logging_enabled(user_id),
+        )
+
+    def _full_prompt_logging_enabled(self, user_id: str) -> bool:
+        if self.user_service is None:
+            return True
+        user = self.user_service.get_user(user_id)
+        return bool(user.get("fullPromptLoggingOn", True))
+
     def _agent_snapshots(self, user_id: str):
         if self.user_service is None:
             return default_agent_snapshots()
@@ -533,6 +689,40 @@ class InteractionService:
             return "User"
         user = self.user_service.get_user(user_id)
         return user.get("displayName") or user.get("username") or "User"
+
+    def _memory_cards(self, user_id: str, mode: ContextMode) -> list[MemoryCardSnapshot]:
+        if self.memory_service is None:
+            return []
+        if mode == ContextMode.IDLE:
+            return self.memory_service.list_context_memory(
+                user_id,
+                scope="idle",
+                owner_type="agent_pair",
+                owner_id="agent_1:agent_2",
+                limit=6,
+            )
+        if mode in {ContextMode.COMPANION_1, ContextMode.COMPANION_2}:
+            cards = self.memory_service.list_context_memory(
+                user_id,
+                scope="companion",
+                owner_type="user",
+                owner_id=user_id,
+                limit=6,
+            )
+            if mode == ContextMode.COMPANION_1:
+                cards.extend(
+                    self.memory_service.list_context_memory(
+                        user_id,
+                        scope="idle",
+                        owner_type="agent_pair",
+                        owner_id="agent_1:agent_2",
+                        limit=6,
+                    )
+                )
+            return cards
+        if mode == ContextMode.WORK:
+            return self.memory_service.list_context_memory(user_id, scope="work", limit=6)
+        return []
 
     def _generate(
         self,
@@ -575,6 +765,7 @@ class InteractionService:
         extra_metadata: dict | None,
     ) -> dict:
         metadata = {
+            "context_package_id": package.id,
             "prompt_hash": package.prompt_hash,
             "token_estimate": package.token_estimate,
             "model_name": model_response.model_name,
@@ -583,6 +774,7 @@ class InteractionService:
             "reasoning_effort": model_response.reasoning_effort,
             "tool_policy": model_response.tool_policy,
         }
+        metadata = {key: value for key, value in metadata.items() if value is not None}
         if model_response.provider_response_id:
             metadata["provider_response_id"] = model_response.provider_response_id
         if model_response.reasoning_summary:
@@ -630,17 +822,23 @@ class InteractionService:
         conversation_id: str,
         source_message_ids: list[str],
         mode: str,
+        relationship_source_message_ids: list[str] | None = None,
     ) -> None:
         if self.derived_jobs is None:
             return
         for job_type in _derived_job_types_for_mode(mode):
+            job_source_message_ids = (
+                relationship_source_message_ids
+                if job_type == "relationship" and relationship_source_message_ids
+                else source_message_ids
+            )
             try:
                 self.derived_jobs.enqueue(
                     DerivedJobCreateRequest(
                         job_type=job_type,
                         user_id=user_id,
                         conversation_id=conversation_id,
-                        source_message_ids=source_message_ids,
+                        source_message_ids=job_source_message_ids,
                         metadata={"mode": mode},
                     )
                 )
@@ -654,6 +852,7 @@ class InteractionService:
             "agentMessage": agent_message,
             "context": {
                 "promptHash": package.prompt_hash,
+                "contextPackageId": package.id,
                 "tokenEstimate": package.token_estimate,
                 "modelName": model_response.model_name,
                 "orchestrationPolicy": model_response.policy_name,
@@ -714,3 +913,17 @@ def _derived_job_types_for_mode(mode: str) -> list[str]:
     if mode == "work":
         return ["summary"]
     return []
+
+
+def _relationship_source_ids(recent_messages: list[ConversationMessage], current_agent_message_id: str) -> list[str]:
+    for message in reversed(recent_messages):
+        if message.sender_type == SenderType.AGENT and message.id:
+            return [message.id, current_agent_message_id]
+    return [current_agent_message_id]
+
+
+def _exception_detail(exc: Exception) -> str:
+    detail = getattr(exc, "detail", None)
+    if isinstance(detail, str):
+        return detail
+    return exc.__class__.__name__

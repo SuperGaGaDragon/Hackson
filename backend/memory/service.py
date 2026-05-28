@@ -1,12 +1,14 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
 from hashlib import sha256
 from typing import Any, Protocol
+
+from fastapi import HTTPException, status
 
 from conversations.model import now_utc
 from context.schemas import MemoryCardSnapshot
@@ -26,6 +28,15 @@ class MemoryRepositoryProtocol(Protocol):
         owner_id: str | None,
         limit: int,
     ) -> list[dict[str, Any]]: ...
+    def list_user_memory_cards(self, user_id: str, include_deleted: bool, limit: int) -> list[dict[str, Any]]: ...
+    def find_memory_card(self, user_id: str, memory_id: str) -> dict[str, Any] | None: ...
+    def update_memory_status(
+        self,
+        user_id: str,
+        memory_id: str,
+        status: str,
+        timestamp,
+    ) -> dict[str, Any] | None: ...
 
 
 class MemoryService:
@@ -67,7 +78,9 @@ class MemoryService:
         limit: int = 5,
     ) -> list[MemoryCardSnapshot]:
         safe_limit = min(max(limit, 1), 20)
-        documents = self.repository.list_memory_cards(user_id, scope, owner_type, owner_id, safe_limit)
+        fetch_limit = min(safe_limit * 3, 60)
+        documents = self.repository.list_memory_cards(user_id, scope, owner_type, owner_id, fetch_limit)
+        documents = [document for document in documents if not _is_deprecated_generic_memory(document)]
         return [
             MemoryCardSnapshot(
                 id=str(document["_id"]),
@@ -80,8 +93,38 @@ class MemoryService:
                 importance_score=document.get("importance_score", 0),
                 confidence=document.get("confidence", 0),
             )
-            for document in documents
+            for document in documents[:safe_limit]
         ]
+
+    def list_user_memory(
+        self,
+        user_id: str,
+        *,
+        include_deleted: bool = False,
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        safe_limit = min(max(limit, 1), 100)
+        fetch_limit = min(safe_limit * 3, 300)
+        documents = self.repository.list_user_memory_cards(user_id, include_deleted, fetch_limit)
+        documents = [document for document in documents if not _is_deprecated_generic_memory(document)]
+        return {"memoryCards": [public_memory_card(document) for document in documents[:safe_limit]]}
+
+    def update_status(self, user_id: str, memory_id: str, status_value: str) -> dict[str, Any]:
+        if status_value not in {"active", "disabled", "archived"}:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="unsupported_memory_status",
+            )
+        document = self.repository.update_memory_status(user_id, memory_id, status_value, now_utc())
+        if document is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="memory_not_found")
+        return public_memory_card(document)
+
+    def delete_memory(self, user_id: str, memory_id: str) -> dict[str, bool]:
+        document = self.repository.update_memory_status(user_id, memory_id, "deleted", now_utc())
+        if document is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="memory_not_found")
+        return {"deletedMemoryCard": True}
 
 
 def _dedupe_hash(user_id: str, candidate: MemoryCandidate) -> str:
@@ -97,3 +140,11 @@ def _dedupe_hash(user_id: str, candidate: MemoryCandidate) -> str:
         ]
     )
     return sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _is_deprecated_generic_memory(document: dict[str, Any]) -> bool:
+    return (
+        document.get("scope") == "idle"
+        and document.get("memory_type") == "relationship"
+        and document.get("summary") == "Nora and Vale shared another idle interaction."
+    )

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256")
     access_token_minutes: int = Field(default=60 * 24)
     static_frontend_dir: str | None = Field(default=None)
+    derived_worker_enabled: bool = Field(default=True)
+    derived_worker_interval_seconds: float = Field(default=2.0)
+    derived_worker_batch_size: int = Field(default=25)
 
 
 @lru_cache

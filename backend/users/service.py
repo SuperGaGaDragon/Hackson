@@ -1,10 +1,11 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
+from datetime import timedelta
 from typing import Any, Protocol
 
 from fastapi import HTTPException, status
@@ -13,7 +14,15 @@ from pymongo.errors import DuplicateKeyError
 from agents.catalog import default_user_agent_profiles, normalize_user_agent_profiles
 from core.security import create_access_token, hash_password, verify_password
 from users.model import now_utc, public_user
-from users.schemas import UserLoginRequest, UserRegisterRequest, UserUpdateRequest
+from users.schemas import (
+    DesktopHandoffBindRequest,
+    DesktopHandoffClaimRequest,
+    UserLoginRequest,
+    UserRegisterRequest,
+    UserUpdateRequest,
+)
+
+DESKTOP_HANDOFF_TTL = timedelta(minutes=5)
 
 
 class UserRepositoryProtocol(Protocol):
@@ -22,6 +31,8 @@ class UserRepositoryProtocol(Protocol):
     def find_by_id(self, user_id: str) -> dict[str, Any] | None: ...
     def find_by_identifier(self, identifier: str) -> dict[str, Any] | None: ...
     def update(self, user_id: str, changes: dict[str, Any]) -> dict[str, Any] | None: ...
+    def bind_desktop_handoff(self, code: str, user_id: str, expires_at: Any) -> dict[str, Any]: ...
+    def claim_desktop_handoff(self, code: str, claimed_at: Any) -> dict[str, Any] | None: ...
 
 
 class UserService:
@@ -42,6 +53,8 @@ class UserService:
             "email_normalized": str(payload.email).lower(),
             "password_hash": hash_password(payload.password),
             "idle_on": True,
+            "background_idle_on": False,
+            "full_prompt_logging_on": True,
             "language_preference": "zh",
             "personality": "",
             "story": "",
@@ -79,6 +92,10 @@ class UserService:
             changes["display_name"] = payload.display_name
         if payload.idle_on is not None:
             changes["idle_on"] = payload.idle_on
+        if payload.background_idle_on is not None:
+            changes["background_idle_on"] = payload.background_idle_on
+        if payload.full_prompt_logging_on is not None:
+            changes["full_prompt_logging_on"] = payload.full_prompt_logging_on
         if payload.language_preference is not None:
             changes["language_preference"] = payload.language_preference
         if payload.personality is not None:
@@ -94,6 +111,24 @@ class UserService:
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
         return public_user(user)
+
+    def bind_desktop_handoff(self, user_id: str, payload: DesktopHandoffBindRequest) -> dict[str, str]:
+        self.repository.bind_desktop_handoff(
+            payload.code,
+            user_id,
+            now_utc() + DESKTOP_HANDOFF_TTL,
+        )
+        return {"status": "linked"}
+
+    def claim_desktop_handoff(self, payload: DesktopHandoffClaimRequest) -> dict[str, Any]:
+        handoff = self.repository.claim_desktop_handoff(payload.code, now_utc())
+        if handoff is None:
+            return {"status": "pending"}
+        user = self.repository.find_by_id(handoff["user_id"])
+        if user is None:
+            return {"status": "pending"}
+        response = self._auth_response(user)
+        return {"status": "authorized", **response}
 
     def _auth_response(self, user: dict[str, Any]) -> dict[str, Any]:
         public = public_user(user)

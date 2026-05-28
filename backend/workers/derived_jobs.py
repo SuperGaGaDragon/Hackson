@@ -49,7 +49,13 @@ class DerivedJob(BaseModel):
 class DerivedJobRepositoryProtocol(Protocol):
     def ensure_indexes(self) -> None: ...
     def create_job(self, document: dict[str, Any]) -> dict[str, Any]: ...
-    def find_pending_jobs(self, limit: int) -> list[dict[str, Any]]: ...
+    def find_pending_jobs(
+        self,
+        limit: int,
+        user_id: str | None = None,
+        conversation_id: str | None = None,
+        newest_first: bool = False,
+    ) -> list[dict[str, Any]]: ...
     def mark_job_running(self, job_id: str) -> dict[str, Any] | None: ...
     def mark_job_succeeded(self, job_id: str) -> dict[str, Any] | None: ...
     def mark_job_failed(self, job_id: str, error: str) -> dict[str, Any] | None: ...
@@ -72,8 +78,20 @@ class DerivedJobRepository:
         assert created is not None
         return created
 
-    def find_pending_jobs(self, limit: int) -> list[dict[str, Any]]:
-        return list(self.derived_jobs.find({"status": "pending"}).sort("created_at", ASCENDING).limit(limit))
+    def find_pending_jobs(
+        self,
+        limit: int,
+        user_id: str | None = None,
+        conversation_id: str | None = None,
+        newest_first: bool = False,
+    ) -> list[dict[str, Any]]:
+        query: dict[str, Any] = {"status": "pending"}
+        if user_id is not None:
+            query["user_id"] = user_id
+        if conversation_id is not None:
+            query["conversation_id"] = conversation_id
+        direction = DESCENDING if newest_first else ASCENDING
+        return list(self.derived_jobs.find(query).sort("created_at", direction).limit(limit))
 
     def mark_job_running(self, job_id: str) -> dict[str, Any] | None:
         return self._mark(job_id, {"status": "running", "$inc": {"attempt_count": 1}})
@@ -95,7 +113,10 @@ class DerivedJobRepository:
         update: dict[str, Any] = {"$set": {**values, "updated_at": now_utc()}}
         if increment:
             update["$inc"] = increment
-        return self.derived_jobs.find_one_and_update({"_id": query_id}, update, return_document=ReturnDocument.AFTER)
+        query: dict[str, Any] = {"_id": query_id}
+        if values.get("status") == "running":
+            query["status"] = "pending"
+        return self.derived_jobs.find_one_and_update(query, update, return_document=ReturnDocument.AFTER)
 
 
 class DerivedJobService:
@@ -126,11 +147,26 @@ class DerivedJobService:
         }
         return _public_job(self.repository.create_job(document))
 
-    def run_pending(self, handlers: dict[str, Callable[[DerivedJob], None]], limit: int = 10) -> int:
+    def run_pending(
+        self,
+        handlers: dict[str, Callable[[DerivedJob], None]],
+        limit: int = 10,
+        *,
+        user_id: str | None = None,
+        conversation_id: str | None = None,
+        newest_first: bool = False,
+    ) -> int:
         processed = 0
-        for document in self.repository.find_pending_jobs(min(max(limit, 1), 100)):
-            job = _job_snapshot(document)
-            self.repository.mark_job_running(job.id)
+        for document in self.repository.find_pending_jobs(
+            min(max(limit, 1), 100),
+            user_id=user_id,
+            conversation_id=conversation_id,
+            newest_first=newest_first,
+        ):
+            claimed = self.repository.mark_job_running(str(document["_id"]))
+            if claimed is None:
+                continue
+            job = _job_snapshot(claimed)
             try:
                 handler = handlers.get(job.job_type)
                 if handler is None:

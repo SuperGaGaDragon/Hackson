@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -79,7 +79,9 @@ def _debug_notes(input_data: ContextBuildInput) -> list[str]:
 def _included_memory_ids(input_data: ContextBuildInput) -> list[str]:
     if input_data.mode == ContextMode.IDLE:
         allowed_scopes = {"idle"}
-    elif input_data.mode in {ContextMode.COMPANION_1, ContextMode.COMPANION_2}:
+    elif input_data.mode == ContextMode.COMPANION_1:
+        allowed_scopes = {"idle", "companion"}
+    elif input_data.mode == ContextMode.COMPANION_2:
         allowed_scopes = {"companion"}
     elif input_data.mode == ContextMode.WORK:
         allowed_scopes = {"work"}

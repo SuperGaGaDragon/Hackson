@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -50,6 +50,8 @@ class UserUpdateRequest(BaseModel):
 
     display_name: str | None = Field(default=None, min_length=1, max_length=64)
     idle_on: bool | None = None
+    background_idle_on: bool | None = Field(default=None, alias="backgroundIdleOn")
+    full_prompt_logging_on: bool | None = Field(default=None, alias="fullPromptLoggingOn")
     language_preference: str | None = Field(default=None, min_length=2, max_length=16)
     personality: str | None = Field(default=None, max_length=1200)
     story: str | None = Field(default=None, max_length=4000)
@@ -64,6 +66,8 @@ class UserResponse(BaseModel):
     display_name: str = Field(alias="displayName")
     email: EmailStr
     idle_on: bool = Field(alias="idleOn")
+    background_idle_on: bool = Field(alias="backgroundIdleOn")
+    full_prompt_logging_on: bool = Field(alias="fullPromptLoggingOn")
     language_preference: str = Field(alias="languagePreference")
     personality: str = ""
     story: str = ""
@@ -76,3 +80,38 @@ class AuthResponse(BaseModel):
     access_token: str = Field(alias="accessToken")
     token_type: str = Field(default="bearer", alias="tokenType")
     user: UserResponse
+
+
+class DesktopHandoffBindRequest(BaseModel):
+    code: str = Field(min_length=16, max_length=96, pattern=r"^[a-zA-Z0-9_-]+$")
+
+
+class DesktopHandoffClaimRequest(BaseModel):
+    code: str = Field(min_length=16, max_length=96, pattern=r"^[a-zA-Z0-9_-]+$")
+
+
+class DesktopHandoffStatusResponse(BaseModel):
+    status: str
+    access_token: str | None = Field(default=None, alias="accessToken")
+    token_type: str | None = Field(default=None, alias="tokenType")
+    user: UserResponse | None = None
+
+
+class PromptLogResponse(BaseModel):
+    id: str
+    conversation_id: str = Field(alias="conversationId")
+    mode: str
+    target_agent_id: str = Field(alias="targetAgentId")
+    prompt_hash: str = Field(alias="promptHash")
+    token_estimate: int = Field(alias="tokenEstimate")
+    full_prompt_text: str | None = Field(default=None, alias="fullPromptText")
+    full_prompt_text_expires_at: datetime | None = Field(default=None, alias="fullPromptTextExpiresAt")
+    created_at: datetime = Field(alias="createdAt")
+
+
+class PromptLogListResponse(BaseModel):
+    prompt_logs: list[PromptLogResponse] = Field(default_factory=list, alias="promptLogs")
+
+
+class PromptLogDeleteResponse(BaseModel):
+    deleted_prompt_logs: int = Field(alias="deletedPromptLogs")

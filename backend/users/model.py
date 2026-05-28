@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -23,6 +23,8 @@ def public_user(document: dict[str, Any]) -> dict[str, Any]:
         "displayName": document["display_name"],
         "email": document["email"],
         "idleOn": document.get("idle_on", True),
+        "backgroundIdleOn": document.get("background_idle_on", False),
+        "fullPromptLoggingOn": document.get("full_prompt_logging_on", True),
         "languagePreference": document.get("language_preference", "zh"),
         "personality": document.get("personality", ""),
         "story": document.get("story", ""),

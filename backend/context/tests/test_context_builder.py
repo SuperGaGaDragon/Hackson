@@ -142,6 +142,32 @@ class ContextBuilderTest(TestCase):
         self.assertIn("The other Agent is not the User.", prompt)
         self.assertIn("Speaker labels in Recent idle transcript are authoritative", prompt)
 
+    def test_idle_context_uses_relationship_stance_and_turn_intent(self) -> None:
+        package = self.builder.build(
+            ContextBuildInput(
+                mode=ContextMode.IDLE,
+                conversation_id="conv_idle",
+                target_agent_id="agent_a",
+                agents=[self.agent_a, self.agent_b],
+                recent_messages=[
+                    ConversationMessage(
+                        id="msg_agent",
+                        sender_type=SenderType.AGENT,
+                        sender_id="agent_b",
+                        sender_name="Beryl",
+                        content="这听起来又像在给人生做表格。",
+                    ),
+                ],
+            )
+        )
+
+        prompt = _prompt_text(package)
+        self.assertIn("Relationship stance:", prompt)
+        self.assertIn("Turn intent:", prompt)
+        self.assertIn("Respond to the previous Agent's concrete line", prompt)
+        self.assertIn("Make one conversational move", prompt)
+        self.assertIn("Do not output stacked frameworks, numbered exercises, or coaching checklists", prompt)
+
     def test_companion_1_context_forces_transition_to_user(self) -> None:
         package = self.builder.build(
             ContextBuildInput(

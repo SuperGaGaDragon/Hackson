@@ -27,8 +27,23 @@ class FakeDerivedJobRepository:
         self.rows.append(row)
         return row
 
-    def find_pending_jobs(self, limit: int) -> list[dict[str, Any]]:
-        return [row for row in self.rows if row["status"] == "pending"][:limit]
+    def find_pending_jobs(
+        self,
+        limit: int,
+        user_id: str | None = None,
+        conversation_id: str | None = None,
+        newest_first: bool = False,
+    ) -> list[dict[str, Any]]:
+        rows = [
+            row
+            for row in self.rows
+            if row["status"] == "pending"
+            and (user_id is None or row["user_id"] == user_id)
+            and (conversation_id is None or row["conversation_id"] == conversation_id)
+        ]
+        if newest_first:
+            rows = list(reversed(rows))
+        return rows[:limit]
 
     def mark_job_running(self, job_id: str) -> dict[str, Any] | None:
         return self._update(job_id, {"status": "running"})
@@ -99,3 +114,83 @@ class DerivedJobServiceTest(TestCase):
         self.assertEqual(processed, 1)
         self.assertEqual(seen, ["job_1"])
         self.assertEqual(repository.rows[0]["status"], "succeeded")
+
+    def test_run_pending_can_scope_to_user_and_conversation(self) -> None:
+        repository = FakeDerivedJobRepository()
+        service = DerivedJobService(repository)
+        service.enqueue(
+            DerivedJobCreateRequest(
+                job_type="summary",
+                user_id="old_user",
+                conversation_id="old_conversation",
+                source_message_ids=["message_1"],
+            )
+        )
+        service.enqueue(
+            DerivedJobCreateRequest(
+                job_type="summary",
+                user_id="current_user",
+                conversation_id="current_conversation",
+                source_message_ids=["message_2"],
+            )
+        )
+        seen: list[str] = []
+
+        processed = service.run_pending(
+            {"summary": lambda job: seen.append(job.id)},
+            user_id="current_user",
+            conversation_id="current_conversation",
+        )
+
+        self.assertEqual(processed, 1)
+        self.assertEqual(seen, ["job_2"])
+        self.assertEqual(repository.rows[0]["status"], "pending")
+        self.assertEqual(repository.rows[1]["status"], "succeeded")
+
+    def test_run_pending_skips_job_when_claim_loses_race(self) -> None:
+        class RacingRepository(FakeDerivedJobRepository):
+            def mark_job_running(self, job_id: str) -> dict[str, Any] | None:
+                return None
+
+        repository = RacingRepository()
+        service = DerivedJobService(repository)
+        service.enqueue(
+            DerivedJobCreateRequest(
+                job_type="summary",
+                user_id="user_1",
+                conversation_id="conversation_1",
+                source_message_ids=["message_1"],
+            )
+        )
+        seen: list[str] = []
+
+        processed = service.run_pending({"summary": lambda job: seen.append(job.id)})
+
+        self.assertEqual(processed, 0)
+        self.assertEqual(seen, [])
+        self.assertEqual(repository.rows[0]["status"], "pending")
+
+    def test_run_pending_can_process_newest_pending_first(self) -> None:
+        repository = FakeDerivedJobRepository()
+        service = DerivedJobService(repository)
+        for index in range(3):
+            service.enqueue(
+                DerivedJobCreateRequest(
+                    job_type="summary",
+                    user_id=f"user_{index}",
+                    conversation_id=f"conversation_{index}",
+                    source_message_ids=[f"message_{index}"],
+                )
+            )
+        seen: list[str] = []
+
+        processed = service.run_pending(
+            {"summary": lambda job: seen.append(job.id)},
+            limit=1,
+            newest_first=True,
+        )
+
+        self.assertEqual(processed, 1)
+        self.assertEqual(seen, ["job_3"])
+        self.assertEqual(repository.rows[0]["status"], "pending")
+        self.assertEqual(repository.rows[2]["status"], "succeeded")

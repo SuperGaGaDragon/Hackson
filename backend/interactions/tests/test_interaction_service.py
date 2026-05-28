@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -14,6 +14,9 @@ from conversations.schemas import ConversationCreateRequest, MessageAppendReques
 from conversations.tests.test_conversation_service import FakeConversationRepository
 from conversations.service import ConversationService
 from context.builder import ContextBuilder
+from context.runtime import ContextRuntime
+from context.schemas import ConversationSummary, MemoryCardSnapshot
+from context.service import ContextPackageService
 from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionUserMessageRequest
 from interactions.service import InteractionService
 from model_runtime.errors import ModelRuntimeError
@@ -60,11 +63,77 @@ class FakeUserService:
                 "username": "demo_user",
                 "displayName": "Demo",
                 "languagePreference": "zh",
+                "fullPromptLoggingOn": True,
                 "personality": "",
                 "story": "",
                 "agentProfiles": [],
             },
         )
+
+
+class FakeContextPackageRepository:
+    def __init__(self) -> None:
+        self.rows: list[dict[str, Any]] = []
+        self.indexes_ready = False
+
+    def ensure_indexes(self) -> None:
+        self.indexes_ready = True
+
+    def create(self, document: dict[str, Any]) -> dict[str, Any]:
+        row = dict(document)
+        row["_id"] = f"context_package_{len(self.rows) + 1}"
+        self.rows.append(row)
+        return row
+
+    def list_prompt_logs(self, user_id: str, limit: int) -> list[dict[str, Any]]:
+        return [row for row in self.rows if row["user_id"] == user_id and row.get("full_prompt_text")][:limit]
+
+    def clear_prompt_text(self, user_id: str, timestamp) -> int:
+        count = 0
+        for row in self.rows:
+            if row["user_id"] != user_id or not row.get("full_prompt_text"):
+                continue
+            row["full_prompt_text"] = None
+            row["full_prompt_text_deleted_at"] = timestamp
+            row["full_prompt_text_expires_at"] = None
+            row["updated_at"] = timestamp
+            count += 1
+        return count
+
+    def clear_expired_prompt_text(self, timestamp) -> int:
+        return 0
+
+
+class FakeSummaryService:
+    def __init__(self, summary: ConversationSummary | None) -> None:
+        self.summary = summary
+        self.requests: list[tuple[str, str, str]] = []
+
+    def get_latest_summary(
+        self,
+        user_id: str,
+        conversation_id: str,
+        summary_type: str,
+    ) -> ConversationSummary | None:
+        self.requests.append((user_id, conversation_id, summary_type))
+        return self.summary
+
+
+class FakeMemoryService:
+    def __init__(self, cards_by_scope: dict[str, list[MemoryCardSnapshot]] | None = None) -> None:
+        self.cards_by_scope = cards_by_scope or {}
+        self.requests: list[tuple[str, str, str | None, str | None, int]] = []
+
+    def list_context_memory(
+        self,
+        user_id: str,
+        scope: str,
+        owner_type: str | None = None,
+        owner_id: str | None = None,
+        limit: int = 5,
+    ) -> list[MemoryCardSnapshot]:
+        self.requests.append((user_id, scope, owner_type, owner_id, limit))
+        return list(self.cards_by_scope.get(scope, []))[:limit]
 
 
 class InteractionServiceTest(TestCase):
@@ -103,6 +172,67 @@ class InteractionServiceTest(TestCase):
         self.assertEqual(response["agentMessage"]["metadata"]["reasoning_effort"], "low")
         self.assertEqual(len(self.model_runtime.requests), 1)
         self.assertEqual(self.model_runtime.requests[-1].reasoning_effort, "low")
+
+    def test_idle_tick_persists_context_package_and_links_agent_message(self) -> None:
+        package_repository = FakeContextPackageRepository()
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            context_runtime=ContextRuntime(ContextBuilder(), ContextPackageService(package_repository)),
+            model_runtime=self.model_runtime,
+            user_service=FakeUserService(),
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_2",
+                role="assistant",
+                content="今天要不要继续讨论目标感？",
+            ),
+        )
+
+        response = service.run_idle_tick("user_1", idle["id"], IdleTickRequest())
+
+        self.assertEqual(len(package_repository.rows), 1)
+        self.assertEqual(response["context"]["contextPackageId"], "context_package_1")
+        self.assertEqual(response["agentMessage"]["metadata"]["context_package_id"], "context_package_1")
+        self.assertEqual(package_repository.rows[0]["included_message_ids"], ["message_1"])
+        self.assertEqual(package_repository.rows[0]["prompt_hash"], response["context"]["promptHash"])
+        self.assertIn("Current mode: idle", package_repository.rows[0]["full_prompt_text"])
+
+    def test_idle_tick_respects_disabled_full_prompt_logging(self) -> None:
+        package_repository = FakeContextPackageRepository()
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            context_runtime=ContextRuntime(ContextBuilder(), ContextPackageService(package_repository)),
+            model_runtime=self.model_runtime,
+            user_service=FakeUserService(
+                {
+                    "user_1": {
+                        "id": "user_1",
+                        "username": "demo_user",
+                        "displayName": "Demo",
+                        "languagePreference": "zh",
+                        "fullPromptLoggingOn": False,
+                        "personality": "",
+                        "story": "",
+                        "agentProfiles": [],
+                    }
+                }
+            ),
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+
+        response = service.run_idle_tick("user_1", idle["id"], IdleTickRequest())
+
+        self.assertEqual(response["context"]["contextPackageId"], "context_package_1")
+        self.assertEqual(package_repository.rows[0]["full_prompt_logging_enabled"], False)
+        self.assertIsNone(package_repository.rows[0]["full_prompt_text"])
+        self.assertEqual(package_repository.rows[0]["prompt_hash"], response["context"]["promptHash"])
 
     def test_idle_tick_uses_latest_recent_messages_after_long_history(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle("user_1")
@@ -232,6 +362,46 @@ class InteractionServiceTest(TestCase):
             limit=100,
         )
         self.assertFalse(any(message["senderType"] == "user" for message in page["messages"]))
+
+    def test_idle_tick_prefers_persisted_summary_over_compact_summary(self) -> None:
+        package_repository = FakeContextPackageRepository()
+        summary_service = FakeSummaryService(
+            ConversationSummary(
+                id="summary_persisted_1",
+                summary_type="session",
+                content="persisted session marker for product-grade continuity",
+            )
+        )
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            context_runtime=ContextRuntime(ContextBuilder(), ContextPackageService(package_repository)),
+            model_runtime=self.model_runtime,
+            user_service=FakeUserService(),
+            summary_service=summary_service,
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        for index in range(30):
+            slot = "agent_1" if index % 2 == 0 else "agent_2"
+            self.conversation_service.append_message(
+                "user_1",
+                idle["id"],
+                MessageAppendRequest(
+                    sender_type="agent",
+                    sender_slot=slot,
+                    role="assistant",
+                    content=f"older compact-only marker {index}",
+                ),
+            )
+
+        service.run_idle_tick("user_1", idle["id"], IdleTickRequest(targetAgentId="agent_1"))
+
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("session summary:", prompt)
+        self.assertIn("persisted session marker for product-grade continuity", prompt)
+        self.assertNotIn("compact_context summary:", prompt)
+        self.assertEqual(summary_service.requests, [("user_1", idle["id"], "session")])
+        self.assertEqual(package_repository.rows[0]["included_summary_ids"], ["summary_persisted_1"])
 
     def test_idle_tick_labels_user_interjection_and_other_agent_separately(self) -> None:
         user_service = FakeUserService(
@@ -509,6 +679,127 @@ class InteractionServiceTest(TestCase):
         self.assertIn("name: Vale", prompt)
         self.assertNotIn("name: Beryl", prompt)
 
+    def test_companion_2_includes_companion_memory_and_excludes_work_memory(self) -> None:
+        package_repository = FakeContextPackageRepository()
+        memory_service = FakeMemoryService(
+            {
+                "companion": [
+                    MemoryCardSnapshot(
+                        id="memory_companion_1",
+                        scope="companion",
+                        owner_type="user",
+                        owner_id="user_1",
+                        memory_type="preference",
+                        summary="User prefers concise Chinese replies.",
+                        source_message_ids=["message_1"],
+                        importance_score=0.9,
+                        confidence=0.9,
+                    )
+                ],
+                "work": [
+                    MemoryCardSnapshot(
+                        id="memory_work_hidden",
+                        scope="work",
+                        owner_type="task",
+                        owner_id="task_1",
+                        memory_type="task",
+                        summary="Hidden work project detail.",
+                        source_message_ids=["message_2"],
+                        importance_score=1.0,
+                        confidence=0.9,
+                    )
+                ],
+            }
+        )
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            context_runtime=ContextRuntime(ContextBuilder(), ContextPackageService(package_repository)),
+            model_runtime=self.model_runtime,
+            user_service=FakeUserService(),
+            memory_service=memory_service,
+        )
+        companion = self.conversation_service.create_conversation(
+            "user_1",
+            ConversationCreateRequest(mode="companion_2"),
+        )
+
+        service.run_companion_2_message(
+            "user_1",
+            companion["id"],
+            InteractionUserMessageRequest(content="继续。", targetAgentId="agent_2"),
+        )
+
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("Relevant memory", prompt)
+        self.assertIn("User prefers concise Chinese replies.", prompt)
+        self.assertNotIn("Hidden work project detail.", prompt)
+        self.assertEqual(package_repository.rows[0]["included_memory_ids"], ["memory_companion_1"])
+        self.assertEqual(memory_service.requests, [("user_1", "companion", "user", "user_1", 6)])
+
+    def test_companion_1_imports_idle_relationship_and_companion_user_memory(self) -> None:
+        package_repository = FakeContextPackageRepository()
+        memory_service = FakeMemoryService(
+            {
+                "companion": [
+                    MemoryCardSnapshot(
+                        id="memory_companion_1",
+                        scope="companion",
+                        owner_type="user",
+                        owner_id="user_1",
+                        memory_type="preference",
+                        summary="User wants direct phrasing.",
+                        source_message_ids=["message_1"],
+                        importance_score=0.8,
+                        confidence=0.9,
+                    )
+                ],
+                "idle": [
+                    MemoryCardSnapshot(
+                        id="memory_idle_1",
+                        scope="idle",
+                        owner_type="agent_pair",
+                        owner_id="agent_1:agent_2",
+                        memory_type="relationship",
+                        summary="Agents debate gently before agreeing.",
+                        source_message_ids=["message_2"],
+                        importance_score=0.7,
+                        confidence=0.8,
+                    )
+                ],
+            }
+        )
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            context_runtime=ContextRuntime(ContextBuilder(), ContextPackageService(package_repository)),
+            model_runtime=self.model_runtime,
+            user_service=FakeUserService(),
+            memory_service=memory_service,
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_1",
+                role="assistant",
+                content="我们先聊产品节奏。",
+            ),
+        )
+
+        service.run_companion_1_join(
+            "user_1",
+            idle["id"],
+            InteractionUserMessageRequest(content="我加入。", targetAgentId="agent_1"),
+        )
+
+        prompt = _prompt_text(self.model_runtime.requests[-1])
+        self.assertIn("User wants direct phrasing.", prompt)
+        self.assertIn("Agents debate gently before agreeing.", prompt)
+        self.assertEqual(set(package_repository.rows[0]["included_memory_ids"]), {"memory_companion_1", "memory_idle_1"})
+
     def test_companion_2_context_uses_current_user_profile(self) -> None:
         user_service = FakeUserService(
             {
@@ -585,6 +876,33 @@ class InteractionServiceTest(TestCase):
 
         self.assertEqual([job["job_type"] for job in derived_repository.rows], ["summary", "memory_candidate"])
         self.assertEqual(derived_repository.rows[0]["source_message_ids"], ["message_1", "message_2"])
+
+    def test_idle_tick_enqueues_relationship_with_previous_agent_evidence(self) -> None:
+        derived_repository = FakeDerivedJobRepository()
+        service = InteractionService(
+            conversation_service=self.conversation_service,
+            context_builder=ContextBuilder(),
+            model_runtime=self.model_runtime,
+            derived_jobs=DerivedJobService(derived_repository),
+        )
+        idle = self.conversation_service.get_or_create_active_idle("user_1")
+        previous = self.conversation_service.append_message(
+            "user_1",
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_2",
+                role="assistant",
+                content="先聊意义和日常的关系。",
+            ),
+        )
+
+        response = service.run_idle_tick("user_1", idle["id"], IdleTickRequest(targetAgentId="agent_1"))
+
+        self.assertEqual([job["job_type"] for job in derived_repository.rows], ["summary", "relationship", "diary"])
+        relationship_job = derived_repository.rows[1]
+        self.assertEqual(relationship_job["source_message_ids"], [previous["id"], response["agentMessage"]["id"]])
+        self.assertEqual(derived_repository.rows[0]["source_message_ids"], [response["agentMessage"]["id"]])
 
     def test_work_message_uses_task_state_and_enqueues_summary(self) -> None:
         derived_repository = FakeDerivedJobRepository()

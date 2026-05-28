@@ -8,7 +8,7 @@ Last Modified by: Codex
 from typing import Any
 
 from bson import ObjectId
-from pymongo import ASCENDING
+from pymongo import ASCENDING, ReturnDocument
 from pymongo.collection import Collection
 from pymongo.database import Database
 
@@ -18,10 +18,13 @@ class UserRepository:
 
     def __init__(self, database: Database):
         self.collection: Collection = database["users"]
+        self.desktop_handoffs: Collection = database["desktop_auth_handoffs"]
 
     def ensure_indexes(self) -> None:
         self.collection.create_index([("username_normalized", ASCENDING)], unique=True)
         self.collection.create_index([("email_normalized", ASCENDING)], unique=True)
+        self.desktop_handoffs.create_index([("code", ASCENDING)], unique=True)
+        self.desktop_handoffs.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
 
     def create(self, document: dict[str, Any]) -> dict[str, Any]:
         result = self.collection.insert_one(document)
@@ -50,3 +53,26 @@ class UserRepository:
             return None
         self.collection.update_one({"_id": ObjectId(user_id)}, {"$set": changes})
         return self.collection.find_one({"_id": ObjectId(user_id)})
+
+    def bind_desktop_handoff(self, code: str, user_id: str, expires_at: Any) -> dict[str, Any]:
+        document = {
+            "code": code,
+            "user_id": user_id,
+            "expires_at": expires_at,
+            "claimed_at": None,
+        }
+        self.desktop_handoffs.update_one({"code": code}, {"$set": document}, upsert=True)
+        stored = self.desktop_handoffs.find_one({"code": code})
+        assert stored is not None
+        return stored
+
+    def claim_desktop_handoff(self, code: str, claimed_at: Any) -> dict[str, Any] | None:
+        return self.desktop_handoffs.find_one_and_update(
+            {
+                "code": code,
+                "claimed_at": None,
+                "expires_at": {"$gt": claimed_at},
+            },
+            {"$set": {"claimed_at": claimed_at}},
+            return_document=ReturnDocument.AFTER,
+        )

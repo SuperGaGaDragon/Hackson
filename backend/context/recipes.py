@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -12,6 +12,7 @@ from context.schemas import (
     ContextMode,
     ConversationMessage,
     ModelMessage,
+    SenderType,
 )
 from context.transition import build_transition_context
 
@@ -42,6 +43,8 @@ def build_idle_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
         _mode_block(ContextMode.IDLE),
         _agent_persona_block("Current speaking Agent", target_agent),
         _other_agents_block(other_agents),
+        _relationship_stance_section(target_agent, other_agents),
+        _turn_intent_section(input_data.recent_messages),
         _user_profile_block(input_data),
         _optional_section("Current idle topic selected by user", input_data.user_direction),
         _summary_section(input_data.summary),
@@ -49,7 +52,10 @@ def build_idle_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
         _messages_section("Recent idle transcript", recent),
         _optional_section("Idle seed", input_data.idle_seed),
         "Rules:\n- Continue from the latest visible message, not an older topic.\n"
-        "- Add one new angle or concrete next step instead of restating the same question.\n"
+        "- Respond to the previous Agent's concrete line before adding a new idea.\n"
+        "- Make one conversational move: answer, disagree, soften, ask, ground, or lightly shift.\n"
+        "- Do not output stacked frameworks, numbered exercises, or coaching checklists unless the User directly asks for a method.\n"
+        "- Prefer a short human reply over a polished advice essay.\n"
         "- Treat Current idle topic selected by user as steering for this turn, not as transcript history.\n"
         "- If recent transcript drifts, use the selected topic as the higher-priority topic anchor.\n"
         "- Speaker labels in Recent idle transcript are authoritative.\n"
@@ -87,6 +93,7 @@ def build_companion_1_messages(input_data: ContextBuildInput) -> list[ModelMessa
         _messages_section("Current companion conversation recent messages", recent),
         _messages_section("Recent idle messages for background only", idle_recent),
         _summary_section(input_data.idle_summary or input_data.summary),
+        _memory_section("Relevant memory", input_data, allowed_scopes={"companion", "idle"}),
         _agent_persona_block("Current responding Agent", target_agent),
         _user_profile_block(input_data),
         _other_agents_block([agent for agent in input_data.agents if agent.id != target_agent.id]),
@@ -186,6 +193,39 @@ def _other_agents_block(agents: list[AgentPersonaSnapshot]) -> str | None:
             summary = summary[:217].rstrip() + "..."
         blocks.append(f"- {agent.name}: {summary}")
     return "Other Agent brief persona:\n" + "\n".join(blocks)
+
+
+def _relationship_stance_section(target_agent: AgentPersonaSnapshot, other_agents: list[AgentPersonaSnapshot]) -> str | None:
+    if not other_agents:
+        return None
+    other_names = ", ".join(agent.name for agent in other_agents)
+    return (
+        "Relationship stance:\n"
+        f"{target_agent.name} treats {other_names} as a real conversation partner, not a prompt to answer. "
+        "Keep continuity through small reactions, disagreement, softening, or curiosity."
+    )
+
+
+def _turn_intent_section(messages: list[ConversationMessage]) -> str:
+    intent = "ground"
+    for message in reversed(messages):
+        content = message.content
+        if message.sender_type == SenderType.USER:
+            intent = "respond_to_user"
+            break
+        if "?" in content or "？" in content:
+            intent = "answer_or_complicate"
+            break
+        if any(marker in content for marker in ["不是", "别", "不一定", "反而"]):
+            intent = "soft_disagree"
+            break
+        if any(marker in content for marker in ["试", "做", "写", "问", "标准"]):
+            intent = "humanize_or_ground"
+            break
+        if message.sender_type == SenderType.AGENT:
+            intent = "respond"
+            break
+    return f"Turn intent:\n{intent}. Use exactly one move this turn."
 
 
 def _messages_section(title: str, messages: list[ConversationMessage]) -> str | None:

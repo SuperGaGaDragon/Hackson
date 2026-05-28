@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 
 ## brief intro
@@ -23,6 +23,9 @@ Last Modified by: Codex
 - Treat idle topic direction as the selected topic anchor for the next Agent turn.
 - Preserve speaker boundaries between the User, current Agent, and other Agent.
 - Record context package metadata for debugging.
+- Persist auditable context package records before model generation.
+- Store full model-visible prompt text only when the user has Full Prompt Logging enabled.
+- Keep package metadata even when prompt text is disabled or later deleted.
 
 ## not responsible for
 - HTTP routes.
@@ -39,12 +42,16 @@ Last Modified by: Codex
 |-transition.py Transition Context generation for user joining idle
 |-compaction.py summary + recent messages compaction strategy
 |-packages.py context package logging, prompt hash, and token estimate helpers
+|-repository.py MongoDB persistence boundary for `context_packages`
+|-service.py context package persistence, prompt-log retention, and delete/list behavior
+|-runtime.py facade around `ContextBuilder` and context package persistence
 |-schemas.py context input and output schemas
 |-tests/ context module tests
 
 ## core boundary
 ```text
 context decides: what should the model see?
+context runtime decides: how should the built package be persisted for audit?
 model_runtime decides: how do we call the model?
 conversations decides: how does the product flow proceed?
 ```
@@ -59,13 +66,16 @@ conversations decides: how does the product flow proceed?
 - v1.0: `builder.py` and `recipes.py` for idle and companion_2. Implemented as pure context construction.
 - v1.1: `transition.py` and companion_1 recipe. Implemented as pure Transition Context generation.
 - v1.2: `compaction.py` and `packages.py`. Implemented as lightweight recent-message selection and context package metadata.
-- v1.3: Read lightweight memory cards.
+- v1.3: Read lightweight scoped memory cards.
 - v1.5: Add work recipe.
 
 ## implementation notes
 - This module does not call model providers.
 - This module does not save messages.
 - This module does not mutate Agent source records.
+- This module may save context package audit records through `repository.py`.
+- Full prompt text retention is 30 days when Full Prompt Logging is enabled.
+- `delete_prompt_logs` clears retained prompt text but leaves source ids, hash, and package metadata.
 - Callers must pass Agent persona snapshots from user-owned Agent profiles or the `agents/` fallback catalog.
 - Callers must pass recent messages and summaries from conversation storage.
 - Callers should pass `UserProfileSnapshot` when a route is user-facing.

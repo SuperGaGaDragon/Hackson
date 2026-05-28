@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -24,6 +24,11 @@ def estimate_messages_tokens(messages: list[ModelMessage]) -> int:
 def prompt_hash(messages: list[ModelMessage]) -> str:
     raw = "\n\n".join(f"{message.role}:{message.content}" for message in messages)
     return sha256(raw.encode("utf-8")).hexdigest()
+
+
+def render_prompt_text(messages: list[ModelMessage]) -> str:
+    """Render the complete model-visible messages for optional prompt logging."""
+    return "\n\n".join(f"{message.role}:\n{message.content}" for message in messages)
 
 
 def build_context_package(

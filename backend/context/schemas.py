@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -131,6 +131,7 @@ class ContextBuildInput(BaseModel):
 
 
 class ContextPackage(BaseModel):
+    id: str | None = None
     mode: ContextMode
     conversation_id: str
     agent_id: str
@@ -141,4 +142,7 @@ class ContextPackage(BaseModel):
     included_agent_ids: list[str] = Field(default_factory=list)
     token_estimate: int
     prompt_hash: str
+    recipe_version: str = "context_runtime_v1"
+    full_prompt_logging_enabled: bool = False
+    full_prompt_text_stored: bool = False
     debug_notes: list[str] = Field(default_factory=list)

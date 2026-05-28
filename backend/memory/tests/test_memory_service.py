@@ -48,6 +48,27 @@ class FakeMemoryRepository:
         rows = sorted(rows, key=lambda row: (row["importance_score"], row["updated_at"]), reverse=True)
         return rows[:limit]
 
+    def list_user_memory_cards(self, user_id: str, include_deleted: bool, limit: int) -> list[dict[str, Any]]:
+        rows = [row for row in self.rows if row["user_id"] == user_id]
+        if not include_deleted:
+            rows = [row for row in rows if row["status"] != "deleted"]
+        rows = sorted(rows, key=lambda row: (row["updated_at"], row["importance_score"]), reverse=True)
+        return rows[:limit]
+
+    def find_memory_card(self, user_id: str, memory_id: str) -> dict[str, Any] | None:
+        for row in self.rows:
+            if row["user_id"] == user_id and row["_id"] == memory_id:
+                return row
+        return None
+
+    def update_memory_status(self, user_id: str, memory_id: str, status: str, timestamp) -> dict[str, Any] | None:
+        row = self.find_memory_card(user_id, memory_id)
+        if row is None:
+            return None
+        row["status"] = status
+        row["updated_at"] = timestamp
+        return row
+
 
 class MemoryServiceTest(TestCase):
     def test_rejects_memory_without_source_message_ids(self) -> None:
@@ -141,3 +162,55 @@ class MemoryServiceTest(TestCase):
         self.assertTrue(repository.indexes_ready)
         self.assertEqual(len(cards), 1)
         self.assertEqual(cards[0].summary, "User prefers concise Chinese replies.")
+
+    def test_user_can_disable_and_delete_memory_without_context_reads(self) -> None:
+        repository = FakeMemoryRepository()
+        service = MemoryService(repository)
+        created = service.accept_candidate(
+            "user_1",
+            MemoryCandidate(
+                scope="companion",
+                owner_type="user",
+                owner_id="user_1",
+                memory_type="preference",
+                summary="User prefers direct replies.",
+                source_message_ids=["message_1"],
+                source_sender_types=["user"],
+                importance_score=0.8,
+                confidence=0.9,
+            ),
+        )
+        assert created is not None
+
+        disabled = service.update_status("user_1", created["id"], "disabled")
+
+        self.assertEqual(disabled["status"], "disabled")
+        self.assertEqual(service.list_context_memory("user_1", "companion"), [])
+        self.assertEqual(len(service.list_user_memory("user_1")["memoryCards"]), 1)
+
+        deleted = service.delete_memory("user_1", created["id"])
+
+        self.assertEqual(deleted, {"deletedMemoryCard": True})
+        self.assertEqual(service.list_user_memory("user_1")["memoryCards"], [])
+        self.assertEqual(len(service.list_user_memory("user_1", include_deleted=True)["memoryCards"]), 1)
+
+    def test_hides_deprecated_generic_relationship_memory(self) -> None:
+        repository = FakeMemoryRepository()
+        service = MemoryService(repository)
+        service.accept_candidate(
+            "user_1",
+            MemoryCandidate(
+                scope="idle",
+                owner_type="agent_pair",
+                owner_id="agent_1:agent_2",
+                memory_type="relationship",
+                summary="Nora and Vale shared another idle interaction.",
+                source_message_ids=["message_1", "message_2"],
+                source_sender_types=["agent"],
+                importance_score=0.8,
+                confidence=0.9,
+            ),
+        )
+
+        self.assertEqual(service.list_context_memory("user_1", "idle"), [])
+        self.assertEqual(service.list_user_memory("user_1")["memoryCards"], [])

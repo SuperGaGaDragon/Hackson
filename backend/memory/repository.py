@@ -1,12 +1,13 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
 from typing import Any
 
+from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING, ReturnDocument
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -65,3 +66,36 @@ class MemoryRepository:
             .sort([("importance_score", DESCENDING), ("updated_at", DESCENDING)])
             .limit(limit)
         )
+
+    def list_user_memory_cards(self, user_id: str, include_deleted: bool, limit: int) -> list[dict[str, Any]]:
+        query: dict[str, Any] = {"user_id": user_id}
+        if not include_deleted:
+            query["status"] = {"$ne": "deleted"}
+        return list(
+            self.memory_cards.find(query)
+            .sort([("updated_at", DESCENDING), ("importance_score", DESCENDING)])
+            .limit(limit)
+        )
+
+    def find_memory_card(self, user_id: str, memory_id: str) -> dict[str, Any] | None:
+        object_id = _object_id(memory_id)
+        if object_id is None:
+            return None
+        return self.memory_cards.find_one({"_id": object_id, "user_id": user_id})
+
+    def update_memory_status(self, user_id: str, memory_id: str, status: str, timestamp) -> dict[str, Any] | None:
+        object_id = _object_id(memory_id)
+        if object_id is None:
+            return None
+        return self.memory_cards.find_one_and_update(
+            {"_id": object_id, "user_id": user_id},
+            {"$set": {"status": status, "updated_at": timestamp}},
+            return_document=ReturnDocument.AFTER,
+        )
+
+
+def _object_id(value: str) -> ObjectId | None:
+    try:
+        return ObjectId(value)
+    except Exception:
+        return None

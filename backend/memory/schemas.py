@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 MemoryScope = Literal["idle", "companion", "work"]
 MemoryOwnerType = Literal["user", "agent", "agent_pair", "task", "shared_world"]
 MemoryType = Literal["fact", "preference", "episode", "relationship", "reflection", "skill", "task"]
-MemoryStatus = Literal["active", "rejected", "archived"]
+MemoryStatus = Literal["active", "disabled", "rejected", "archived", "deleted"]
 SourceSenderType = Literal["user", "agent", "system", "tool"]
 
 
@@ -55,3 +55,17 @@ class MemoryCardResponse(BaseModel):
     metadata: dict[str, Any]
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
+
+
+class MemoryCardListResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    memory_cards: list[MemoryCardResponse] = Field(default_factory=list, alias="memoryCards")
+
+
+class MemoryCardUpdateRequest(BaseModel):
+    status: MemoryStatus
+
+
+class MemoryCardDeleteResponse(BaseModel):
+    deleted_memory_card: bool = Field(alias="deletedMemoryCard")

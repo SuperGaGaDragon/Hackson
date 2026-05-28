@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 
 ## brief intro
@@ -18,6 +18,7 @@ Last Modified by: Codex
 - Accept or reject memory candidates.
 - Require evidence message ids.
 - Provide mode-appropriate memory to `context/`.
+- Expose user-owned memory controls for list, disable, enable, and delete.
 
 ## not responsible for
 - Saving raw messages.
@@ -33,6 +34,7 @@ Last Modified by: Codex
 |-governor.py memory candidate acceptance rules
 |-schemas.py memory card and candidate schemas
 |-service.py memory write/read business rules
+|-routes.py authenticated memory control routes
 |-tests/ memory module tests
 
 ## minimum memory card fields
@@ -61,6 +63,9 @@ Last Modified by: Codex
 - No source message id, no long-term memory write.
 - User fact and preference memory must come from user-authored evidence, not Agent guesses.
 - `work` scoped memory cannot be read by idle or companion recipes by default.
+- Disabled or deleted memory cannot enter context packages.
+- Delete is a soft delete to preserve audit metadata until a later privacy policy defines hard delete.
+- Deprecated generic relationship cards are hidden from user-facing reads; they are legacy noise, not useful memory.
 
 ## indexes
 - `user_id + scope + owner_type + owner_id + memory_type + updated_at`
