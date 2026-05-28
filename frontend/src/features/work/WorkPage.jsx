@@ -443,7 +443,7 @@ function WorkPage({ agents = [] }) {
         />
         <div className="mission-content">
           <ActivityStrip events={events} mission={selectedMission} />
-          <ReliabilityPanel artifacts={artifacts} />
+          <ReliabilityPanel artifacts={artifacts} events={events} />
           <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
           <ProductPanel artifacts={artifacts} products={products} />
           <ProgressTimeline events={events} />

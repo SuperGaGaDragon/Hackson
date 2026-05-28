@@ -83,6 +83,7 @@ class DiscussionResult(BaseModel):
     transcript: list[DiscussionTranscriptTurn] = Field(default_factory=list, max_length=12)
     recommendation: str = Field(default="", max_length=2000)
     reason: str = Field(min_length=1, max_length=240)
+    structured: bool = Field(default=True, exclude=True)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -1191,6 +1192,9 @@ def _parse_discussion_result(
         try:
             return DiscussionResult.model_validate(raw_result)
         except ValidationError as exc:
+            coerced = _coerce_discussion_result_data(raw_result, fallback_title, fallback_reason)
+            if coerced:
+                return coerced
             raise ValueError("discussion_result_invalid") from exc
 
     raw_text = raw_result.strip()
@@ -1204,6 +1208,10 @@ def _parse_discussion_result(
         try:
             return DiscussionResult.model_validate(data)
         except ValidationError:
+            if isinstance(data, dict):
+                coerced = _coerce_discussion_result_data(data, fallback_title, fallback_reason)
+                if coerced:
+                    return coerced
             continue
     if _looks_like_broken_json(raw_text):
         raise ValueError("discussion_result_invalid")
@@ -1217,7 +1225,76 @@ def _parse_discussion_result(
         ],
         recommendation=_bounded_text(_strip_markdown_fence(raw_text), 2000),
         reason=fallback_reason,
+        structured=False,
     )
+
+
+def _coerce_discussion_result_data(
+    data: dict[str, Any],
+    fallback_title: str,
+    fallback_reason: str,
+) -> DiscussionResult | None:
+    transcript = _discussion_transcript_from_data(data)
+    recommendation = _discussion_recommendation_from_data(data)
+    summary = _bounded_text(_string_value(data.get("summary")) or recommendation or _transcript_summary(transcript), 1000)
+    status_value = data.get("status") if data.get("status") in {"completed", "blocked"} else "completed"
+    if status_value == "blocked" and not summary:
+        summary = _bounded_text(_string_value(data.get("reason")) or fallback_reason, 1000)
+    if not summary and not recommendation and not transcript:
+        return None
+    if not transcript:
+        transcript = [
+            DiscussionTranscriptTurn(speaker="lead", content="Discussion requested."),
+            DiscussionTranscriptTurn(speaker="delegate", content=recommendation or summary),
+        ]
+    return DiscussionResult(
+        status=status_value,
+        title=_bounded_text(_string_value(data.get("title")) or fallback_title, 200),
+        summary=summary or _unstructured_delegate_summary(recommendation),
+        transcript=transcript,
+        recommendation=_bounded_text(recommendation or summary, 2000),
+        reason=_bounded_text(_string_value(data.get("reason")) or fallback_reason, 240),
+        structured=False,
+    )
+
+
+def _discussion_transcript_from_data(data: dict[str, Any]) -> list[DiscussionTranscriptTurn]:
+    raw_transcript = data.get("transcript")
+    turns: list[DiscussionTranscriptTurn] = []
+    if isinstance(raw_transcript, list):
+        for item in raw_transcript[:12]:
+            if isinstance(item, dict):
+                speaker = _string_value(item.get("speaker"))
+                content = _string_value(item.get("content"))
+                if speaker in {"lead", "delegate"} and content:
+                    turns.append(DiscussionTranscriptTurn(speaker=speaker, content=_bounded_text(content, 4000)))
+            elif isinstance(item, str) and item.strip():
+                turns.append(DiscussionTranscriptTurn(speaker="delegate", content=_bounded_text(item, 4000)))
+    elif isinstance(raw_transcript, str) and raw_transcript.strip():
+        turns.append(DiscussionTranscriptTurn(speaker="delegate", content=_bounded_text(raw_transcript, 4000)))
+    return turns
+
+
+def _discussion_recommendation_from_data(data: dict[str, Any]) -> str:
+    for key in ("recommendation", "content", "text", "result", "output", "answer", "advice"):
+        value = _string_value(data.get(key))
+        if value:
+            return value
+    text_values = [
+        value.strip()
+        for key, value in data.items()
+        if key not in {"title", "status", "reason"}
+        and isinstance(value, str)
+        and value.strip()
+        and len(value.strip()) > 20
+    ]
+    return "\n\n".join(text_values).strip()
+
+
+def _transcript_summary(transcript: list[DiscussionTranscriptTurn]) -> str:
+    if not transcript:
+        return ""
+    return _bounded_text(" ".join(turn.content for turn in transcript), 180)
 
 
 def _discussion_content(result: DiscussionResult) -> str:

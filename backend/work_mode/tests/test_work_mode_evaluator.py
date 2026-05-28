@@ -104,6 +104,41 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertIn("unsupported_claim", issue_types)
         self.assertEqual(report.status, "needs_human_review")
 
+    def test_no_evidence_long_research_draft_score_is_capped_by_root_cause(self) -> None:
+        mission, run_id, product, final_artifact = self._research_mission(
+            content=(
+                "Cohere is a Toronto-based enterprise AI company that builds foundation models for business teams. "
+                "Source: https://cohere.com\n"
+                "Layer 6 AI is a Toronto machine-learning company focused on enterprise forecasting systems. "
+                "Source: https://www.layer6.ai\n"
+                "Vector Institute anchors Toronto's applied AI ecosystem and connects researchers with industry projects. "
+                "Source: https://vectorinstitute.ai\n"
+                "MapleNeural Labs sells workflow agents to Fortune 500 banks and operates from downtown Toronto. "
+                "Source: https://mapleneural.example\n"
+                "Email: Dear team, I liked your enterprise AI platform and would value a short partnership conversation."
+            )
+        )
+        self.service.mark_product_final("user_1", product["id"])
+        self.service.mark_mission_completed(
+            "user_1",
+            mission["id"],
+            run_id,
+            step_id=None,
+            final_product_ids=[product["id"]],
+            final_artifact_ids=[final_artifact["id"]],
+            summary="Research complete.",
+        )
+
+        report = build_reliability_report(self.service.get_mission_detail("user_1", mission["id"]))
+        issue_types = {issue.type for issue in report.issues}
+
+        self.assertEqual(len(report.evidence), 0)
+        self.assertIn("unsupported_claim", issue_types)
+        self.assertIn("hallucinated_entity", issue_types)
+        self.assertEqual(report.status, "needs_human_review")
+        self.assertGreater(report.score, 0)
+        self.assertLess(report.score, 70)
+
     def test_evaluator_persists_report_artifact_and_event(self) -> None:
         mission, run_id, product, final_artifact = self._research_mission()
         self.service.mark_product_final("user_1", product["id"])

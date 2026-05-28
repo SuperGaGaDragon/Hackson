@@ -8,6 +8,7 @@ Last Modified by: Codex
 from unittest import TestCase
 
 from work_mode.action_client import ToolActionClientError
+from work_mode.tool_protocol import ToolActionValidationError
 from work_mode.quality_checks import LONG_FORM_NOVEL_MIN_CJK
 from work_mode.loop import MissionLoopRunner
 from work_mode.schemas import MissionCreateRequest, MissionStartRequest, ProjectCreateRequest
@@ -402,6 +403,25 @@ class WorkModeLoopTest(TestCase):
         self.assertEqual(failed["mission"]["lastError"], "final_artifact_not_final_content")
         self.assertEqual(len(invalid_events), 2)
 
+    def test_loop_surfaces_schema_invalid_detail_to_next_turn(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        action_client = SchemaInvalidThenBlockActionClient()
+
+        MissionLoopRunner(self.service, action_client=action_client, max_turns=3, max_invalid_turns=2).run(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        invalid_event = next(event for event in completed["events"] if event["type"] == "MODEL_TURN_INVALID")
+
+        self.assertEqual(completed["mission"]["status"], "blocked")
+        self.assertIn("finalProductIds", invalid_event["payload"]["detail"])
+        self.assertIn("finalProductIds", str(action_client.second_context["lastObservation"]))
+
     def _mission(self) -> dict:
         project = self.service.create_project("user_1", ProjectCreateRequest(name="Novel"))
         return self.service.create_mission(
@@ -471,6 +491,45 @@ class AlwaysFailingActionClient:
     def generate_action(self, context: dict):
         self.calls += 1
         raise self.error
+
+
+class SchemaInvalidThenBlockActionClient:
+    def __init__(self):
+        self.calls = 0
+        self.second_context = {}
+
+    def generate_action(self, context: dict):
+        self.calls += 1
+        if self.calls == 1:
+            try:
+                return parse_tool_action(
+                    """
+                    {
+                      "tool": "finish_mission",
+                      "arguments": {
+                        "reason": "缺少最终产品。",
+                        "summary": "完成。",
+                        "finalProductIds": [],
+                        "finalArtifactIds": []
+                      }
+                    }
+                    """
+                )
+            except ToolActionValidationError as exc:
+                raise ToolActionClientError(exc.code, exc.detail or str(exc), retryable=False) from exc
+        self.second_context = context
+        return parse_tool_action(
+            """
+            {
+              "tool": "block_mission",
+              "arguments": {
+                "reason": "测试结束。",
+                "blockedReason": "测试结束。",
+                "neededFromUser": ""
+              }
+            }
+            """
+        )
 
 
 class FailingDelegateClient:

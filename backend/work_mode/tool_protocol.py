@@ -28,9 +28,10 @@ ToolName = Literal[
 class ToolActionValidationError(ValueError):
     """Stable parser/validator error for invalid model tool turns."""
 
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, detail: str = ""):
         super().__init__(message)
         self.code = code
+        self.detail = detail
 
 
 class MissionPlanStep(BaseModel):
@@ -247,7 +248,7 @@ def parse_tool_action(raw_text: str) -> ToolAction:
     except ValidationError as exc:
         if _has_literal_error(exc, "tool"):
             raise ToolActionValidationError("tool_action_unknown_tool", "tool_is_not_allowed") from exc
-        raise ToolActionValidationError("tool_action_schema_invalid", "tool_action_schema_invalid") from exc
+        raise ToolActionValidationError("tool_action_schema_invalid", "tool_action_schema_invalid", _validation_detail(exc)) from exc
 
     arguments = _validate_arguments(action.tool, action.arguments)
     return ToolAction(tool=action.tool, arguments=arguments)
@@ -258,7 +259,7 @@ def _validate_arguments(tool: ToolName, raw_arguments: dict) -> ToolArguments:
     try:
         return model.model_validate(raw_arguments)
     except ValidationError as exc:
-        raise ToolActionValidationError("tool_action_schema_invalid", "tool_action_schema_invalid") from exc
+        raise ToolActionValidationError("tool_action_schema_invalid", "tool_action_schema_invalid", _validation_detail(exc)) from exc
 
 
 def _argument_model(tool: ToolName) -> type[ToolArguments]:
@@ -283,3 +284,15 @@ def _has_literal_error(error: ValidationError, field_name: str) -> bool:
         if location == (field_name,) and item.get("type") == "literal_error":
             return True
     return False
+
+
+def _validation_detail(error: ValidationError, limit: int = 500) -> str:
+    parts: list[str] = []
+    for item in error.errors()[:6]:
+        location = ".".join(str(part) for part in item.get("loc", ()) if part != "__root__")
+        message = str(item.get("msg") or item.get("type") or "invalid")
+        parts.append(f"{location or 'arguments'}: {message}")
+    detail = "; ".join(parts)
+    if len(detail) <= limit:
+        return detail
+    return f"{detail[: max(limit - 3, 0)].rstrip()}..."

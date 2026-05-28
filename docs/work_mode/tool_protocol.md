@@ -385,6 +385,8 @@ Discussion delegate model call MUST return structured JSON:
 
 Backend MUST persist completed discussion output as a Discussion Artifact and return a structured observation to the Lead.
 
+Discussion result ingestion SHOULD be tolerant in the same product spirit as Delegate writing ingestion. If the child Agent returns useful summary, recommendation, transcript text, or plain text but misses the exact wrapper schema, backend MAY canonicalize it into a completed Discussion Artifact. Empty output or unsalvageable broken JSON-like output remains invalid.
+
 ### 13.4 Tool: web_search
 
 Purpose:

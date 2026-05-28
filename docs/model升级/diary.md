@@ -218,12 +218,25 @@ Last Modified by: Codex
   - 修复一个关键死锁：pre-finish evaluator 会产生 `mission_incomplete`，完成门禁会忽略这个唯一 pre-finish issue，但仍阻断无证据、缺最终稿、unsupported claim 等真实问题。
   - Evaluator 升级：无 Evidence Ledger 的 `research_reliability_v1` 封顶 `needs_human_review`；支持中文论文最终稿/大纲识别；中文事实句 token 支持更好。
   - 前端 Reliability Panel 增加 Evidence Ledger、Suggested fixes、Evidence sources、Limitations，让用户不用打开 Diagnostics 也能理解为什么被拦。
-  - 本地验证通过：Work Mode `105` tests、frontend build。
-  - 目标机 `8165` 验证通过：新增相关 `45` unittest、frontend build、paper gate in-process smoke。
-  - 推广到 public `8145` 前确认 active-like Mission 为 `0`；public 备份到 `~/hackson_domain_8145_backups/evaluator_tool_20260528_110453`；public 目录 `45` unittest 和 frontend build 通过。
-  - 重启 `hackson-domain-8145.service` 后，内网和公网 `/health` 均正常；公网首页 assets 为 `/assets/index-Cy-unphL.js` 和 `/assets/index-Dx_ve1gX.css`。
-  - 公网 in-process smoke 通过：论文大纲完成被 `final_paper_draft_required` 拒绝；终稿未评估被 `reliability_evaluation_required` 拒绝；无证据评估返回 `needs_human_review` 且建议 `web_search`；随后完成被 `reliability_evaluation_needs_review` 拒绝。
-  - 公网日志检查无 traceback/500，active-like Mission 仍为 `0`。
+- 修复 Reliability 最新报告展示和 0 分校准：
+  - 用户公网测试暴露两个产品问题：重复 Evaluate 后主卡不保证按最新 `RELIABILITY_REPORTED` 事件展示；无证据长研究稿会因大量 unsupported/hallucinated 派生 issue 被机械扣到 `0 / 100`。
+  - 已读公网结构化事件确认：Mission `6a1873a07930f43553a9031a` 先后产出 report `6a1878227930f43553a903b0`、`6a1878b97930f43553a903b4`，事件序号分别为 `#129`、`#132`；前端必须按最新事件和 `reportArtifactId` 展示当前报告。
+  - 新增 `docs/evaluator/issues/issue9-latest-report-history-and-score-calibration.md`，明确 Reliability 主卡必须按最新 report event 选择当前报告，旧报告折叠留档；无证据根因仍需 human review，但派生 claim/entity 扣分要 capped。
+  - 后端 `_score` 增加 unsupported claim、hallucinated entity、no-evidence root-cause family caps；仍保留 mission incomplete、unsafe action、no evidence 对状态的强约束。
+  - 前端 `ReliabilityPanel` 改为接收 `events + artifacts`：优先使用最新 `RELIABILITY_REPORTED.reportArtifactId` 找完整报告，短暂不同步时 fallback event payload，并显示 collapsed History。
+  - 本地验证通过：Work Mode + static frontend `117` tests，frontend build assets `/assets/index-DbtH62Wt.js` 和 `/assets/index-BcipKgl8.css`。
+  - 目标机 `8165` 验证通过：Work Mode `113` unittest、frontend build assets `/assets/index-BeGxqY3P.js` 和 `/assets/index-BcipKgl8.css`。
+- 修复 Work Mode Discussion 结果容错和 schema invalid 反馈：
+  - 用户公网截图显示同一长研究 Mission 在 Review 后出现 `discussion_result_invalid`，随后 Lead 连续 `tool_action_schema_invalid`，最终 `mission_loop_turn_budget_exceeded`。
+  - 已读公网事件确认：Mission `6a1873a07930f43553a9031a` 在 `#143/#144` 出现 Discussion 失败和可重试暂停，之后 `#187/#189/#191/#199/#201/#203` 连续 schema invalid，但旧事件 payload 没有字段级 detail，Lead 只能重复撞错。
+  - 自审结论：Discussion 是只读认知辅助工具，不能因为 child Agent 少了 JSON wrapper 字段就丢掉可用建议；Lead tool action 仍必须严格 JSON schema。
+  - 新增 `docs/work_mode/issues/issue31-discussion-result-tolerance-and-schema-feedback.md`，明确 Discussion 可以容错保存非空可读建议，但空输出仍失败；schema invalid 要把字段错误作为 bounded detail 反馈给 Lead 和 UI。
+  - 后端 `DiscussionResult` 增加 tolerant coercion：只有 summary/recommendation、plain text、或 transcript text 时也会完成 Discussion Window 并保存 Discussion Artifact。
+  - `ToolActionValidationError` 增加 `detail`，`MODEL_TURN_INVALID` 和下一轮 `lastObservation` 会带上字段级错误摘要，减少模型反复撞同一个 schema 错误。
+  - 公网发布前按护栏等待 active running Mission 归零；该 Mission 后续自然暂停在 `discussion_result_invalid`，正是本修复覆盖的问题。
+  - public 备份到 `~/hackson_domain_8145_backups/reliability_discussion_20260528_141150`；public 目录 Work Mode `113` unittest 和 frontend build 通过。
+  - 重启 `hackson-domain-8145.service` 后，内网 `/health`、公网 `/health`、公网 `/` 均返回 `200`；公网首页 assets 为 `/assets/index-2mQJ4BnJ.js` 和 `/assets/index-CFlhTWvI.css`。
+  - 公网日志检查无 traceback/500/schema/discussion 新错误；`hackson-domain-8145.service` 与 `hackson-cloudflared.service` 均 active，blocking running Mission 为 `0`。
 - 完成 Evaluator Runtime V1 文档合规收口（本地阶段）：
   - 先自审 `docs/evaluator`，确认缺口集中在 `mode=replay` 未透传、缺 `EVALUATION_STARTED/EVALUATION_FAILED`、`issueCounts` 只按 severity、报告缺 `toolFailures`、Evidence Ledger 未读取 source-backed Research Artifacts、Reliability UI 未显示 requirement evidence / claim best source / tool failure。
   - 新增 `docs/evaluator/issues/issue8-v1-compliance-closure.md`，同步更新 evaluator final version、evaluation model、state machine、UI contract、implementation plan，以及 Work Mode `evaluate_product` 工具协议。

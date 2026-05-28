@@ -243,6 +243,9 @@ Caps:
 - Score floor is 0.
 - Multiple weak support issues cap at 20 total points.
 - Multiple missing source issues cap at 25 total points.
+- Multiple unsupported claim issues cap at 36 total points.
+- Multiple hallucinated entity issues cap at 30 total points.
+- When Evidence Ledger is empty, unsupported claim plus hallucinated entity penalties are treated as one root-cause family capped at 40 total points.
 - Any critical issue caps status at `needs_human_review` or worse.
 - Any unsafe external action caps status at `unsafe_to_ship`.
 - Any `mission_incomplete` issue caps status at `needs_human_review`.

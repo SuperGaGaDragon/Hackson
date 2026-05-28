@@ -154,6 +154,10 @@ Scores are decision support, not truth labels.
 
 `research_reliability_v1` with an empty Evidence Ledger MUST cap status at `needs_human_review`. A numeric score in the 70-84 range cannot make no-evidence research work a minor review.
 
+Reliability UI MUST make the newest report unambiguous by using the latest `RELIABILITY_REPORTED` event and keeping older reports collapsed in history.
+
+Repeated unsupported-claim and hallucinated-entity issues caused by an empty Evidence Ledger MUST be score-capped as one root-cause family, while still blocking ship-ready status.
+
 Paper-like research Missions MUST check that the final Artifact is a final draft, not only a plan, outline, or chapter map.
 
 V1.0 implementation closure:

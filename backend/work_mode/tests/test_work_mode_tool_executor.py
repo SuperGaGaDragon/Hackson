@@ -584,6 +584,54 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertEqual(discussion_artifact["metadata"]["sourceArtifactIds"], [artifact["id"]])
         self.assertIn("旧票", discussion_artifact["content"])
 
+    def test_discuss_with_delegate_coerces_partial_json_into_discussion_artifact(self) -> None:
+        mission, run_id = self._started_agent_mission(title="写论文", goal="写一篇文献综述。")
+        product, artifact = self._product_with_artifact(mission, run_id, content="终稿候选正文。", kind="draft")
+        delegate_client = ScriptedDelegateClient(
+            """
+            {
+              "summary": "建议先补齐参考文献，再压缩重复论述。",
+              "recommendation": "不要直接收尾；先追加参考文献段落，再生成最终稿。",
+              "reason": "讨论结果可执行。"
+            }
+            """
+        )
+        executor = WorkModeToolExecutor(self.service, delegate_client=delegate_client)
+
+        result = executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "discuss_with_delegate",
+                  "arguments": {{
+                    "reason": "讨论是否可以收尾。",
+                    "agentSlot": "agent_2",
+                    "discussionTitle": "终稿候选讨论",
+                    "windowId": null,
+                    "productId": "{product["id"]}",
+                    "artifactIds": ["{artifact["id"]}"],
+                    "question": "这版是否可以作为最终稿？",
+                    "expectedOutcome": "给出继续或收尾建议。",
+                    "maxTurns": 1
+                  }}
+                }}
+                """
+            ),
+        )
+
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        discussion_window = next(window for window in detail["workWindows"] if window["metadata"].get("windowType") == "discussion")
+        discussion_artifact = next(item for item in detail["artifacts"] if item["metadata"].get("artifactRole") == "discussion")
+
+        self.assertFalse(result.terminal)
+        self.assertEqual(result.observation["status"], "ok")
+        self.assertEqual(discussion_window["status"], "completed")
+        self.assertIn("补齐参考文献", discussion_artifact["content"])
+        self.assertIn("不要直接收尾", discussion_artifact["content"])
+
     def test_web_search_persists_bounded_search_event(self) -> None:
         mission, run_id = self._started_agent_mission(title="查资料", goal="查找一个可引用资料。")
         executor = WorkModeToolExecutor(

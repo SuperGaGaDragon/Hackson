@@ -21,6 +21,7 @@ Last Modified by: Codex
 |-issue6-incomplete-mission-gate.md why unfinished Missions cannot be ship-ready
 |-issue7-research-paper-evidence-gate.md why research/paper work without trace evidence cannot be minor review
 |-issue8-v1-compliance-closure.md V1.0 document-to-code closure rules for replay, lifecycle events, report fields, and UI
+|-issue9-latest-report-history-and-score-calibration.md latest Reliability report selection, collapsed history, and root-cause-aware scoring caps
 
 ## 代办
 - Add new issue notes only when a decision would otherwise be surprising to future implementers.

@@ -97,6 +97,7 @@ class WorkModeToolProtocolTest(TestCase):
             )
 
         self.assertEqual(error.exception.code, "tool_action_schema_invalid")
+        self.assertIn("finalProductIds", error.exception.detail)
 
     def test_parses_valid_delegate_agent_action(self) -> None:
         action = parse_tool_action(

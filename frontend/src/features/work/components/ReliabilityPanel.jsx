@@ -4,8 +4,11 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-function ReliabilityPanel({ artifacts = [] }) {
-  const report = latestReport(artifacts);
+import { ChevronRight } from "lucide-react";
+import { formatEventTime } from "./eventDisplay";
+
+function ReliabilityPanel({ artifacts = [], events = [] }) {
+  const { report, history } = reliabilityReports(artifacts, events);
   if (!report) return null;
   const issues = report.issues || [];
   const topIssues = issues.slice(0, 4);
@@ -25,6 +28,10 @@ function ReliabilityPanel({ artifacts = [] }) {
         </div>
         <span>{statusLabel(report.status)}</span>
       </div>
+      <p className="reliability-meta">
+        {report.createdAt || report.eventTime || "Latest report"}
+        {report.reportArtifactId ? ` / ${report.reportArtifactId}` : ""}
+      </p>
       <p className="reliability-summary">{report.summary}</p>
       <div className="reliability-badges">
         {issueBadges(report.issueCounts).map(([label, count]) => (
@@ -140,15 +147,105 @@ function ReliabilityPanel({ artifacts = [] }) {
           </div>
         </div>
       )}
+      {history.length > 0 && (
+        <details className="reliability-history">
+          <summary>
+            <ChevronRight size={14} />
+            <span>History</span>
+            <small>{history.length}</small>
+          </summary>
+          <div className="reliability-history-list">
+            {history.map((item) => (
+              <div className="reliability-history-row" key={item.reportId || item.reportArtifactId}>
+                <span>{item.score} / 100</span>
+                <p>
+                  <strong>{statusLabel(item.status)}</strong>
+                  <small>
+                    {item.eventTime || item.createdAt || "Report"}
+                    {item.mode ? ` / ${item.mode}` : ""}
+                    {item.reportArtifactId ? ` / ${item.reportArtifactId}` : ""}
+                  </small>
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
 
-function latestReport(artifacts) {
-  const reports = artifacts
+function reliabilityReports(artifacts, events) {
+  const artifactReports = artifacts
     .filter((artifact) => artifact.metadata?.artifactRole === "reliability_report")
-    .sort((left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime());
-  return reports[0]?.metadata?.reportPayload || null;
+    .map((artifact) => reportFromArtifact(artifact))
+    .filter(Boolean);
+  const reportsByArtifactId = new Map(artifactReports.map((item) => [item.reportArtifactId, item]));
+  const reportEvents = events
+    .filter((event) => event.type === "RELIABILITY_REPORTED")
+    .sort((left, right) => (right.sequence || 0) - (left.sequence || 0));
+  const eventBackedReports = reportEvents
+    .map((event) => reportFromEvent(event, reportsByArtifactId))
+    .filter(Boolean);
+  const ordered = uniqueReports([...eventBackedReports, ...artifactReports]);
+  return {
+    report: ordered[0] || null,
+    history: ordered.slice(1),
+  };
+}
+
+function reportFromArtifact(artifact) {
+  const report = artifact.metadata?.reportPayload;
+  if (!report) return null;
+  return {
+    ...report,
+    reportArtifactId: report.reportArtifactId || artifact.id,
+    createdAt: report.createdAt || artifact.createdAt,
+    artifactCreatedAt: artifact.createdAt,
+  };
+}
+
+function reportFromEvent(event, reportsByArtifactId) {
+  const artifactId = event.payload?.reportArtifactId || "";
+  const report = reportsByArtifactId.get(artifactId);
+  if (!report && event.payload?.score == null) return null;
+  return {
+    ...(report || {}),
+    reportArtifactId: artifactId || report?.reportArtifactId,
+    reportId: report?.reportId || artifactId || event.id,
+    score: report?.score ?? event.payload?.score,
+    status: report?.status || event.payload?.status,
+    issueCounts: report?.issueCounts || event.payload?.issueCounts || {},
+    mode: report?.mode || event.payload?.mode,
+    profile: report?.profile || event.payload?.profile,
+    eventSequence: event.sequence,
+    eventTime: formatEventTime(event),
+    summary: report?.summary || event.message || "",
+    issues: report?.issues || [],
+    requirements: report?.requirements || [],
+    claims: report?.claims || [],
+    evidence: report?.evidence || [],
+    toolFailures: report?.toolFailures || [],
+    suggestedNextActions: report?.suggestedNextActions || [],
+    limitations: report?.limitations || [],
+  };
+}
+
+function uniqueReports(reports) {
+  const seen = new Set();
+  const unique = [];
+  for (const report of reports) {
+    const key = report.reportArtifactId || report.reportId;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(report);
+  }
+  return unique.sort((left, right) => {
+    if ((right.eventSequence || 0) !== (left.eventSequence || 0)) {
+      return (right.eventSequence || 0) - (left.eventSequence || 0);
+    }
+    return new Date(right.artifactCreatedAt || 0).getTime() - new Date(left.artifactCreatedAt || 0).getTime();
+  });
 }
 
 function statusLabel(status) {

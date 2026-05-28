@@ -42,6 +42,7 @@ Last Modified by: Codex
 |-issue28-requirement-grill.md bounded Lead requirement clarification protocol
 |-issue29-research-paper-final-draft-gate.md deterministic final-draft gate for paper/research deliverables
 |-issue30-evaluator-leader-tool.md backend-owned Reliability evaluator as a model-visible Leader tool
+|-issue31-discussion-result-tolerance-and-schema-feedback.md tolerant Discussion ingestion and actionable Lead schema feedback
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

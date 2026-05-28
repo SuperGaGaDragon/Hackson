@@ -47,12 +47,14 @@ Panel content:
 
 - Score card.
 - Status label.
+- Current report time and report id.
 - Issue badges.
 - Top issues.
 - Requirement coverage table.
 - Claim support table.
 - Suggested fixes.
 - Report limitations.
+- Collapsed report history when more than one report exists.
 
 Compact header:
 
@@ -64,6 +66,8 @@ Needs Human Review
 ```
 
 The panel MUST NOT hide high-severity issues behind Diagnostics.
+
+The primary card MUST render the latest `RELIABILITY_REPORTED` event by event sequence. If that event references a `reportArtifactId`, the UI MUST use the matching Reliability Report Artifact payload. Older reports MUST remain available in collapsed history and MUST NOT replace the primary card.
 
 ## 4. Score Rendering
 
@@ -232,6 +236,8 @@ Browser smoke should verify:
 
 - Score is visible.
 - Status is visible.
+- Latest report is selected after repeated evaluation.
+- Older report history is collapsed but expandable.
 - At least one issue badge is visible.
 - Requirement coverage renders.
 - Claim support renders.

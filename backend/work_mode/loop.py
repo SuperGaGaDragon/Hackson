@@ -93,7 +93,7 @@ class MissionLoopRunner:
                     "MODEL_TURN_INVALID",
                     "Invalid turn",
                     exc.code,
-                    {"turn": turn_index + 1, "code": exc.code, "attempt": invalid_turns},
+                    {"turn": turn_index + 1, "code": exc.code, "detail": str(exc), "attempt": invalid_turns},
                 )
                 if invalid_turns > self.max_invalid_turns:
                     self.service.mark_mission_failed(user_id, mission_id, run_id, exc.code, step_id=None)
@@ -103,6 +103,7 @@ class MissionLoopRunner:
                     "status": "invalid",
                     "code": exc.code,
                     "message": str(exc),
+                    "detail": str(exc),
                     "instruction": "Return exactly one valid JSON Action using the available tools.",
                 }
                 continue

@@ -546,6 +546,9 @@ def _score(issues: list[ReliabilityIssue]) -> int:
     total = 0
     weak_total = 0
     missing_source_total = 0
+    unsupported_total = 0
+    hallucinated_entity_total = 0
+    no_evidence = any(issue.type == "evaluation_limitation" and issue.title == "No evidence ledger" for issue in issues)
     for issue in issues:
         weight = ISSUE_WEIGHTS[issue.type]
         if issue.type == "weakly_supported_claim":
@@ -554,9 +557,20 @@ def _score(issues: list[ReliabilityIssue]) -> int:
         if issue.type == "missing_source":
             missing_source_total += weight
             continue
+        if issue.type == "unsupported_claim":
+            unsupported_total += weight
+            continue
+        if issue.type == "hallucinated_entity":
+            hallucinated_entity_total += weight
+            continue
         total += weight
     total += min(weak_total, 20)
     total += min(missing_source_total, 25)
+    if no_evidence:
+        total += min(unsupported_total + hallucinated_entity_total, 40)
+    else:
+        total += min(unsupported_total, 36)
+        total += min(hallucinated_entity_total, 30)
     return max(0, 100 - total)
 
 

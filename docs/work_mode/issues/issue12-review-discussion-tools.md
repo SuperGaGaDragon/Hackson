@@ -119,6 +119,7 @@ Constraints:
 - Discussion MUST NOT modify Product content.
 - Discussion MUST NOT finish the Mission.
 - Discussion MUST NOT recursively delegate.
+- Discussion ingestion SHOULD preserve useful advice even when the child Agent misses optional JSON wrapper fields. See `issue31-discussion-result-tolerance-and-schema-feedback.md`.
 
 ## UI Requirements
 

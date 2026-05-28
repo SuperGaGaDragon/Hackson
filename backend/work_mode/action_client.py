@@ -53,7 +53,8 @@ class ToolActionClient:
         try:
             return parse_tool_action(response.text)
         except ToolActionValidationError as exc:
-            raise ToolActionClientError(exc.code, str(exc), retryable=False) from exc
+            message = exc.detail or str(exc)
+            raise ToolActionClientError(exc.code, message, retryable=False) from exc
 
 
 class DelegateResultClient:

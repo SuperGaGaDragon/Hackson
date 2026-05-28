@@ -371,6 +371,7 @@ Required backend behavior:
 - `discuss_with_delegate` validates non-lead Agent and source binding.
 - `discuss_with_delegate` creates a Discussion Window.
 - `discuss_with_delegate` persists a Discussion Artifact.
+- `discuss_with_delegate` tolerates useful non-empty child output that misses optional wrapper fields, while still failing empty output.
 - Review and Discussion tools do not modify Product content and do not finish Mission.
 
 Required UI behavior:
