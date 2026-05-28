@@ -36,10 +36,13 @@ ISSUE_WEIGHTS = {
     "tool_failure_ignored": 20,
     "unsafe_action": 20,
     "evaluation_limitation": 5,
+    "mission_incomplete": 25,
 }
+EVALUATOR_VERSION = "2026-05-28.research-paper-gate.v2"
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9&.-]*")
 URL_RE = re.compile(r"https?://[^\s)\]>\"']+")
 SENTENCE_RE = re.compile(r"(?<=[.!?。！？])\s+|\n+")
+CHINESE_CHAR_RE = re.compile(r"[\u4e00-\u9fff]")
 ENTITY_RE = re.compile(r"\b(?:[A-Z][A-Za-z0-9&.-]+(?:\s+|$)){1,4}(?:AI|Labs|Systems|Technologies|Tech|Inc|Corp|Company|Cohere|Layer|Vector)?")
 STOP_ENTITIES = {
     "AI",
@@ -95,6 +98,8 @@ class EvaluatorRuntime:
         run_id = _latest_run_id(detail)
         if run_id is None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_has_no_run")
+        if _latest_event_is_current_report(detail):
+            return detail
         report = build_reliability_report(detail, profile=profile)
         artifact = self._persist_report(user_id, mission_id, run_id, report)
         report.report_artifact_id = artifact["id"]
@@ -113,6 +118,7 @@ class EvaluatorRuntime:
                 "status": report.status,
                 "issueCounts": report.issue_counts,
                 "reportArtifactId": artifact["id"],
+                "evaluatorVersion": EVALUATOR_VERSION,
                 "employee": _employee_payload(detail["mission"]),
             },
         )
@@ -135,6 +141,7 @@ class EvaluatorRuntime:
             content=content,
             metadata={
                 "artifactRole": "reliability_report",
+                "evaluatorVersion": EVALUATOR_VERSION,
                 "summary": report.summary,
                 "reportPayload": report.model_dump(by_alias=True),
             },
@@ -145,6 +152,7 @@ class EvaluatorRuntime:
             artifact["id"],
             {
                 "artifactRole": "reliability_report",
+                "evaluatorVersion": EVALUATOR_VERSION,
                 "summary": report.summary,
                 "reportPayload": report.model_dump(by_alias=True),
             },
@@ -159,7 +167,8 @@ def build_reliability_report(
     final_artifact = _final_artifact(detail)
     final_text = final_artifact.get("content", "") if final_artifact else ""
     evidence = _evidence_ledger(detail.get("events", []))
-    requirements = _requirements(mission.get("goal", ""), final_text, evidence)
+    goal = mission.get("goal", "")
+    requirements = _requirements(goal, final_text, evidence, final_artifact)
     claims = _claims(final_text, final_artifact["id"] if final_artifact else "", evidence)
     issues = _issues(detail, requirements, claims, evidence, final_artifact)
     score = _score(issues)
@@ -208,12 +217,34 @@ def _evidence_ledger(events: list[dict[str, Any]]) -> list[EvidenceItem]:
     return evidence
 
 
-def _requirements(goal: str, final_text: str, evidence: list[EvidenceItem]) -> list[RequirementItem]:
+def _requirements(
+    goal: str,
+    final_text: str,
+    evidence: list[EvidenceItem],
+    final_artifact: dict[str, Any] | None = None,
+) -> list[RequirementItem]:
     lowered = goal.lower()
     requirements: list[RequirementItem] = []
     expected_count = _expected_count(lowered)
     final_entities = _entities(final_text)
     url_count = len(URL_RE.findall(final_text))
+    paper_like = is_research_paper_like_goal(goal)
+    if paper_like:
+        has_final_draft = artifact_is_research_paper_final_draft(final_artifact)
+        requirements.append(
+            RequirementItem(
+                id=f"R{len(requirements) + 1}",
+                requirement="Produce a final paper or research draft",
+                type="format",
+                status="met" if has_final_draft else "missing",
+                evidence=(
+                    "Final artifact has paper/report draft shape."
+                    if has_final_draft
+                    else "Final artifact is missing, too short, or appears to be only an outline/plan."
+                ),
+                fieldName="final draft",
+            )
+        )
     if expected_count is not None:
         status_value = "met" if len(final_entities) >= expected_count else "missing"
         requirements.append(
@@ -320,6 +351,25 @@ def _issues(
 ) -> list[ReliabilityIssue]:
     issues: list[ReliabilityIssue] = []
     artifact_ids = [final_artifact["id"]] if final_artifact else []
+    mission_status = str(detail.get("mission", {}).get("status") or "")
+    if mission_status != "completed":
+        mission = detail.get("mission", {})
+        last_error = str(mission.get("lastError") or mission.get("last_error") or "").strip()
+        description = f"Mission status is {mission_status or 'unknown'}, so the current Product cannot be treated as ready to ship."
+        if last_error:
+            description = f"{description} Last error: {last_error}."
+        issues.append(
+            ReliabilityIssue(
+                id=f"I{len(issues) + 1}",
+                type="mission_incomplete",
+                severity="high",
+                title="Mission incomplete",
+                description=description,
+                artifactIds=artifact_ids,
+                suggestedFix="Resume or complete the Mission before treating this output as final.",
+                confidence=0.97,
+            )
+        )
     for requirement in requirements:
         if requirement.status == "missing":
             issue_type = "missing_source" if requirement.field_name == "source link" else "missing_requirement"
@@ -448,6 +498,10 @@ def _score(issues: list[ReliabilityIssue]) -> int:
 def _status(score: int, issues: list[ReliabilityIssue]) -> str:
     if any(issue.type == "unsafe_action" for issue in issues):
         return "unsafe_to_ship"
+    if any(issue.type == "mission_incomplete" for issue in issues):
+        return "needs_human_review"
+    if any(issue.type == "evaluation_limitation" and issue.title == "No evidence ledger" for issue in issues):
+        return "needs_human_review"
     if any(issue.severity == "critical" for issue in issues):
         return "needs_human_review"
     if score >= 85:
@@ -462,6 +516,8 @@ def _status(score: int, issues: list[ReliabilityIssue]) -> str:
 def _summary(score: int, issues: list[ReliabilityIssue]) -> str:
     if not issues:
         return "No major reliability issues were detected from the available trace evidence."
+    if any(issue.type == "evaluation_limitation" and issue.title == "No evidence ledger" for issue in issues):
+        return f"Reliability score {score}. No trace evidence was available, so this research output needs human review."
     high = sum(1 for issue in issues if issue.severity in {"critical", "high"})
     return f"Reliability score {score}. Detected {len(issues)} issues, including {high} high-severity risks."
 
@@ -536,6 +592,17 @@ def _latest_run_id(detail: dict[str, Any]) -> str | None:
     return (active or latest or {}).get("id")
 
 
+def _latest_event_is_current_report(detail: dict[str, Any]) -> bool:
+    events = detail.get("events", [])
+    if not events:
+        return False
+    latest = events[-1]
+    if latest.get("type") != "RELIABILITY_REPORTED":
+        return False
+    payload = latest.get("payload", {})
+    return payload.get("evaluatorVersion") == EVALUATOR_VERSION
+
+
 def _expected_count(goal: str) -> int | None:
     digit = re.search(r"\b([2-9]|10)\b", goal)
     if digit and re.search(r"\b(compan|startups?|companies|firms|entities|sources)\b", goal):
@@ -584,6 +651,22 @@ def _looks_factual(sentence: str) -> bool:
         "startup",
         "toronto",
         "works with",
+        "revolution",
+        "war",
+        "government",
+        "history",
+        "source",
+        "革命",
+        "战争",
+        "政府",
+        "殖民",
+        "历史",
+        "研究",
+        "数据显示",
+        "根据",
+        "位于",
+        "成立",
+        "影响",
     )
     return any(term in lowered for term in factual_terms) and not lowered.startswith(("subject:", "dear "))
 
@@ -625,11 +708,94 @@ def _support(claim: str, entity: str, evidence: list[EvidenceItem]) -> tuple[str
 
 
 def _tokens(text: str) -> set[str]:
-    return {
+    tokens = {
         token.lower()
         for token in WORD_RE.findall(text)
         if len(token) > 3 and token.lower() not in STOP_WORDS
     }
+    if CHINESE_CHAR_RE.search(text):
+        tokens.update(_chinese_bigrams(text))
+    return tokens
+
+
+def is_research_paper_like_goal(goal: str) -> bool:
+    text = goal.lower()
+    paper_terms = (
+        "论文",
+        "文献综述",
+        "研究报告",
+        "研究论文",
+        "学术",
+        "essay",
+        "paper",
+        "research paper",
+        "literature review",
+        "research report",
+    )
+    return any(term in text for term in paper_terms)
+
+
+def artifact_is_research_paper_final_draft(artifact: dict[str, Any] | None) -> bool:
+    if not artifact:
+        return False
+    title = str(artifact.get("title") or "")
+    kind = str(artifact.get("kind") or "")
+    content = str(artifact.get("content") or "")
+    if kind == "outline":
+        return False
+    if _looks_like_outline_or_plan(title) and kind not in {"final", "report"}:
+        return False
+    cjk_count = len(CHINESE_CHAR_RE.findall(content))
+    word_count = len(WORD_RE.findall(content))
+    if cjk_count < 180 and word_count < 220:
+        return False
+    if _looks_like_outline_or_plan(content) and not _has_body_prose_shape(content):
+        return False
+    if kind not in {"final", "report", "draft", "revision"}:
+        return False
+    return _has_body_prose_shape(content)
+
+
+def _looks_like_outline_or_plan(text: str) -> bool:
+    normalized = text.lower()
+    outline_terms = (
+        "大纲",
+        "提纲",
+        "计划",
+        "蓝图",
+        "执行计划",
+        "章节规划",
+        "结构",
+        "outline",
+        "plan",
+        "blueprint",
+    )
+    if any(term in normalized for term in outline_terms):
+        return True
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return False
+    bulletish = sum(1 for line in lines if re.match(r"^([0-9一二三四五六七八九十]+[、.)．]|[-*•])", line))
+    return len(lines) >= 3 and bulletish / len(lines) >= 0.6
+
+
+def _has_body_prose_shape(text: str) -> bool:
+    paragraphs = [item.strip() for item in re.split(r"\n\s*\n", text) if item.strip()]
+    long_paragraphs = [
+        item
+        for item in paragraphs
+        if len(CHINESE_CHAR_RE.findall(item)) >= 45 or len(WORD_RE.findall(item)) >= 55
+    ]
+    if len(long_paragraphs) >= 2:
+        return True
+    return bool(re.search(r"(引言|正文|结论|第一部分|第二部分|introduction|conclusion)", text, re.IGNORECASE)) and (
+        len(CHINESE_CHAR_RE.findall(text)) >= 220 or len(WORD_RE.findall(text)) >= 260
+    )
+
+
+def _chinese_bigrams(text: str) -> set[str]:
+    chars = CHINESE_CHAR_RE.findall(text)
+    return {"".join(chars[index : index + 2]) for index in range(max(len(chars) - 1, 0))}
 
 
 def _all_evidence_text(evidence: list[EvidenceItem]) -> str:

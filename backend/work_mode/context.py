@@ -20,6 +20,7 @@ AVAILABLE_V1_TOOLS: tuple[ToolName, ...] = (
     "review_product",
     "discuss_with_delegate",
     "web_search",
+    "evaluate_product",
 )
 
 
@@ -46,6 +47,8 @@ def build_lead_context(
         "toolSchemas": _tool_schemas(),
         "toolExamples": _tool_examples(),
         "toolUseGuidance": _tool_use_guidance(),
+        "requirementGrill": _requirement_grill_guidance(),
+        "latestUserFollowUp": _latest_user_follow_up(events),
         "hardConstraints": [
             "Return exactly one tool action.",
             "Return valid JSON only, with top-level tool and arguments.",
@@ -58,6 +61,9 @@ def build_lead_context(
             "Use review_product to persist a bounded quality review before revising or finishing when needed.",
             "Use discuss_with_delegate for a short scoped discussion about a Product, Artifact, or Work Window.",
             "Use web_search only for bounded external references; use work_product later to write user-visible output.",
+            "Use evaluate_product to request a backend Reliability Report for research or paper-like final candidates before finish_mission.",
+            "Use ask_user when a missing requirement would materially change the deliverable.",
+            "Do not ask_user for choices the user explicitly delegated with words like 随你, 不限, 你决定, or 题材自定.",
         ],
         "productManifest": [_product_manifest(product) for product in products],
         "workWindowManifest": [_window_manifest(window) for window in work_windows],
@@ -134,6 +140,18 @@ def _event_context(event: dict[str, Any]) -> dict[str, Any]:
         "message": event["message"],
         "payload": event.get("payload", {}),
     }
+
+
+def _latest_user_follow_up(events: list[dict[str, Any]]) -> dict[str, Any]:
+    for event in reversed(events):
+        if event.get("type") == "USER_FOLLOWUP_REQUESTED":
+            payload = event.get("payload", {})
+            return {
+                "sequence": event["sequence"],
+                "request": payload.get("request") or event.get("message", ""),
+                "message": event.get("message", ""),
+            }
+    return {}
 
 
 def _artifact_context(artifact: dict[str, Any]) -> dict[str, Any]:
@@ -249,6 +267,15 @@ def _tool_schemas() -> dict[str, Any]:
                 "blockedDomains": ["domain strings"],
             }
         },
+        "evaluate_product": {
+            "arguments": {
+                "reason": "string <=240",
+                "profile": "research_reliability_v1",
+                "productIds": ["product id strings"],
+                "artifactIds": ["artifact id strings"],
+                "focus": "string",
+            }
+        },
     }
 
 
@@ -291,8 +318,24 @@ def _tool_examples() -> dict[str, Any]:
 def _tool_use_guidance() -> list[str]:
     return [
         "Prefer web_search early when the Mission depends on current facts, external references, named organizations, market data, recent events, technical/source-backed claims, or niche facts not already supported by Product or Artifact context.",
+        "For web_search, prefer short 3-6 term queries; avoid packing many topics into one query; leave allowedDomains empty unless a domain restriction is essential.",
         "Prefer review_product before finish_mission when the Mission has a substantive deliverable and no recent review exists for the final candidate.",
         "Prefer discuss_with_delegate after a review with critical or major findings, after conflicting evidence, or when a second Agent can improve structure, quality, or tradeoff decisions.",
+        "Prefer evaluate_product after a research or paper final candidate exists and before finish_mission; if it reports missing evidence, run web_search or revise before finishing.",
+        "Prefer ask_user when a missing requirement would materially change the deliverable; otherwise choose a strong default and continue.",
         "Prefer work_product after web_search, review_product, or discuss_with_delegate when the observation should become user-visible deliverable content.",
         "Avoid ask_user when the Mission already grants autonomy, such as 题材自定 or 不限题材.",
     ]
+
+
+def _requirement_grill_guidance() -> dict[str, Any]:
+    return {
+        "purpose": "Clarify only the decisions that materially change execution or acceptance.",
+        "rules": [
+            "Use ask_user before major work when goal, acceptance criteria, audience, tone, constraints, or risk boundaries are missing and materially affect the result.",
+            "Ask at most 1-3 focused questions in one turn; include suggestedOptions when possible.",
+            "Do not ask about choices the user delegated, such as 随你, 不限, 你决定, 题材自定, or equivalent autonomy language.",
+            "If uncertainty is only a preference, choose a strong default and proceed.",
+            "For completed-Mission follow-up, clarify only if the requested revision would otherwise change the wrong Product, Artifact, audience, or acceptance criterion.",
+        ],
+    }

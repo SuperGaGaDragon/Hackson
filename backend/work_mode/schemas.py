@@ -73,6 +73,7 @@ EventType = Literal[
     "RELIABILITY_REPORTED",
     "USER_INPUT_REQUESTED",
     "USER_INPUT_RECEIVED",
+    "USER_FOLLOWUP_REQUESTED",
     "MISSION_PAUSED_RETRYABLE",
     "MISSION_BLOCKED",
     "STEP_COMPLETED",
@@ -204,6 +205,19 @@ class MissionAnswerRequest(BaseModel):
     @field_validator("answer")
     @classmethod
     def strip_answer(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("required_text_empty")
+        return value
+
+
+class MissionFollowUpRequest(BaseModel):
+    request: str = Field(min_length=1, max_length=8000)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("request")
+    @classmethod
+    def strip_request(cls, value: str) -> str:
         value = value.strip()
         if not value:
             raise ValueError("required_text_empty")

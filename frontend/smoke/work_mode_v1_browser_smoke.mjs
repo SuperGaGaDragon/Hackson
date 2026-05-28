@@ -76,9 +76,23 @@ async function main() {
   if (diagnosticOpen) {
     throw new Error("diagnostics_should_be_collapsed_by_default");
   }
-  const lineageCount = await page.locator(".artifact-row").count();
+  const lineageCount = await page.locator(".artifact-nav-row").count();
   if (lineageCount < 3) {
     throw new Error(`expected_artifact_lineage:${lineageCount}`);
+  }
+  const desktopReaderColumns = await page
+    .locator(".product-reader-shell")
+    .evaluate((node) => getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length);
+  if (desktopReaderColumns < 2) {
+    throw new Error(`product_reader_should_split_on_desktop:${desktopReaderColumns}`);
+  }
+  const navRowHeights = await page
+    .locator(".artifact-nav-row")
+    .evaluateAll((rows) => rows.map((row) => Math.round(row.getBoundingClientRect().height)));
+  const maxNavRowHeight = Math.max(...navRowHeights);
+  const minNavRowHeight = Math.min(...navRowHeights);
+  if (minNavRowHeight < 52 || maxNavRowHeight > 92) {
+    throw new Error(`artifact_nav_unstable_height:${minNavRowHeight}-${maxNavRowHeight}`);
   }
   await page.locator(".event-time").first().waitFor();
   const planRows = await page.locator(".mission_plan_updated").count();
@@ -118,20 +132,20 @@ async function main() {
       }
     }
   }
-  const outlineButton = page.locator(".artifact-lineage .artifact-row", { hasText: /outline|大纲/i }).first();
+  const outlineButton = page.locator(".artifact-navigator .artifact-nav-row", { hasText: /outline|大纲/i }).first();
   await outlineButton.click();
   const outlineOnlyText = await page.locator(".artifact-content").innerText();
   if ((outlineOnlyText.match(/[\u4e00-\u9fff]/g) || []).length < 20 || /最终成稿|final/i.test(outlineOnlyText)) {
     throw new Error("artifact_single_select_failed");
   }
-  const finalButton = page.locator(".artifact-lineage .artifact-row", { hasText: /final|最终|成稿/i }).last();
+  const finalButton = page.locator(".artifact-navigator .artifact-nav-row", { hasText: /final|最终|成稿/i }).last();
   await finalButton.click();
   const finalOnlyText = await page.locator(".artifact-content").innerText();
   const finalOnlyCjk = (finalOnlyText.match(/[\u4e00-\u9fff]/g) || []).length;
   if (finalOnlyCjk < 8000) {
     throw new Error(`final_artifact_too_short:${finalOnlyCjk}`);
   }
-  await page.locator(".artifact-lineage").getByRole("button", { name: /All/ }).click();
+  await page.locator(".artifact-navigator").getByRole("button", { name: /All artifacts|All/ }).click();
   const restoredProductText = await page.locator(".artifact-content").innerText();
   const restoredCjk = (restoredProductText.match(/[\u4e00-\u9fff]/g) || []).length;
   if (restoredCjk <= finalOnlyCjk) {

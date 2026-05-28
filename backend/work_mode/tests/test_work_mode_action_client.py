@@ -5,6 +5,7 @@ Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
+from datetime import datetime, timezone
 from unittest import TestCase
 
 from model_runtime.errors import ModelRuntimeError
@@ -60,6 +61,42 @@ class WorkModeActionClientTest(TestCase):
 
         self.assertEqual(error.exception.code, "model_http_error:429")
         self.assertTrue(error.exception.retryable)
+
+    def test_missing_model_text_maps_to_retryable_error(self) -> None:
+        client = DelegateResultClient(FakeModelRuntime(error=ModelRuntimeError("model_response_missing_text")))
+
+        with self.assertRaises(ToolActionClientError) as error:
+            client.generate_delegate_result({"brief": "写一章长文。"})
+
+        self.assertEqual(error.exception.code, "model_response_missing_text")
+        self.assertTrue(error.exception.retryable)
+
+    def test_action_context_serializes_runtime_values(self) -> None:
+        runtime = FakeModelRuntime(
+            """
+            {
+              "tool": "mission_plan",
+              "arguments": {
+                "reason": "先规划。",
+                "planTitle": "小说计划",
+                "steps": [{"title": "写大纲", "status": "pending", "notes": ""}]
+              }
+            }
+            """
+        )
+        client = ToolActionClient(runtime)
+
+        client.generate_action(
+            {
+                "mission": {
+                    "id": RuntimeId("mission_1"),
+                    "updatedAt": datetime(2026, 5, 28, 13, 35, tzinfo=timezone.utc),
+                }
+            }
+        )
+
+        self.assertIn('"updatedAt": "2026-05-28T13:35:00+00:00"', runtime.last_request.messages[1].content)
+        self.assertIn('"id": "mission_1"', runtime.last_request.messages[1].content)
 
     def test_tool_action_client_passes_lead_timeout_budget(self) -> None:
         runtime = FakeModelRuntime(
@@ -119,3 +156,11 @@ class FakeModelRuntime:
         if self.error:
             raise self.error
         return ModelGenerateResponse(text=self.text, model_name="fake-model", provider="fake")
+
+
+class RuntimeId:
+    def __init__(self, value: str):
+        self.value = value
+
+    def __str__(self) -> str:
+        return self.value

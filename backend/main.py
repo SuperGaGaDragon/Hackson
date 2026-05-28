@@ -83,11 +83,11 @@ def _mount_static_frontend(app: FastAPI) -> None:
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-    @app.get("/", include_in_schema=False)
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def frontend_index() -> FileResponse:
         return FileResponse(index_file)
 
-    @app.get("/{path:path}", include_in_schema=False)
+    @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def frontend_fallback(path: str) -> FileResponse:
         return FileResponse(index_file)
 

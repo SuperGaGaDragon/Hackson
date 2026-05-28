@@ -12,6 +12,11 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from work_mode.action_client import ToolActionClientError
 from work_mode.context import build_delegate_context
+from work_mode.evaluator import (
+    EvaluatorRuntime,
+    artifact_is_research_paper_final_draft,
+    is_research_paper_like_goal,
+)
 from work_mode.quality_checks import validate_final_product_quality
 from work_mode.search import SearchProviderError
 from work_mode.service import WorkModeService
@@ -20,6 +25,7 @@ from work_mode.tool_protocol import (
     BlockMissionArguments,
     DelegateAgentArguments,
     DiscussWithDelegateArguments,
+    EvaluateProductArguments,
     FinishMissionArguments,
     InspectProductArguments,
     MissionPlanArguments,
@@ -141,6 +147,8 @@ class WorkModeToolExecutor:
             return self._discuss_with_delegate(user_id, mission_id, run_id, action.arguments)
         if action.tool == "web_search":
             return self._web_search(user_id, mission_id, run_id, action.arguments)
+        if action.tool == "evaluate_product":
+            return self._evaluate_product(user_id, mission_id, run_id, action.arguments)
         return ToolExecutionResult(
             {"tool": action.tool, "status": "unsupported", "message": "tool_not_implemented"},
             terminal=True,
@@ -517,12 +525,15 @@ class WorkModeToolExecutor:
             raise _http_not_found("product_not_found")
         for artifact_id in arguments.final_artifact_ids:
             self.service.require_artifact(user_id, mission_id, artifact_id)
+        detail = self.service.get_mission_detail(user_id, mission_id)
         quality = validate_final_product_quality(
             mission,
-            self.service.get_mission_detail(user_id, mission_id),
+            detail,
             arguments.final_product_ids,
             arguments.final_artifact_ids,
         )
+        if is_research_paper_like_goal(f"{mission.get('title', '')} {mission.get('goal', '')}"):
+            _validate_research_paper_completion(detail, arguments.final_product_ids, arguments.final_artifact_ids)
         for product_id in arguments.final_product_ids:
             self.service.mark_product_final(user_id, product_id)
         self.service.mark_mission_completed(
@@ -546,6 +557,36 @@ class WorkModeToolExecutor:
                 "employee": _employee_payload(mission),
             },
             terminal=True,
+        )
+
+    def _evaluate_product(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        arguments: EvaluateProductArguments,
+    ) -> ToolExecutionResult:
+        mission = self.service._require_mission(user_id, mission_id)
+        detail = self.service.get_mission_detail(user_id, mission_id)
+        _require_public_products(detail["products"], arguments.product_ids)
+        _require_public_artifacts_by_ids(detail["artifacts"], arguments.artifact_ids)
+        evaluated = EvaluatorRuntime(self.service).evaluate(user_id, mission_id, profile=arguments.profile)
+        report = _latest_reliability_report(evaluated)
+        observation = {
+            "tool": "evaluate_product",
+            "status": "ok",
+            "profile": arguments.profile,
+            "score": report.get("score"),
+            "reliabilityStatus": report.get("status"),
+            "issueCounts": report.get("issueCounts", {}),
+            "reportArtifactId": report.get("reportArtifactId"),
+            "topIssues": _top_reliability_issues(report),
+            "recommendedNextTool": _recommended_next_tool(report),
+            "summary": report.get("summary", ""),
+        }
+        return ToolExecutionResult(
+            {**observation, "employee": _employee_payload(mission)},
+            artifact_id=report.get("reportArtifactId"),
         )
 
     def _block_mission(
@@ -1007,6 +1048,118 @@ def _product_id_for_artifact(detail: dict[str, Any], artifact_id: str) -> str:
         if artifact_id in product.get("artifactIds", []):
             return product["id"]
     raise _http_not_found("product_not_found")
+
+
+def _validate_research_paper_completion(
+    detail: dict[str, Any],
+    final_product_ids: list[str],
+    final_artifact_ids: list[str],
+) -> None:
+    from fastapi import HTTPException, status
+
+    if not final_artifact_ids:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="final_paper_draft_required")
+    products = [product for product in detail["products"] if product["id"] in set(final_product_ids)]
+    product_artifact_ids = {
+        artifact_id
+        for product in products
+        for artifact_id in product.get("artifactIds", [])
+    }
+    final_artifacts = [
+        artifact
+        for artifact in detail["artifacts"]
+        if artifact["id"] in set(final_artifact_ids) and artifact["id"] in product_artifact_ids
+    ]
+    if not any(artifact_is_research_paper_final_draft(artifact) for artifact in final_artifacts):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="final_paper_draft_required")
+    report = _latest_reliability_report(detail)
+    if not report or not _report_is_current(detail):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_required")
+    if _report_has_blocking_issues(report):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_needs_review")
+
+
+def _latest_reliability_report(detail: dict[str, Any]) -> dict[str, Any]:
+    latest_report_artifact_id = ""
+    for event in reversed(detail.get("events", [])):
+        if event.get("type") == "RELIABILITY_REPORTED":
+            latest_report_artifact_id = str(event.get("payload", {}).get("reportArtifactId") or "")
+            break
+    if latest_report_artifact_id:
+        artifact = next(
+            (
+                item
+                for item in detail.get("artifacts", [])
+                if item.get("id") == latest_report_artifact_id
+                and item.get("metadata", {}).get("artifactRole") == "reliability_report"
+            ),
+            None,
+        )
+        report = artifact.get("metadata", {}).get("reportPayload") if artifact else None
+        if isinstance(report, dict):
+            return report
+    reports = [
+        artifact.get("metadata", {}).get("reportPayload")
+        for artifact in detail.get("artifacts", [])
+        if artifact.get("metadata", {}).get("artifactRole") == "reliability_report"
+    ]
+    reports = [report for report in reports if isinstance(report, dict)]
+    if not reports:
+        return {}
+    return reports[-1]
+
+
+def _report_has_blocking_issues(report: dict[str, Any]) -> bool:
+    if report.get("status") == "unsafe_to_ship":
+        return True
+    issues = [issue for issue in report.get("issues", []) if isinstance(issue, dict)]
+    actionable_issues = [issue for issue in issues if issue.get("type") != "mission_incomplete"]
+    if not actionable_issues:
+        return False
+    return any(issue.get("severity") in {"critical", "high", "medium"} for issue in actionable_issues)
+
+
+def _report_is_current(detail: dict[str, Any]) -> bool:
+    events = detail.get("events", [])
+    for event in reversed(events):
+        if event.get("type") == "RELIABILITY_REPORTED":
+            return True
+        if event.get("type") in {"PRODUCT_UPDATED", "WORK_WINDOW_COMPLETED"}:
+            return False
+    return False
+
+
+def _top_reliability_issues(report: dict[str, Any]) -> list[dict[str, Any]]:
+    issues = report.get("issues") or []
+    return [
+        {
+            "id": issue.get("id"),
+            "type": issue.get("type"),
+            "severity": issue.get("severity"),
+            "title": issue.get("title"),
+            "suggestedFix": issue.get("suggestedFix", ""),
+        }
+        for issue in issues[:4]
+        if isinstance(issue, dict)
+    ]
+
+
+def _recommended_next_tool(report: dict[str, Any]) -> str:
+    status_value = report.get("status")
+    issue_types = {
+        issue.get("type")
+        for issue in report.get("issues", [])
+        if isinstance(issue, dict)
+    }
+    if status_value == "ship_ready" or issue_types == {"mission_incomplete"}:
+        return "finish_mission"
+    if "evaluation_limitation" in issue_types or "missing_source" in issue_types:
+        return "web_search"
+    if "unsupported_claim" in issue_types or "weakly_supported_claim" in issue_types:
+        return "work_product"
+    if "missing_requirement" in issue_types:
+        return "work_product"
+    return "work_product"
 
 
 def _review_content(arguments: ReviewProductArguments) -> str:

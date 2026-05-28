@@ -23,6 +23,7 @@ IssueType = Literal[
     "tool_failure_ignored",
     "unsafe_action",
     "evaluation_limitation",
+    "mission_incomplete",
 ]
 RequirementType = Literal["count", "field", "constraint", "format", "action", "safety"]
 RequirementStatus = Literal["met", "partially_met", "missing", "not_evaluable"]

@@ -7,6 +7,7 @@ Last Modified by: Codex
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   answerMission,
+  continueMissionFollowUp,
   createMission,
   createProject,
   evaluateMission,
@@ -50,6 +51,7 @@ function WorkPage({ agents = [] }) {
   const [missionGoal, setMissionGoal] = useState("");
   const [showMissionCreate, setShowMissionCreate] = useState(false);
   const [answerText, setAnswerText] = useState("");
+  const [followUpText, setFollowUpText] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -84,6 +86,7 @@ function WorkPage({ agents = [] }) {
         setProducts([]);
         setWorkWindows([]);
         setAnswerText("");
+        setFollowUpText("");
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -212,6 +215,8 @@ function WorkPage({ agents = [] }) {
     setArtifacts(detail?.artifacts || []);
     setProducts(detail?.products || []);
     setWorkWindows(detail?.workWindows || []);
+    setAnswerText("");
+    setFollowUpText("");
   }
 
   function backToWorkspace() {
@@ -229,6 +234,7 @@ function WorkPage({ agents = [] }) {
     setMissionGoal("");
     setShowMissionCreate(false);
     setAnswerText("");
+    setFollowUpText("");
   }
 
   async function addMission() {
@@ -252,6 +258,7 @@ function WorkPage({ agents = [] }) {
       setWorkWindows(detail.workWindows || []);
       if (detail.mission?.status !== "waiting_input") setAnswerText("");
       setAnswerText("");
+      setFollowUpText("");
       setMissionTitle("");
       setMissionGoal("");
       setShowMissionCreate(false);
@@ -276,6 +283,7 @@ function WorkPage({ agents = [] }) {
       setWorkWindows(detail.workWindows || []);
       if (detail.mission?.status !== "waiting_input") setAnswerText("");
       setAnswerText("");
+      setFollowUpText("");
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
@@ -295,6 +303,7 @@ function WorkPage({ agents = [] }) {
       setArtifacts(detail.artifacts || []);
       setProducts(detail.products || []);
       setWorkWindows(detail.workWindows || []);
+      setFollowUpText("");
     } catch (err) {
       setError(err.message || "Start failed");
     } finally {
@@ -337,6 +346,27 @@ function WorkPage({ agents = [] }) {
       setAnswerText("");
     } catch (err) {
       setError(err.message || "Reply failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function continueFollowUp(event) {
+    event.preventDefault();
+    if (!selectedMission || busy || !followUpText.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await continueMissionFollowUp(selectedMission.id, { request: followUpText });
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
+      setFollowUpText("");
+    } catch (err) {
+      setError(err.message || "Continue failed");
     } finally {
       setBusy(false);
     }
@@ -400,11 +430,14 @@ function WorkPage({ agents = [] }) {
         <MissionHeader
           answerText={answerText}
           busy={busy || loading}
+          followUpText={followUpText}
           inputRequest={inputRequest}
           mission={selectedMission}
           onAnswer={answer}
           onAnswerTextChange={setAnswerText}
           onEvaluate={evaluate}
+          onFollowUp={continueFollowUp}
+          onFollowUpTextChange={setFollowUpText}
           onStart={start}
           onStop={stop}
         />

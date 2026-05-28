@@ -10,7 +10,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-MemoryScope = Literal["idle", "companion", "work"]
+MemoryScope = Literal["account", "idle", "companion", "work"]
 MemoryOwnerType = Literal["user", "agent", "agent_pair", "task", "shared_world"]
 MemoryType = Literal["fact", "preference", "episode", "relationship", "reflection", "skill", "task"]
 MemoryStatus = Literal["active", "disabled", "rejected", "archived", "deleted"]

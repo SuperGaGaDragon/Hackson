@@ -35,13 +35,19 @@ from workers.runner import DerivedWorkerRunner
 from workers.summary_worker import SummaryWorker
 
 
+REQUEST_TIMEOUT_SECONDS = 20.0
+
+
 def main() -> None:
+    global REQUEST_TIMEOUT_SECONDS
     parser = argparse.ArgumentParser(description="Context Runtime V1.0 HTTP smoke")
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--mongo-uri", default="mongodb://127.0.0.1:27017")
     parser.add_argument("--mongo-database", required=True)
     parser.add_argument("--expected-first-content", default=None)
+    parser.add_argument("--request-timeout", type=float, default=20.0)
     args = parser.parse_args()
+    REQUEST_TIMEOUT_SECONDS = max(args.request_timeout, 1.0)
 
     base_url = args.base_url.rstrip("/")
     email_stamp = str(int(time.time() * 1000))
@@ -103,6 +109,13 @@ def main() -> None:
     assert "Relationship stance:" in prompt_logs["promptLogs"][0]["fullPromptText"]
     assert "Turn intent:" in prompt_logs["promptLogs"][0]["fullPromptText"]
     assert "Do not output stacked frameworks" in prompt_logs["promptLogs"][0]["fullPromptText"]
+    assert "Collaborative convergence protocol:" in prompt_logs["promptLogs"][0]["fullPromptText"]
+    assert "If the previous visible message is from the User" in prompt_logs["promptLogs"][0]["fullPromptText"]
+    assert "First identify what you agree with" in prompt_logs["promptLogs"][0]["fullPromptText"]
+    assert "Only disagree if the disagreement is decision-relevant" in prompt_logs["promptLogs"][0]["fullPromptText"]
+    assert "No new disagreement. I accept the current direction." in prompt_logs["promptLogs"][0]["fullPromptText"]
+    assert "What do we now agree on?" in prompt_logs["promptLogs"][0]["fullPromptText"]
+    assert "remaining disagreement is only about emphasis" in prompt_logs["promptLogs"][0]["fullPromptText"]
 
     updated = _patch(base_url, "/api/users/me", {"fullPromptLoggingOn": False}, token)
     assert updated["fullPromptLoggingOn"] is False, updated
@@ -137,6 +150,21 @@ def main() -> None:
         {"content": "I prefer concise Chinese replies.", "targetAgentId": "agent_2"},
         token,
     )
+    work_task = _post(
+        base_url,
+        "/api/tasks",
+        {
+            "objective": "Verify account memory in Work.",
+            "metadata": {"smoke": "account_continuity"},
+        },
+        token,
+    )
+    _post(
+        base_url,
+        f"/api/tasks/{work_task['id']}/messages",
+        {"content": "我偏好直接指出产品问题。", "targetAgentId": "agent_1"},
+        token,
+    )
 
     mongo = MongoClient(args.mongo_uri)[args.mongo_database]
     cadence = IdleCadenceService(IdleRunnerStateRepository(mongo), daily_limit=1)
@@ -156,7 +184,7 @@ def main() -> None:
     assert budget_decision["reason"] == "idle_budget_exhausted", budget_decision
 
     packages = list(mongo["context_packages"].find({"user_id": user["id"]}).sort("created_at", 1))
-    assert len(packages) == 4, packages
+    assert len(packages) == 5, packages
     assert packages[0]["full_prompt_text"], packages[0]
     assert all(row["full_prompt_text"] is None for row in packages[1:]), packages
     assert all(row["full_prompt_logging_enabled"] is False for row in packages[1:]), packages
@@ -166,7 +194,7 @@ def main() -> None:
     assert deleted["deletedPromptLogs"] == 1, deleted
     assert _get(base_url, "/api/users/me/prompt-logs", token)["promptLogs"] == []
     remaining = list(mongo["context_packages"].find({"user_id": user["id"]}).sort("created_at", 1))
-    assert len(remaining) == 4, remaining
+    assert len(remaining) == 5, remaining
     assert all(row.get("full_prompt_text") is None for row in remaining), remaining
 
     worker_processed = _run_worker_until_current_outputs(mongo, user["id"], conversation["id"])
@@ -176,8 +204,12 @@ def main() -> None:
     )
     assert relationship_memory is not None, relationship_memory
     assert relationship_memory["summary"] != "Nora and Vale shared another idle interaction.", relationship_memory
-    assert mongo["memory_cards"].count_documents({"user_id": user["id"], "scope": "companion", "memory_type": "preference"}) >= 1
+    account_preferences = list(
+        mongo["memory_cards"].find({"user_id": user["id"], "scope": "account", "memory_type": "preference"})
+    )
+    assert len(account_preferences) >= 2, account_preferences
     assert mongo["diary_entries"].count_documents({"user_id": user["id"]}) >= 1
+    memory_prompt_result = _verify_account_memory_prompts(base_url, mongo, token, conversation["id"], work_task["id"])
     memory_cards = _get(base_url, "/api/memory/me", token)["memoryCards"]
     assert memory_cards, memory_cards
     active_memory = next(card for card in memory_cards if card["status"] == "active")
@@ -223,8 +255,10 @@ def main() -> None:
         "idempotent_retry=ok "
         "background_gate=ok "
         "memory_controls=ok "
+        "account_continuity=ok "
         f"worker_processed={worker_processed} "
-        f"persisted_summary={included_summary_ids[0]}"
+        f"persisted_summary={included_summary_ids[0]} "
+        f"account_prompt_packages={memory_prompt_result}"
     )
 
 
@@ -261,7 +295,7 @@ def _request(
         headers["Authorization"] = f"Bearer {token}"
     request = Request(f"{base_url}{path}", data=body, method=method, headers=headers)
     try:
-        with urlopen(request, timeout=20) as response:
+        with urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             raw = response.read().decode("utf-8")
     except HTTPError as exc:
         error_body = exc.read().decode("utf-8")
@@ -292,15 +326,65 @@ def _run_worker_until_current_outputs(mongo, user_id: str, conversation_id: str)
             )
             >= 1
             and mongo["memory_cards"].count_documents(
-                {"user_id": user_id, "scope": "companion", "memory_type": "preference"}
+                {"user_id": user_id, "scope": "account", "memory_type": "preference"}
             )
-            >= 1
+            >= 2
             and mongo["diary_entries"].count_documents({"user_id": user_id}) >= 1
         ):
             return processed
         if processed == 0:
             break
     return processed
+
+
+def _verify_account_memory_prompts(
+    base_url: str,
+    mongo,
+    token: str,
+    idle_conversation_id: str,
+    work_task_id: str,
+) -> str:
+    updated = _patch(base_url, "/api/users/me", {"fullPromptLoggingOn": True}, token)
+    assert updated["fullPromptLoggingOn"] is True, updated
+
+    companion = _post(
+        base_url,
+        "/api/conversations",
+        {"mode": "companion_2", "title": "Account Memory Prompt Check"},
+        token,
+    )
+    companion_turn = _post(
+        base_url,
+        f"/api/companion/{companion['id']}/messages",
+        {"content": "你记得我的偏好吗？", "targetAgentId": "agent_2"},
+        token,
+    )
+    idle_turn = _post(
+        base_url,
+        f"/api/idle/{idle_conversation_id}/tick",
+        {"targetAgentId": "agent_1", "idempotencyKey": f"account-memory-idle-{int(time.time() * 1000)}"},
+        token,
+    )
+    work_turn = _post(
+        base_url,
+        f"/api/tasks/{work_task_id}/messages",
+        {"content": "下一步怎么检查？", "targetAgentId": "agent_1"},
+        token,
+    )
+
+    package_ids = [
+        companion_turn["context"]["contextPackageId"],
+        idle_turn["context"]["contextPackageId"],
+        work_turn["context"]["contextPackageId"],
+    ]
+    prompts = [_find_by_id(mongo["context_packages"], package_id) for package_id in package_ids]
+    assert all(prompt is not None for prompt in prompts), package_ids
+    for package in prompts:
+        full_prompt = package.get("full_prompt_text") or ""
+        assert "Account continuity memory" in full_prompt or "Account and work memory" in full_prompt, full_prompt
+        assert "User explicitly said:" in full_prompt, full_prompt
+        assert package.get("included_memory_ids"), package
+    return ",".join(package_ids)
 
 
 def _find_by_id(collection, document_id: str) -> dict[str, Any] | None:

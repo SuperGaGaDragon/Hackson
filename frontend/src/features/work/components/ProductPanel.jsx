@@ -19,6 +19,7 @@ function ProductPanel({ artifacts = [], products = [] }) {
   const productArtifacts = activeProduct?.artifacts || [];
   const selectedArtifact =
     selectedArtifactId === "all" ? null : productArtifacts.find((artifact) => artifact.id === selectedArtifactId) || null;
+  const allArtifactsSelected = selectedArtifactId === "all" || !selectedArtifact;
   const representativeArtifact = activeProduct?.latestArtifact || productArtifacts[productArtifacts.length - 1] || null;
   const readerArtifacts = selectedArtifact ? [selectedArtifact] : productArtifacts;
   const title = activeProduct?.title || representativeArtifact?.title || "Product";
@@ -62,7 +63,7 @@ function ProductPanel({ artifacts = [], products = [] }) {
               <nav className="artifact-navigator" aria-label="Artifact lineage">
                 {productArtifacts.length > 1 && (
                   <button
-                    className={selectedArtifactId === "all" ? "artifact-nav-row active" : "artifact-nav-row"}
+                    className={allArtifactsSelected ? "artifact-nav-row active" : "artifact-nav-row"}
                     onClick={() => setSelectedArtifactId("all")}
                     type="button"
                   >

@@ -6,13 +6,20 @@ Last Modified by: Codex
 """
 
 import json
+from datetime import date, datetime
 from typing import Any, Protocol
 
 from model_runtime.errors import ModelRuntimeError
 from model_runtime.schemas import ModelGenerateRequest, RuntimeMessage
 from work_mode.tool_protocol import ToolAction, ToolActionValidationError, parse_tool_action
 
-RETRYABLE_MODEL_ERRORS = {"model_timeout", "model_rate_limited", "model_network_error", "model_unavailable"}
+RETRYABLE_MODEL_ERRORS = {
+    "model_timeout",
+    "model_rate_limited",
+    "model_network_error",
+    "model_unavailable",
+    "model_response_missing_text",
+}
 RETRYABLE_HTTP_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
 
 
@@ -64,6 +71,7 @@ class DelegateResultClient:
 
 
 def _action_request(context: dict[str, Any], timeout_seconds: float | None = None) -> ModelGenerateRequest:
+    context_json = _context_json(context)
     return ModelGenerateRequest(
         messages=[
             RuntimeMessage(
@@ -78,7 +86,7 @@ def _action_request(context: dict[str, Any], timeout_seconds: float | None = Non
             ),
             RuntimeMessage(
                 role="user",
-                content=json.dumps(context, ensure_ascii=False, sort_keys=True),
+                content=context_json,
             ),
         ],
         max_output_tokens=1800,
@@ -89,6 +97,7 @@ def _action_request(context: dict[str, Any], timeout_seconds: float | None = Non
 
 
 def _delegate_request(context: dict[str, Any], timeout_seconds: float | None = None) -> ModelGenerateRequest:
+    context_json = _context_json(context)
     return ModelGenerateRequest(
         messages=[
             RuntimeMessage(
@@ -101,7 +110,7 @@ def _delegate_request(context: dict[str, Any], timeout_seconds: float | None = N
             ),
             RuntimeMessage(
                 role="user",
-                content=json.dumps(context, ensure_ascii=False, sort_keys=True),
+                content=context_json,
             ),
         ],
         max_output_tokens=3000,
@@ -115,3 +124,32 @@ def _is_retryable_model_error(error: ModelRuntimeError) -> bool:
     if error.code in RETRYABLE_MODEL_ERRORS:
         return True
     return error.http_status in RETRYABLE_HTTP_STATUS
+
+
+def _context_json(context: dict[str, Any]) -> str:
+    try:
+        return json.dumps(_json_safe(context), ensure_ascii=False, sort_keys=True)
+    except (TypeError, ValueError) as exc:
+        raise ToolActionClientError(
+            "model_context_serialization_error",
+            "model_context_serialization_error",
+            retryable=True,
+        ) from exc
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, set):
+        return [_json_safe(item) for item in sorted(value, key=str)]
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)

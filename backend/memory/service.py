@@ -96,6 +96,44 @@ class MemoryService:
             for document in documents[:safe_limit]
         ]
 
+    def list_account_context_memory(self, user_id: str, limit: int = 8) -> list[MemoryCardSnapshot]:
+        """Return account-visible memory with legacy continuity fallbacks.
+
+        V1 originally stored user preferences under `companion` and Agent-pair
+        relationship summaries under `idle`. Until those rows are migrated, the
+        account continuity reader treats them as account-visible input while
+        leaving Work task memory private.
+        """
+
+        safe_limit = min(max(limit, 1), 20)
+        documents: list[dict[str, Any]] = []
+        documents.extend(self.repository.list_memory_cards(user_id, "account", None, None, safe_limit * 2))
+        documents.extend(
+            self.repository.list_memory_cards(
+                user_id,
+                "companion",
+                "user",
+                user_id,
+                safe_limit,
+            )
+        )
+        documents.extend(
+            self.repository.list_memory_cards(
+                user_id,
+                "idle",
+                "agent_pair",
+                "agent_1:agent_2",
+                safe_limit,
+            )
+        )
+        documents = [document for document in _dedupe_documents(documents) if not _is_deprecated_generic_memory(document)]
+        documents = sorted(
+            documents,
+            key=lambda document: (document.get("importance_score", 0), document.get("updated_at")),
+            reverse=True,
+        )
+        return [_memory_snapshot(document) for document in documents[:safe_limit]]
+
     def list_user_memory(
         self,
         user_id: str,
@@ -140,6 +178,32 @@ def _dedupe_hash(user_id: str, candidate: MemoryCandidate) -> str:
         ]
     )
     return sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _memory_snapshot(document: dict[str, Any]) -> MemoryCardSnapshot:
+    return MemoryCardSnapshot(
+        id=str(document["_id"]),
+        scope=document["scope"],
+        owner_type=document["owner_type"],
+        owner_id=document["owner_id"],
+        memory_type=document["memory_type"],
+        summary=document["summary"],
+        source_message_ids=document.get("source_message_ids", []),
+        importance_score=document.get("importance_score", 0),
+        confidence=document.get("confidence", 0),
+    )
+
+
+def _dedupe_documents(documents: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for document in documents:
+        key = str(document.get("_id"))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(document)
+    return deduped
 
 
 def _is_deprecated_generic_memory(document: dict[str, Any]) -> bool:

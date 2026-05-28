@@ -78,13 +78,13 @@ def _debug_notes(input_data: ContextBuildInput) -> list[str]:
 
 def _included_memory_ids(input_data: ContextBuildInput) -> list[str]:
     if input_data.mode == ContextMode.IDLE:
-        allowed_scopes = {"idle"}
+        allowed_scopes = {"account", "idle"}
     elif input_data.mode == ContextMode.COMPANION_1:
-        allowed_scopes = {"idle", "companion"}
+        allowed_scopes = {"account", "idle", "companion"}
     elif input_data.mode == ContextMode.COMPANION_2:
-        allowed_scopes = {"companion"}
+        allowed_scopes = {"account", "idle", "companion"}
     elif input_data.mode == ContextMode.WORK:
-        allowed_scopes = {"work"}
+        allowed_scopes = {"account", "work"}
     else:
         allowed_scopes = set()
     return [memory.id for memory in input_data.memory_cards if memory.scope in allowed_scopes]

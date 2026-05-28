@@ -443,6 +443,37 @@ class WorkModeRoutesTest(TestCase):
         self.assertEqual(len(detail["products"]), 1)
         self.assertGreaterEqual(action_client.calls, 3)
 
+    def test_follow_up_route_records_request_and_launches_new_run(self) -> None:
+        project = self.client.post("/api/work/projects", json={"name": "Follow Up"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={"projectId": project["id"], "title": "Draft", "goal": "Write a draft."},
+        ).json()
+        completed = self.client.post(f"/api/work/missions/{mission['id']}/start", json={}).json()
+        self.assertEqual(completed["mission"]["status"], "running")
+        detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
+        self.assertEqual(detail["mission"]["status"], "completed")
+        calls: list[tuple[str, str, str]] = []
+        self.client.app.dependency_overrides[get_work_mode_worker_launcher] = lambda: (
+            lambda user_id, mission_id, run_id: calls.append((user_id, mission_id, run_id))
+        )
+
+        response = self.client.post(
+            f"/api/work/missions/{mission['id']}/follow-up",
+            json={"request": "Add an English version."},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        continued = response.json()
+        self.assertEqual(continued["mission"]["status"], "running")
+        self.assertEqual(continued["activeRun"]["metadata"]["resumeReason"], "user_followup")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][1], mission["id"])
+        event_types = [event["type"] for event in continued["events"]]
+        self.assertIn("USER_FOLLOWUP_REQUESTED", event_types)
+        follow_up_event = next(event for event in continued["events"] if event["type"] == "USER_FOLLOWUP_REQUESTED")
+        self.assertEqual(follow_up_event["payload"]["request"], "Add an English version.")
+
     def test_stop_route_requires_running_mission(self) -> None:
         project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
         mission = self.client.post(

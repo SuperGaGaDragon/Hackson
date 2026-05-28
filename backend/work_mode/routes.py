@@ -24,6 +24,7 @@ from work_mode.schemas import (
     MissionCreateRequest,
     MissionDetailResponse,
     MissionEvaluateRequest,
+    MissionFollowUpRequest,
     MissionResponse,
     MissionStartRequest,
     MissionStopRequest,
@@ -181,6 +182,21 @@ def answer_mission(
     worker_launcher: Callable[[str, str, str], None] = Depends(get_work_mode_worker_launcher),
 ) -> dict:
     detail = service.answer_mission_input(current_user_id, mission_id, payload)
+    active_run = detail.get("activeRun")
+    if active_run is not None:
+        worker_launcher(current_user_id, mission_id, active_run["id"])
+    return detail
+
+
+@router.post("/missions/{mission_id}/follow-up", response_model=MissionDetailResponse)
+def continue_mission_follow_up(
+    mission_id: str,
+    payload: MissionFollowUpRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+    worker_launcher: Callable[[str, str, str], None] = Depends(get_work_mode_worker_launcher),
+) -> dict:
+    detail = service.continue_mission_follow_up(current_user_id, mission_id, payload)
     active_run = detail.get("activeRun")
     if active_run is not None:
         worker_launcher(current_user_id, mission_id, active_run["id"])

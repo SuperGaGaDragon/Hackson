@@ -21,6 +21,7 @@ ToolName = Literal[
     "review_product",
     "discuss_with_delegate",
     "web_search",
+    "evaluate_product",
 ]
 
 
@@ -194,6 +195,16 @@ class WebSearchArguments(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class EvaluateProductArguments(BaseModel):
+    reason: str = Field(min_length=1, max_length=240)
+    profile: Literal["research_reliability_v1"] = "research_reliability_v1"
+    product_ids: list[str] = Field(default_factory=list, alias="productIds")
+    artifact_ids: list[str] = Field(default_factory=list, alias="artifactIds")
+    focus: str = Field(default="", max_length=1000)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 ToolArguments = (
     MissionPlanArguments
     | WorkProductArguments
@@ -205,6 +216,7 @@ ToolArguments = (
     | ReviewProductArguments
     | DiscussWithDelegateArguments
     | WebSearchArguments
+    | EvaluateProductArguments
 )
 
 
@@ -261,6 +273,7 @@ def _argument_model(tool: ToolName) -> type[ToolArguments]:
         "review_product": ReviewProductArguments,
         "discuss_with_delegate": DiscussWithDelegateArguments,
         "web_search": WebSearchArguments,
+        "evaluate_product": EvaluateProductArguments,
     }[tool]
 
 

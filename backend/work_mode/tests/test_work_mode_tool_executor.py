@@ -685,6 +685,162 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertEqual(event["type"], "WEB_SEARCH_FAILED")
         self.assertEqual(detail["mission"]["status"], "running")
 
+    def test_evaluate_product_persists_reliability_report_observation(self) -> None:
+        mission, run_id = self._started_agent_mission(title="研究论文", goal="写一篇关于海地革命的研究论文，需要有最终稿。")
+        product, artifact = self._product_with_artifact(
+            mission,
+            run_id,
+            content=paper_final_text(),
+            kind="final",
+        )
+
+        result = self.executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "evaluate_product",
+                  "arguments": {{
+                    "reason": "终稿前检查论文可靠性。",
+                    "profile": "research_reliability_v1",
+                    "productIds": ["{product["id"]}"],
+                    "artifactIds": ["{artifact["id"]}"],
+                    "focus": "检查最终稿和来源证据。"
+                  }}
+                }}
+                """
+            ),
+        )
+
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        report_artifact = next(item for item in detail["artifacts"] if item["metadata"].get("artifactRole") == "reliability_report")
+        report_event = detail["events"][-1]
+
+        self.assertFalse(result.terminal)
+        self.assertEqual(result.observation["tool"], "evaluate_product")
+        self.assertEqual(result.observation["status"], "ok")
+        self.assertEqual(result.observation["reportArtifactId"], report_artifact["id"])
+        self.assertEqual(result.observation["reliabilityStatus"], "needs_human_review")
+        self.assertEqual(result.observation["recommendedNextTool"], "web_search")
+        self.assertEqual(report_event["type"], "RELIABILITY_REPORTED")
+
+    def test_finish_mission_rejects_research_paper_outline_only_final(self) -> None:
+        mission, run_id = self._started_agent_mission(title="研究论文", goal="写一篇关于海地革命的研究论文，需要最终稿。")
+        product, artifact = self._product_with_artifact(
+            mission,
+            run_id,
+            content="一、引言。二、正文。三、结论。本文将讨论海地革命的影响。",
+            kind="outline",
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.executor.execute(
+                "user_1",
+                mission["id"],
+                run_id,
+                parse_tool_action(
+                    f"""
+                    {{
+                      "tool": "finish_mission",
+                      "arguments": {{
+                        "reason": "尝试完成论文。",
+                        "summary": "只有大纲。",
+                        "finalProductIds": ["{product["id"]}"],
+                        "finalArtifactIds": ["{artifact["id"]}"]
+                      }}
+                    }}
+                    """
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(error.exception.detail, "final_paper_draft_required")
+
+    def test_finish_mission_requires_current_evaluation_for_research_paper(self) -> None:
+        mission, run_id = self._started_agent_mission(title="研究论文", goal="写一篇关于海地革命的研究论文，需要最终稿。")
+        product, artifact = self._product_with_artifact(
+            mission,
+            run_id,
+            content=paper_final_text(),
+            kind="final",
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.executor.execute(
+                "user_1",
+                mission["id"],
+                run_id,
+                parse_tool_action(
+                    f"""
+                    {{
+                      "tool": "finish_mission",
+                      "arguments": {{
+                        "reason": "尝试完成论文。",
+                        "summary": "论文完成。",
+                        "finalProductIds": ["{product["id"]}"],
+                        "finalArtifactIds": ["{artifact["id"]}"]
+                      }}
+                    }}
+                    """
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(error.exception.detail, "reliability_evaluation_required")
+
+    def test_finish_mission_blocks_needs_review_research_paper_report(self) -> None:
+        mission, run_id = self._started_agent_mission(title="研究论文", goal="写一篇关于海地革命的研究论文，需要最终稿。")
+        product, artifact = self._product_with_artifact(
+            mission,
+            run_id,
+            content=paper_final_text(),
+            kind="final",
+        )
+        self.executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "evaluate_product",
+                  "arguments": {{
+                    "reason": "终稿前检查论文可靠性。",
+                    "profile": "research_reliability_v1",
+                    "productIds": ["{product["id"]}"],
+                    "artifactIds": ["{artifact["id"]}"],
+                    "focus": "检查最终稿和来源证据。"
+                  }}
+                }}
+                """
+            ),
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.executor.execute(
+                "user_1",
+                mission["id"],
+                run_id,
+                parse_tool_action(
+                    f"""
+                    {{
+                      "tool": "finish_mission",
+                      "arguments": {{
+                        "reason": "尝试完成论文。",
+                        "summary": "论文完成。",
+                        "finalProductIds": ["{product["id"]}"],
+                        "finalArtifactIds": ["{artifact["id"]}"]
+                      }}
+                    }}
+                    """
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(error.exception.detail, "reliability_evaluation_needs_review")
+
     def test_revise_artifact_links_review_and_discussion_lineage(self) -> None:
         mission, run_id = self._started_agent_mission(title="写短篇小说", goal="写一个短篇小说。")
         product, artifact = self._product_with_artifact(mission, run_id, content="原始正文。", kind="draft")
@@ -823,3 +979,16 @@ class FailingSearchProvider:
             "results": [],
             "truncated": False,
         }
+
+
+def paper_final_text() -> str:
+    return (
+        "题目：海地革命的社会根源与大西洋世界影响\n\n"
+        "引言：海地革命不是孤立的奴隶起义，而是法国殖民制度、种植园经济与启蒙政治语言共同作用的结果。"
+        "本文认为，圣多明各被压迫群体把自由和平等的理念转化为组织行动，并最终改变了大西洋世界的权力结构。\n\n"
+        "第一部分：殖民社会的结构性矛盾。圣多明各的财富建立在高度暴力化的奴隶劳动之上，"
+        "白人种植园主、自由有色人和被奴役者之间的法律地位差异不断累积冲突。\n\n"
+        "第二部分：革命政治语言的扩散。法国革命提供了新的合法性语言，但殖民地各阶层对自由和平等的解释并不相同，"
+        "这种分歧推动了地方武装和政治联盟的重组。\n\n"
+        "结论：海地革命的意义在于，它证明被压迫者并非只是欧洲政治的接受者，也能够主动重写现代自由的边界。"
+    )

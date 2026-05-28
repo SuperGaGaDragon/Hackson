@@ -75,6 +75,13 @@ export function answerMission(missionId, payload) {
   });
 }
 
+export function continueMissionFollowUp(missionId, payload) {
+  return apiRequest(`/api/work/missions/${missionId}/follow-up`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function evaluateMission(missionId, payload = {}) {
   return apiRequest(`/api/work/missions/${missionId}/evaluate`, {
     method: "POST",

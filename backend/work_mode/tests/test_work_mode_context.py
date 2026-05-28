@@ -79,15 +79,24 @@ class WorkModeContextTest(TestCase):
         self.assertEqual(context["mission"]["goal"], "写一个8000字中文小说，题材自定。")
         self.assertIn("delegate_agent", context["availableTools"])
         self.assertIn("web_search", context["availableTools"])
+        self.assertIn("evaluate_product", context["availableTools"])
         self.assertIn("toolUseGuidance", context)
+        self.assertIn("requirementGrill", context)
+        self.assertEqual(context["latestUserFollowUp"], {})
         self.assertTrue(any("Prefer web_search early" in item for item in context["toolUseGuidance"]))
+        self.assertTrue(any("short 3-6 term queries" in item for item in context["toolUseGuidance"]))
         self.assertTrue(any("Prefer review_product before finish_mission" in item for item in context["toolUseGuidance"]))
         self.assertTrue(any("Prefer discuss_with_delegate" in item for item in context["toolUseGuidance"]))
+        self.assertTrue(any("Prefer evaluate_product" in item for item in context["toolUseGuidance"]))
+        self.assertTrue(any("Prefer ask_user" in item for item in context["toolUseGuidance"]))
+        self.assertTrue(any("题材自定" in item for item in context["requirementGrill"]["rules"]))
         self.assertIn("work_product", context["toolSchemas"])
         self.assertIn("web_search", context["toolSchemas"])
+        self.assertIn("evaluate_product", context["toolSchemas"])
         self.assertIn("finishMissionExample", context["toolExamples"])
         self.assertEqual(context["toolSchemas"]["work_product"]["arguments"]["artifactKind"], "outline|chapter|draft|revision|final|report|notes|other")
         self.assertEqual(context["toolSchemas"]["web_search"]["arguments"]["maxResults"], "integer 1-10")
+        self.assertEqual(context["toolSchemas"]["evaluate_product"]["arguments"]["profile"], "research_reliability_v1")
         self.assertEqual(context["productManifest"][0]["latestArtifactId"], "artifact_3")
         self.assertEqual(context["workWindowManifest"][0]["resultArtifactId"], "artifact_2")
         self.assertEqual(context["recentEvents"][-1]["type"], "PRODUCT_UPDATED")
@@ -95,6 +104,37 @@ class WorkModeContextTest(TestCase):
         self.assertNotIn("旧大纲全文", str(context["recentArtifactContent"]))
         self.assertEqual(context["lastObservation"]["tool"], "work_product")
         self.assertEqual(context["budget"]["modelTurnsUsed"], 2)
+
+    def test_lead_context_surfaces_latest_completed_mission_follow_up(self) -> None:
+        context = build_lead_context(
+            mission={
+                "id": "mission_1",
+                "title": "小说",
+                "goal": "写小说。",
+                "status": "running",
+            },
+            lead_agent={"id": "agent_1", "name": "Planner", "role": "lead"},
+            delegate_agent={"id": "agent_2", "name": "Writer", "role": "delegate"},
+            products=[],
+            work_windows=[],
+            events=[
+                {"sequence": 1, "type": "MISSION_COMPLETED", "title": "Done", "message": "Done.", "payload": {}},
+                {
+                    "sequence": 2,
+                    "type": "USER_FOLLOWUP_REQUESTED",
+                    "title": "Follow-up",
+                    "message": "把最终稿改成英文版。",
+                    "payload": {"request": "把最终稿改成英文版。"},
+                },
+            ],
+            artifacts=[],
+            last_observation=None,
+            budget={"modelTurnsUsed": 0, "modelTurnsMax": 20},
+        )
+
+        self.assertEqual(context["latestUserFollowUp"]["sequence"], 2)
+        self.assertEqual(context["latestUserFollowUp"]["request"], "把最终稿改成英文版。")
+        self.assertTrue(any("completed-Mission follow-up" in item for item in context["requirementGrill"]["rules"]))
 
     def test_delegate_context_excludes_toolbox_and_scopes_brief(self) -> None:
         context = build_delegate_context(

@@ -4,16 +4,19 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { Play, ShieldCheck, Square } from "lucide-react";
+import { MessageSquarePlus, Play, ShieldCheck, Square } from "lucide-react";
 
 function MissionHeader({
-  answerText,
+  answerText = "",
   busy,
+  followUpText = "",
   inputRequest,
   mission,
   onAnswer,
-  onAnswerTextChange,
+  onAnswerTextChange = () => {},
   onEvaluate,
+  onFollowUp = () => {},
+  onFollowUpTextChange = () => {},
   onStart,
   onStop,
 }) {
@@ -22,6 +25,7 @@ function MissionHeader({
   const canEvaluate = mission && !["draft", "running", "stopping"].includes(mission.status);
   const title = mission?.title || "Create mission";
   const waiting = mission?.status === "waiting_input";
+  const completed = mission?.status === "completed";
   const suggestedOptions = inputRequest?.payload?.suggestedOptions || [];
 
   return (
@@ -80,6 +84,27 @@ function MissionHeader({
             />
             <button className="primary-button" disabled={busy || !answerText.trim()} type="submit">
               Reply
+            </button>
+          </div>
+        </form>
+      )}
+      {completed && (
+        <form className="mission-answer mission-followup" onSubmit={onFollowUp}>
+          <div>
+            <p className="eyebrow">Continue</p>
+            <strong>Continue with the same leader.</strong>
+          </div>
+          <div className="answer-row">
+            <textarea
+              aria-label="Mission follow-up request"
+              disabled={busy}
+              onChange={(event) => onFollowUpTextChange(event.target.value)}
+              placeholder="Add a revision or next pass"
+              value={followUpText}
+            />
+            <button className="primary-button" disabled={busy || !followUpText.trim()} type="submit">
+              <MessageSquarePlus size={16} />
+              <span>Continue</span>
             </button>
           </div>
         </form>

@@ -308,6 +308,27 @@ class WorkModeToolProtocolTest(TestCase):
         self.assertEqual(action.arguments.max_results, 5)
         self.assertEqual(action.arguments.allowed_domains, ["example.com"])
 
+    def test_parses_valid_evaluate_product_action(self) -> None:
+        action = parse_tool_action(
+            """
+            {
+              "tool": "evaluate_product",
+              "arguments": {
+                "reason": "终稿前需要可靠性检查。",
+                "profile": "research_reliability_v1",
+                "productIds": ["product_1"],
+                "artifactIds": ["artifact_1"],
+                "focus": "检查论文最终稿和来源证据。"
+              }
+            }
+            """
+        )
+
+        self.assertEqual(action.tool, "evaluate_product")
+        self.assertEqual(action.arguments.profile, "research_reliability_v1")
+        self.assertEqual(action.arguments.product_ids, ["product_1"])
+        self.assertEqual(action.arguments.artifact_ids, ["artifact_1"])
+
     def test_rejects_web_search_over_result_limit(self) -> None:
         with self.assertRaises(ToolActionValidationError) as error:
             parse_tool_action(

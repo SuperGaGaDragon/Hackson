@@ -27,6 +27,7 @@ from work_mode.schemas import (
     EmployeeCreateRequest,
     MissionAnswerRequest,
     MissionCreateRequest,
+    MissionFollowUpRequest,
     MissionStartRequest,
     MissionStopRequest,
     ProjectCreateRequest,
@@ -236,7 +237,9 @@ class WorkModeService:
         mission = self._require_mission(user_id, mission_id)
         if mission["status"] in {"running", "stopping"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_already_running")
-        if mission["status"] not in {"draft", "paused", "paused_retryable", "stopped", "blocked", "failed", "completed"}:
+        if mission["status"] == "completed":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_followup_required")
+        if mission["status"] not in {"draft", "paused", "paused_retryable", "stopped", "blocked", "failed"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_cannot_start")
         timestamp = now_utc()
         mission = self._update_mission(
@@ -452,6 +455,69 @@ class WorkModeService:
             title="Resumed",
             message="Mission resumed with user input.",
             payload={"resumeReason": "user_input", "employee": _employee_payload(mission)},
+        )
+        return self.get_mission_detail(user_id, str(mission["_id"]))
+
+    def continue_mission_follow_up(
+        self,
+        user_id: str,
+        mission_id: str,
+        payload: MissionFollowUpRequest,
+    ) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        if mission["status"] in {"running", "stopping", "waiting_input"}:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_cannot_continue_now")
+        if mission["status"] != "completed":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_followup_requires_completed")
+        timestamp = now_utc()
+        mission = self._update_mission(
+            user_id,
+            mission_id,
+            {
+                "status": "running",
+                "current_step": "Continuing",
+                "last_error": None,
+                "updated_at": timestamp,
+            },
+        )
+        run = self.repository.create_run(
+            {
+                "user_id": user_id,
+                "mission_id": mission["_id"],
+                "status": "running",
+                "iteration": 1,
+                "started_at": timestamp,
+                "ended_at": None,
+                "metadata": {
+                    **payload.metadata,
+                    "resumeReason": "user_followup",
+                    "followUpRequest": payload.request,
+                },
+            }
+        )
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="USER_FOLLOWUP_REQUESTED",
+            title="Follow-up",
+            message=payload.request,
+            payload={
+                "request": payload.request,
+                "resumeReason": "user_followup",
+                "employee": _employee_payload(mission),
+            },
+        )
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="MISSION_STARTED",
+            title="Continued",
+            message="Mission continued with user follow-up.",
+            payload={"resumeReason": "user_followup", "employee": _employee_payload(mission)},
         )
         return self.get_mission_detail(user_id, str(mission["_id"]))
 

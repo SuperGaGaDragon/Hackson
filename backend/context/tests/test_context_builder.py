@@ -164,9 +164,16 @@ class ContextBuilderTest(TestCase):
         prompt = _prompt_text(package)
         self.assertIn("Relationship stance:", prompt)
         self.assertIn("Turn intent:", prompt)
+        self.assertIn("Collaborative convergence protocol:", prompt)
         self.assertIn("Respond to the previous Agent's concrete line", prompt)
         self.assertIn("Make one conversational move", prompt)
         self.assertIn("Do not output stacked frameworks, numbered exercises, or coaching checklists", prompt)
+        self.assertIn("First identify what you agree with", prompt)
+        self.assertIn("If the previous visible message is from the User", prompt)
+        self.assertIn("Only disagree if the disagreement is decision-relevant", prompt)
+        self.assertIn("No new disagreement. I accept the current direction.", prompt)
+        self.assertIn("What do we now agree on?", prompt)
+        self.assertIn("remaining disagreement is only about emphasis", prompt)
 
     def test_companion_1_context_forces_transition_to_user(self) -> None:
         package = self.builder.build(
@@ -310,7 +317,7 @@ class ContextBuilderTest(TestCase):
                 memory_cards=[
                     MemoryCardSnapshot(
                         id="memory_1",
-                        scope="companion",
+                        scope="account",
                         owner_type="user",
                         owner_id="user_1",
                         memory_type="preference",
@@ -324,11 +331,11 @@ class ContextBuilderTest(TestCase):
         )
 
         prompt = _prompt_text(package)
-        self.assertIn("Relevant memory", prompt)
+        self.assertIn("Account continuity memory", prompt)
         self.assertIn("User prefers concise Chinese replies.", prompt)
         self.assertIn("memory_1", package.included_memory_ids)
 
-    def test_idle_context_does_not_include_companion_memory_by_default(self) -> None:
+    def test_idle_context_includes_account_memory_but_not_companion_private_memory(self) -> None:
         package = self.builder.build(
             ContextBuildInput(
                 mode=ContextMode.IDLE,
@@ -336,6 +343,17 @@ class ContextBuilderTest(TestCase):
                 target_agent_id="agent_a",
                 agents=[self.agent_a, self.agent_b],
                 memory_cards=[
+                    MemoryCardSnapshot(
+                        id="memory_account",
+                        scope="account",
+                        owner_type="user",
+                        owner_id="user_1",
+                        memory_type="preference",
+                        summary="User prefers direct product critique.",
+                        source_message_ids=["chat_0"],
+                        importance_score=0.9,
+                        confidence=0.9,
+                    ),
                     MemoryCardSnapshot(
                         id="memory_hidden",
                         scope="companion",
@@ -352,8 +370,51 @@ class ContextBuilderTest(TestCase):
         )
 
         prompt = _prompt_text(package)
+        self.assertIn("User prefers direct product critique.", prompt)
+        self.assertIn("memory_account", package.included_memory_ids)
         self.assertNotIn("This companion preference should stay out of idle.", prompt)
         self.assertNotIn("memory_hidden", package.included_memory_ids)
+
+    def test_work_context_includes_account_and_work_memory(self) -> None:
+        package = self.builder.build(
+            ContextBuildInput(
+                mode=ContextMode.WORK,
+                conversation_id="conv_work",
+                target_agent_id="agent_b",
+                agents=[self.agent_a, self.agent_b],
+                task_state={"objective": "write the launch story"},
+                memory_cards=[
+                    MemoryCardSnapshot(
+                        id="memory_account",
+                        scope="account",
+                        owner_type="user",
+                        owner_id="user_1",
+                        memory_type="preference",
+                        summary="User prefers concise Chinese replies.",
+                        source_message_ids=["chat_1"],
+                        importance_score=0.8,
+                        confidence=0.9,
+                    ),
+                    MemoryCardSnapshot(
+                        id="memory_work",
+                        scope="work",
+                        owner_type="task",
+                        owner_id="task_1",
+                        memory_type="task",
+                        summary="The current launch story draft needs stronger proof.",
+                        source_message_ids=["work_1"],
+                        importance_score=0.7,
+                        confidence=0.8,
+                    ),
+                ],
+            )
+        )
+
+        prompt = _prompt_text(package)
+        self.assertIn("Account and work memory", prompt)
+        self.assertIn("User prefers concise Chinese replies.", prompt)
+        self.assertIn("launch story draft needs stronger proof", prompt)
+        self.assertEqual(set(package.included_memory_ids), {"memory_account", "memory_work"})
 
     def test_builder_rejects_missing_target_agent(self) -> None:
         with self.assertRaisesRegex(ValueError, "target_agent_not_found"):

@@ -11,6 +11,7 @@ from unittest import TestCase
 from users.schemas import DesktopHandoffBindRequest, DesktopHandoffClaimRequest
 from users.schemas import UserRegisterRequest, UserUpdateRequest
 from users.service import UserService
+from agents.catalog import NORA_DEFAULT_STORY, VALE_DEFAULT_STORY
 
 
 class FakeUserRepository:
@@ -83,6 +84,8 @@ class UserServiceTest(TestCase):
         self.assertEqual(user["story"], "")
         self.assertEqual([agent["slot"] for agent in user["agentProfiles"]], ["agent_1", "agent_2"])
         self.assertEqual([agent["name"] for agent in user["agentProfiles"]], ["Nora", "Vale"])
+        self.assertEqual(user["agentProfiles"][0]["story"], NORA_DEFAULT_STORY)
+        self.assertEqual(user["agentProfiles"][1]["story"], VALE_DEFAULT_STORY)
         self.assertNotIn("password_hash", user)
         self.assertNotIn("endpoint", user)
 

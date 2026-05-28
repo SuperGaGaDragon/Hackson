@@ -347,6 +347,8 @@ def _tool_title(tool: str) -> str:
         "block_mission": "Block",
         "review_product": "Review",
         "discuss_with_delegate": "Discuss",
+        "evaluate_product": "Evaluate",
+        "web_search": "Search",
     }.get(tool, "Tool")
 
 
@@ -372,7 +374,16 @@ def _tool_rejection_instruction(tool: str, code: str) -> str:
         "final_artifact_cjk_too_short",
         "missing_outline_artifact",
         "missing_chapter_artifact",
+        "final_paper_draft_required",
+        "reliability_evaluation_required",
+        "reliability_evaluation_needs_review",
     }:
+        if code in {"reliability_evaluation_required", "reliability_evaluation_needs_review"}:
+            return (
+                "Repair quality before finishing: call evaluate_product after the final candidate, then use "
+                "web_search, discuss_with_delegate, or work_product to resolve blocking Reliability issues before "
+                "calling finish_mission again."
+            )
         return (
             "Repair the Product before finishing: call work_product on the existing Product, create or revise an "
             'Artifact with artifactKind="final", include the complete final deliverable content, then call '

@@ -20,8 +20,9 @@ from context.transition import build_transition_context
 SYSTEM_POLICY = (
     "You are generating messages for Hackson, a live two-Agent companion world. "
     "Follow the current mode recipe exactly. Preserve each Agent's core persona. "
-    "Never rewrite or claim to update an Agent's core persona. Do not include Work Mode "
-    "details in idle or companion responses unless explicitly provided in the current mode."
+    "Never rewrite or claim to update an Agent's core persona. Use account memory as durable "
+    "cross-mode continuity. Do not expose raw Work Mode trace in idle or companion responses "
+    "unless it was promoted into account memory or explicitly provided in the current mode."
 )
 
 OUTPUT_POLICY = (
@@ -45,10 +46,11 @@ def build_idle_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
         _other_agents_block(other_agents),
         _relationship_stance_section(target_agent, other_agents),
         _turn_intent_section(input_data.recent_messages),
+        _collaborative_convergence_section(),
         _user_profile_block(input_data),
         _optional_section("Current idle topic selected by user", input_data.user_direction),
         _summary_section(input_data.summary),
-        _memory_section("Agent relationship memory", input_data, allowed_scopes={"idle"}),
+        _memory_section("Account continuity memory", input_data, allowed_scopes={"account", "idle"}),
         _messages_section("Recent idle transcript", recent),
         _optional_section("Idle seed", input_data.idle_seed),
         "Rules:\n- Continue from the latest visible message, not an older topic.\n"
@@ -93,7 +95,7 @@ def build_companion_1_messages(input_data: ContextBuildInput) -> list[ModelMessa
         _messages_section("Current companion conversation recent messages", recent),
         _messages_section("Recent idle messages for background only", idle_recent),
         _summary_section(input_data.idle_summary or input_data.summary),
-        _memory_section("Relevant memory", input_data, allowed_scopes={"companion", "idle"}),
+        _memory_section("Account continuity memory", input_data, allowed_scopes={"account", "companion", "idle"}),
         _agent_persona_block("Current responding Agent", target_agent),
         _user_profile_block(input_data),
         _other_agents_block([agent for agent in input_data.agents if agent.id != target_agent.id]),
@@ -117,10 +119,13 @@ def build_companion_2_messages(input_data: ContextBuildInput) -> list[ModelMessa
         f"Current user message:\n{input_data.user_message}",
         _messages_section("Current companion chat recent messages", recent),
         _summary_section(input_data.summary),
-        _memory_section("Relevant memory", input_data, allowed_scopes={"companion"}),
+        _memory_section("Account continuity memory", input_data, allowed_scopes={"account", "companion", "idle"}),
         _agent_persona_block("Current responding Agent", target_agent),
         _user_profile_block(input_data),
-        "Rules:\n- Focus on the user's current message.\n- Use lightweight chat context.\n- Do not bring in idle history unless it is included here.\n- Do not mention Work Mode details.",
+        "Rules:\n- Focus on the user's current message.\n- Use lightweight chat context.\n"
+        "- Use account continuity memory when it is directly useful.\n"
+        "- Do not bring in raw idle transcript unless it is included here.\n"
+        "- Do not mention raw Work Mode trace.",
         OUTPUT_POLICY,
     ]
     return _messages_from_sections(sections)
@@ -132,9 +137,11 @@ def build_work_messages(input_data: ContextBuildInput) -> list[ModelMessage]:
         _mode_block(ContextMode.WORK),
         _agent_persona_block("Current working Agent", target_agent),
         _optional_section("Task state", _format_mapping(input_data.task_state or {})),
-        _memory_section("Relevant work memory", input_data, allowed_scopes={"work"}),
+        _memory_section("Account and work memory", input_data, allowed_scopes={"account", "work"}),
         _messages_section("Recent work messages", select_recent_messages(input_data.recent_messages, limit=12)),
-        "Rules:\n- Keep task state separate from companion memory.\n- Preserve the user's objective.\n- Report blockers clearly.",
+        "Rules:\n- Use account memory for durable user preferences and shared history.\n"
+        "- Keep raw task trace separate from casual companion context.\n"
+        "- Preserve the user's objective.\n- Report blockers clearly.",
         OUTPUT_POLICY,
     ]
     return _messages_from_sections(sections)
@@ -226,6 +233,28 @@ def _turn_intent_section(messages: list[ConversationMessage]) -> str:
             intent = "respond"
             break
     return f"Turn intent:\n{intent}. Use exactly one move this turn."
+
+
+def _collaborative_convergence_section() -> str:
+    return (
+        "Collaborative convergence protocol:\n"
+        "- If the previous visible message is from the User, answer the User first; do not force "
+        "an Agent-Agent agreement ritual onto a user interjection.\n"
+        "- First identify what you agree with in the previous visible message. "
+        "If the previous Agent made a valid point, explicitly acknowledge it in natural language.\n"
+        "- Only disagree if the disagreement is decision-relevant: it challenges a specific assumption, "
+        "names a missing tradeoff, exposes a practical risk, improves the decision criterion, "
+        "or changes the recommended action.\n"
+        "- Do not restate the same disagreement in different words.\n"
+        '- If no new decision-relevant information exists, use a short natural equivalent of: '
+        '"No new disagreement. I accept the current direction."\n'
+        "- Before writing, internally update the shared conclusion: What do we now agree on? "
+        "What is still unresolved? What would decide the remaining disagreement?\n"
+        "- If the remaining disagreement is only about emphasis, not action, stop debating and give "
+        "a concise settling line instead of adding another angle.\n"
+        "- Keep this protocol invisible as a checklist; output only one natural conversational move "
+        "unless the User asks for methodical reasoning."
+    )
 
 
 def _messages_section(title: str, messages: list[ConversationMessage]) -> str | None:

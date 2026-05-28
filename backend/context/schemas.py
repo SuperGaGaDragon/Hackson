@@ -85,7 +85,7 @@ class ConversationSummary(BaseModel):
 
 class MemoryCardSnapshot(BaseModel):
     id: str
-    scope: Literal["idle", "companion", "work"]
+    scope: Literal["account", "idle", "companion", "work"]
     owner_type: str
     owner_id: str
     memory_type: str

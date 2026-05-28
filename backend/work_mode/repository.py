@@ -384,7 +384,9 @@ class WorkModeRepository:
         query: dict[str, Any] = {"user_id": user_id, "mission_id": query_id}
         if after_sequence is not None:
             query["sequence"] = {"$gt": after_sequence}
-        return list(self.events.find(query).sort("sequence", ASCENDING).limit(limit))
+            return list(self.events.find(query).sort("sequence", ASCENDING).limit(limit))
+        rows = list(self.events.find(query).sort("sequence", DESCENDING).limit(limit))
+        return sorted(rows, key=lambda row: row["sequence"])
 
 
 def _object_id(value: Any) -> ObjectId:

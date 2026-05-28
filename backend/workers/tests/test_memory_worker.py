@@ -47,7 +47,7 @@ class MemoryWorkerTest(TestCase):
 
         cards = MemoryService(memory_repository).list_context_memory(
             "user_1",
-            scope="companion",
+            scope="account",
             owner_type="user",
             owner_id="user_1",
         )

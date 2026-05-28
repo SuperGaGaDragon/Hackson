@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -11,9 +11,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from agents.catalog import (
+    NORA_DEFAULT_STORY,
+    VALE_DEFAULT_STORY,
     default_agent_snapshots,
     default_user_agent_profiles,
     list_agent_display_profiles,
+    normalize_user_agent_profiles,
     user_agent_snapshots,
 )
 from agents.routes import router
@@ -63,5 +66,53 @@ class AgentCatalogTest(TestCase):
         )
 
         self.assertEqual([profile["slot"] for profile in profiles], ["agent_1", "agent_2"])
+        self.assertEqual(profiles[0]["story"], NORA_DEFAULT_STORY)
+        self.assertEqual(profiles[1]["story"], VALE_DEFAULT_STORY)
         self.assertEqual([snapshot.name for snapshot in snapshots], ["Mira", "Rook"])
         self.assertEqual(snapshots[0].core_persona, "Custom careful skeptic.")
+
+    def test_empty_and_demo_placeholder_stories_normalize_to_origin_stories(self) -> None:
+        profiles = normalize_user_agent_profiles(
+            [
+                {
+                    "slot": "agent_1",
+                    "name": "Nora",
+                    "voice": "precise",
+                    "personality": "Careful.",
+                    "story": "正在帮助 Hackson 跑通 V1 demo。",
+                },
+                {
+                    "slot": "agent_2",
+                    "name": "Vale",
+                    "voice": "sharp",
+                    "personality": "Direct.",
+                    "story": "",
+                },
+            ]
+        )
+
+        self.assertEqual(profiles[0]["story"], NORA_DEFAULT_STORY)
+        self.assertEqual(profiles[1]["story"], VALE_DEFAULT_STORY)
+
+    def test_user_authored_stories_are_preserved(self) -> None:
+        profiles = normalize_user_agent_profiles(
+            [
+                {
+                    "slot": "agent_1",
+                    "name": "Mira",
+                    "voice": "careful",
+                    "personality": "Custom careful skeptic.",
+                    "story": "A user-authored origin that should not be replaced.",
+                },
+                {
+                    "slot": "agent_2",
+                    "name": "Rook",
+                    "voice": "builder",
+                    "personality": "Custom practical builder.",
+                    "story": "A different user-authored origin.",
+                },
+            ]
+        )
+
+        self.assertEqual(profiles[0]["story"], "A user-authored origin that should not be replaced.")
+        self.assertEqual(profiles[1]["story"], "A different user-authored origin.")

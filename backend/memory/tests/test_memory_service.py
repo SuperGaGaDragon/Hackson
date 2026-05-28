@@ -163,13 +163,81 @@ class MemoryServiceTest(TestCase):
         self.assertEqual(len(cards), 1)
         self.assertEqual(cards[0].summary, "User prefers concise Chinese replies.")
 
+    def test_lists_account_continuity_memory_with_legacy_fallbacks(self) -> None:
+        repository = FakeMemoryRepository()
+        service = MemoryService(repository)
+        service.accept_candidate(
+            "user_1",
+            MemoryCandidate(
+                scope="account",
+                owner_type="user",
+                owner_id="user_1",
+                memory_type="preference",
+                summary="User prefers blunt product critique.",
+                source_message_ids=["message_1"],
+                source_sender_types=["user"],
+                importance_score=0.9,
+                confidence=0.9,
+            ),
+        )
+        service.accept_candidate(
+            "user_1",
+            MemoryCandidate(
+                scope="companion",
+                owner_type="user",
+                owner_id="user_1",
+                memory_type="preference",
+                summary="Legacy companion preference remains account-visible.",
+                source_message_ids=["message_2"],
+                source_sender_types=["user"],
+                importance_score=0.8,
+                confidence=0.9,
+            ),
+        )
+        service.accept_candidate(
+            "user_1",
+            MemoryCandidate(
+                scope="idle",
+                owner_type="agent_pair",
+                owner_id="agent_1:agent_2",
+                memory_type="relationship",
+                summary="Nora and Vale challenge each other before converging.",
+                source_message_ids=["message_3", "message_4"],
+                source_sender_types=["agent"],
+                importance_score=0.7,
+                confidence=0.8,
+            ),
+        )
+        service.accept_candidate(
+            "user_1",
+            MemoryCandidate(
+                scope="work",
+                owner_type="task",
+                owner_id="task_1",
+                memory_type="task",
+                summary="Private work trace should not be account continuity.",
+                source_message_ids=["message_5"],
+                source_sender_types=["user"],
+                importance_score=1.0,
+                confidence=0.9,
+            ),
+        )
+
+        cards = service.list_account_context_memory("user_1")
+        summaries = [card.summary for card in cards]
+
+        self.assertIn("User prefers blunt product critique.", summaries)
+        self.assertIn("Legacy companion preference remains account-visible.", summaries)
+        self.assertIn("Nora and Vale challenge each other before converging.", summaries)
+        self.assertNotIn("Private work trace should not be account continuity.", summaries)
+
     def test_user_can_disable_and_delete_memory_without_context_reads(self) -> None:
         repository = FakeMemoryRepository()
         service = MemoryService(repository)
         created = service.accept_candidate(
             "user_1",
             MemoryCandidate(
-                scope="companion",
+                scope="account",
                 owner_type="user",
                 owner_id="user_1",
                 memory_type="preference",
@@ -185,7 +253,7 @@ class MemoryServiceTest(TestCase):
         disabled = service.update_status("user_1", created["id"], "disabled")
 
         self.assertEqual(disabled["status"], "disabled")
-        self.assertEqual(service.list_context_memory("user_1", "companion"), [])
+        self.assertEqual(service.list_context_memory("user_1", "account"), [])
         self.assertEqual(len(service.list_user_memory("user_1")["memoryCards"]), 1)
 
         deleted = service.delete_memory("user_1", created["id"])

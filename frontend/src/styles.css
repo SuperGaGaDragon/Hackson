@@ -1216,6 +1216,10 @@ input:disabled {
   line-height: 1.4;
 }
 
+.mission-followup {
+  border-top-color: rgba(53, 211, 199, 0.34);
+}
+
 .answer-options {
   display: flex;
   flex-wrap: wrap;
@@ -1970,7 +1974,8 @@ input:disabled {
 
 .reliability-badges span,
 .reliability-issue span,
-.reliability-table span {
+.reliability-table span,
+.reliability-evidence span {
   border: 1px solid #303941;
   border-radius: 999px;
   padding: 3px 7px;
@@ -1979,6 +1984,22 @@ input:disabled {
   font-weight: 700;
   line-height: 1.2;
   text-transform: uppercase;
+}
+
+.reliability-evidence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #0c1115;
+}
+
+.reliability-evidence strong {
+  color: var(--text);
+  font-size: 13px;
 }
 
 .reliability-section > strong {
@@ -2018,6 +2039,36 @@ input:disabled {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.reliability-list {
+  display: grid;
+  gap: 6px;
+}
+
+.reliability-list p {
+  border: 1px solid #263039;
+  border-radius: 8px;
+  margin: 0;
+  padding: 8px;
+  color: var(--text);
+  background: #0c1115;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.reliability-list.muted-list p {
+  color: var(--muted);
+}
+
+.reliability-table a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.reliability-table a:hover {
+  color: var(--accent);
 }
 
 .reliability-issue.severity-critical,

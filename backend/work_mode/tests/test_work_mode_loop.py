@@ -243,6 +243,53 @@ class WorkModeLoopTest(TestCase):
         self.assertIn("WORK_WINDOW_FAILED", event_types)
         self.assertEqual(event_types[-1], "MISSION_PAUSED_RETRYABLE")
 
+    def test_loop_pauses_retryable_when_delegate_model_returns_empty_text(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        action_client = ScriptedActionClient(
+            [
+                """
+                {
+                  "tool": "delegate_agent",
+                  "arguments": {
+                    "reason": "让写作 Agent 起草长章节。",
+                    "agentSlot": "agent_2",
+                    "windowTitle": "长章节草稿",
+                    "brief": "写一章长文。",
+                    "expectedOutput": "chapter",
+                    "targetProductId": null,
+                    "sourceArtifactIds": []
+                  }
+                }
+                """,
+            ]
+        )
+
+        MissionLoopRunner(
+            self.service,
+            action_client=action_client,
+            executor=WorkModeToolExecutor(
+                self.service,
+                delegate_client=FailingDelegateClient(
+                    ToolActionClientError(
+                        "model_response_missing_text",
+                        "model_response_missing_text",
+                        retryable=True,
+                    )
+                ),
+            ),
+            max_retryable_turn_retries=0,
+        ).run("user_1", mission["id"], run_id)
+
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+
+        self.assertEqual(paused["mission"]["status"], "paused_retryable")
+        self.assertEqual(paused["mission"]["lastError"], "model_response_missing_text")
+        self.assertEqual(paused["latestRun"]["status"], "paused_retryable")
+        self.assertEqual(paused["workWindows"][0]["status"], "failed")
+        self.assertEqual(paused["events"][-1]["type"], "MISSION_PAUSED_RETRYABLE")
+
     def test_loop_resume_continues_from_persisted_product_manifest(self) -> None:
         mission = self._mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())

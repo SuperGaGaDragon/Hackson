@@ -123,6 +123,27 @@ class FakeMemoryService:
     def __init__(self, cards_by_scope: dict[str, list[MemoryCardSnapshot]] | None = None) -> None:
         self.cards_by_scope = cards_by_scope or {}
         self.requests: list[tuple[str, str, str | None, str | None, int]] = []
+        self.account_requests: list[tuple[str, int]] = []
+
+    def list_account_context_memory(self, user_id: str, limit: int = 8) -> list[MemoryCardSnapshot]:
+        self.account_requests.append((user_id, limit))
+        cards: list[MemoryCardSnapshot] = []
+        cards.extend(self.cards_by_scope.get("account", []))
+        cards.extend(
+            [
+                card
+                for card in self.cards_by_scope.get("companion", [])
+                if card.owner_type == "user" and card.owner_id == user_id
+            ]
+        )
+        cards.extend(
+            [
+                card
+                for card in self.cards_by_scope.get("idle", [])
+                if card.owner_type == "agent_pair" and card.owner_id == "agent_1:agent_2"
+            ]
+        )
+        return cards[:limit]
 
     def list_context_memory(
         self,
@@ -679,14 +700,14 @@ class InteractionServiceTest(TestCase):
         self.assertIn("name: Vale", prompt)
         self.assertNotIn("name: Beryl", prompt)
 
-    def test_companion_2_includes_companion_memory_and_excludes_work_memory(self) -> None:
+    def test_companion_2_includes_account_continuity_memory_and_excludes_work_memory(self) -> None:
         package_repository = FakeContextPackageRepository()
         memory_service = FakeMemoryService(
             {
-                "companion": [
+                "account": [
                     MemoryCardSnapshot(
-                        id="memory_companion_1",
-                        scope="companion",
+                        id="memory_account_1",
+                        scope="account",
                         owner_type="user",
                         owner_id="user_1",
                         memory_type="preference",
@@ -731,13 +752,14 @@ class InteractionServiceTest(TestCase):
         )
 
         prompt = _prompt_text(self.model_runtime.requests[-1])
-        self.assertIn("Relevant memory", prompt)
+        self.assertIn("Account continuity memory", prompt)
         self.assertIn("User prefers concise Chinese replies.", prompt)
         self.assertNotIn("Hidden work project detail.", prompt)
-        self.assertEqual(package_repository.rows[0]["included_memory_ids"], ["memory_companion_1"])
-        self.assertEqual(memory_service.requests, [("user_1", "companion", "user", "user_1", 6)])
+        self.assertEqual(package_repository.rows[0]["included_memory_ids"], ["memory_account_1"])
+        self.assertEqual(memory_service.account_requests, [("user_1", 8)])
+        self.assertEqual(memory_service.requests, [])
 
-    def test_companion_1_imports_idle_relationship_and_companion_user_memory(self) -> None:
+    def test_companion_1_imports_account_and_legacy_relationship_memory(self) -> None:
         package_repository = FakeContextPackageRepository()
         memory_service = FakeMemoryService(
             {
@@ -799,6 +821,8 @@ class InteractionServiceTest(TestCase):
         self.assertIn("User wants direct phrasing.", prompt)
         self.assertIn("Agents debate gently before agreeing.", prompt)
         self.assertEqual(set(package_repository.rows[0]["included_memory_ids"]), {"memory_companion_1", "memory_idle_1"})
+        self.assertEqual(memory_service.account_requests, [("user_1", 8)])
+        self.assertEqual(memory_service.requests, [("user_1", "idle", "agent_pair", "agent_1:agent_2", 6)])
 
     def test_companion_2_context_uses_current_user_profile(self) -> None:
         user_service = FakeUserService(
@@ -904,13 +928,44 @@ class InteractionServiceTest(TestCase):
         self.assertEqual(relationship_job["source_message_ids"], [previous["id"], response["agentMessage"]["id"]])
         self.assertEqual(derived_repository.rows[0]["source_message_ids"], [response["agentMessage"]["id"]])
 
-    def test_work_message_uses_task_state_and_enqueues_summary(self) -> None:
+    def test_work_message_uses_task_state_account_memory_and_enqueues_memory(self) -> None:
         derived_repository = FakeDerivedJobRepository()
+        memory_service = FakeMemoryService(
+            {
+                "account": [
+                    MemoryCardSnapshot(
+                        id="memory_account_1",
+                        scope="account",
+                        owner_type="user",
+                        owner_id="user_1",
+                        memory_type="preference",
+                        summary="User prefers direct launch critique.",
+                        source_message_ids=["message_0"],
+                        importance_score=0.9,
+                        confidence=0.9,
+                    )
+                ],
+                "work": [
+                    MemoryCardSnapshot(
+                        id="memory_work_1",
+                        scope="work",
+                        owner_type="task",
+                        owner_id="task_1",
+                        memory_type="task",
+                        summary="Current mission should prioritize demo proof.",
+                        source_message_ids=["message_1"],
+                        importance_score=0.8,
+                        confidence=0.8,
+                    )
+                ],
+            }
+        )
         service = InteractionService(
             conversation_service=self.conversation_service,
             context_builder=ContextBuilder(),
             model_runtime=self.model_runtime,
             derived_jobs=DerivedJobService(derived_repository),
+            memory_service=memory_service,
         )
         work = self.conversation_service.create_conversation(
             "user_1",
@@ -929,7 +984,11 @@ class InteractionServiceTest(TestCase):
         prompt = _prompt_text(self.model_runtime.requests[-1])
         self.assertIn("Current mode: work", prompt)
         self.assertIn("Prepare a launch demo.", prompt)
-        self.assertEqual([job["job_type"] for job in derived_repository.rows], ["summary"])
+        self.assertIn("User prefers direct launch critique.", prompt)
+        self.assertIn("Current mission should prioritize demo proof.", prompt)
+        self.assertEqual(memory_service.account_requests, [("user_1", 8)])
+        self.assertEqual(memory_service.requests, [("user_1", "work", None, None, 6)])
+        self.assertEqual([job["job_type"] for job in derived_repository.rows], ["summary", "memory_candidate"])
 
 
 def _prompt_text(request: ModelGenerateRequest) -> str:

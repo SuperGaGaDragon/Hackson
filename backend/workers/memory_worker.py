@@ -41,7 +41,7 @@ def _candidate_from_user_message(user_id: str, message: dict) -> MemoryCandidate
     if not _looks_like_explicit_preference(content):
         return None
     return MemoryCandidate(
-        scope="companion",
+        scope="account",
         owner_type="user",
         owner_id=user_id,
         memory_type="preference",

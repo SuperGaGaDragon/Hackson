@@ -34,10 +34,12 @@ class StaticFrontendMountTest(TestCase):
 
             self.assertEqual(client.get("/").status_code, 200)
             self.assertIn("root", client.get("/").text)
+            self.assertEqual(client.head("/").status_code, 200)
             self.assertEqual(client.get("/assets/app.js").status_code, 200)
             self.assertIn("hackson_test", client.get("/assets/app.js").text)
             self.assertEqual(client.get("/chat/anything").status_code, 200)
             self.assertIn("root", client.get("/chat/anything").text)
+            self.assertEqual(client.head("/chat/anything").status_code, 200)
 
     def test_startup_starts_derived_worker_when_enabled(self) -> None:
         started: list[tuple[float, int]] = []

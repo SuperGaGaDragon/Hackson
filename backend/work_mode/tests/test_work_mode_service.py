@@ -16,6 +16,7 @@ from model_runtime.orchestrator import ModelRuntime
 from work_mode.schemas import (
     EmployeeCreateRequest,
     MissionCreateRequest,
+    MissionFollowUpRequest,
     MissionStartRequest,
     MissionStopRequest,
     ProjectCreateRequest,
@@ -280,6 +281,8 @@ class FakeWorkModeRepository:
             and row["mission_id"] == mission_id
             and (after_sequence is None or row["sequence"] > after_sequence)
         ]
+        if after_sequence is None:
+            rows = rows[-limit:]
         return rows[:limit]
 
 
@@ -428,6 +431,85 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(resumed["activeRun"]["status"], "running")
         self.assertNotEqual(resumed["activeRun"]["id"], first_run_id)
         self.assertEqual(resumed["latestRun"]["id"], resumed["activeRun"]["id"])
+
+    def test_completed_mission_requires_follow_up_instead_of_start_replay(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        self.service.mark_mission_completed("user_1", mission["id"], run_id, None, summary="Done.")
+
+        with self.assertRaises(HTTPException) as error:
+            self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+
+        self.assertEqual(error.exception.status_code, 409)
+        self.assertEqual(error.exception.detail, "mission_followup_required")
+
+    def test_completed_mission_follow_up_creates_new_run_and_preserves_products(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        first_run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="Novel",
+            summary="Draft product.",
+            created_by={"id": "agent_1", "name": "Lead", "role": "lead"},
+        )
+        artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            first_run_id,
+            product["id"],
+            kind="draft",
+            title="Draft v1",
+            content="First version.",
+            summary="First version.",
+            created_by={"id": "agent_1", "name": "Lead", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+        self.service.mark_mission_completed(
+            "user_1",
+            mission["id"],
+            first_run_id,
+            None,
+            final_product_ids=[product["id"]],
+            final_artifact_ids=[artifact["id"]],
+            summary="Done.",
+        )
+
+        continued = self.service.continue_mission_follow_up(
+            "user_1",
+            mission["id"],
+            MissionFollowUpRequest(request="把最终稿改成英文版。", metadata={"source": "test"}),
+        )
+
+        self.assertEqual(continued["mission"]["status"], "running")
+        self.assertEqual(continued["activeRun"]["status"], "running")
+        self.assertNotEqual(continued["activeRun"]["id"], first_run_id)
+        self.assertEqual(continued["activeRun"]["metadata"]["resumeReason"], "user_followup")
+        self.assertEqual(continued["activeRun"]["metadata"]["followUpRequest"], "把最终稿改成英文版。")
+        self.assertEqual(continued["products"][0]["id"], product["id"])
+        self.assertEqual(continued["products"][0]["latestArtifactId"], artifact["id"])
+        self.assertEqual(continued["artifacts"][0]["content"], "First version.")
+        event_types = [event["type"] for event in continued["events"]]
+        self.assertIn("USER_FOLLOWUP_REQUESTED", event_types)
+        self.assertEqual(event_types[-1], "MISSION_STARTED")
+        follow_up_event = next(event for event in continued["events"] if event["type"] == "USER_FOLLOWUP_REQUESTED")
+        self.assertEqual(follow_up_event["payload"]["request"], "把最终稿改成英文版。")
+
+    def test_follow_up_requires_completed_mission(self) -> None:
+        mission = self._mission()
+
+        with self.assertRaises(HTTPException) as error:
+            self.service.continue_mission_follow_up(
+                "user_1",
+                mission["id"],
+                MissionFollowUpRequest(request="继续完善。"),
+            )
+
+        self.assertEqual(error.exception.status_code, 409)
+        self.assertEqual(error.exception.detail, "mission_followup_requires_completed")
 
     def test_recover_interrupted_running_mission_marks_resumeable_and_window_failed(self) -> None:
         mission = self._mission()
@@ -649,6 +731,31 @@ class WorkModeServiceTest(TestCase):
         events = self.service.list_events("user_1", mission["id"], after_sequence=2)
 
         self.assertTrue(all(event["sequence"] > 2 for event in events))
+
+    def test_mission_detail_uses_latest_bounded_event_window(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        mission_document = self.service._require_mission("user_1", mission["id"])
+        for index in range(150):
+            self.service.append_event(
+                "user_1",
+                mission_document,
+                run={"_id": run_id},
+                step=None,
+                event_type="CUSTOM_EVENT",
+                title=f"Event {index}",
+                message=str(index),
+                payload={},
+            )
+
+        updated = self.service.get_mission_detail("user_1", mission["id"])
+        sequences = [event["sequence"] for event in updated["events"]]
+
+        self.assertEqual(len(sequences), 100)
+        self.assertEqual(sequences, sorted(sequences))
+        self.assertEqual(sequences[0], 53)
+        self.assertEqual(sequences[-1], 152)
 
     def test_worker_stops_when_stop_is_requested_before_next_worker_tick(self) -> None:
         mission = self._mission()

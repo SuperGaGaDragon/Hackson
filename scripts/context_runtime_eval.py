@@ -80,6 +80,14 @@ def _eval_idle_mode_speaker_topic_repetition() -> dict:
             ("turn intent", "Turn intent:" in prompt),
             ("human dialogue", "Respond to the previous Agent's concrete line" in prompt),
             ("anti advice stack", "Do not output stacked frameworks" in prompt),
+            ("collaborative convergence", "Collaborative convergence protocol:" in prompt),
+            ("user interjection priority", "If the previous visible message is from the User" in prompt),
+            ("agreement first", "First identify what you agree with" in prompt),
+            ("meaningful disagreement", "Only disagree if the disagreement is decision-relevant" in prompt),
+            ("no repeated disagreement", "Do not restate the same disagreement" in prompt),
+            ("settlement phrase", "No new disagreement. I accept the current direction." in prompt),
+            ("shared conclusion", "What do we now agree on?" in prompt),
+            ("emphasis stop", "remaining disagreement is only about emphasis" in prompt),
             ("latest raw messages", "recent marker 17" in prompt and "recent marker 0" not in prompt),
             ("summary audit", package.included_summary_ids == ["summary_idle_1"]),
         ]
@@ -112,8 +120,8 @@ def _eval_companion_1_transition_and_memory() -> dict:
             ),
             memory_cards=[
                 MemoryCardSnapshot(
-                    id="memory_companion_pref",
-                    scope="companion",
+                    id="memory_account_pref",
+                    scope="account",
                     owner_type="user",
                     owner_id="user_1",
                     memory_type="preference",
@@ -144,7 +152,7 @@ def _eval_companion_1_transition_and_memory() -> dict:
             ("memory use", "User prefers direct phrasing." in prompt and "Agents challenge each other softly." in prompt),
             (
                 "memory audit",
-                set(package.included_memory_ids) == {"memory_companion_pref", "memory_idle_relation"},
+                set(package.included_memory_ids) == {"memory_account_pref", "memory_idle_relation"},
             ),
         ]
     )
@@ -162,8 +170,8 @@ def _eval_companion_2_memory_scope() -> dict:
             user_message="继续。",
             memory_cards=[
                 MemoryCardSnapshot(
-                    id="memory_companion_pref",
-                    scope="companion",
+                    id="memory_account_pref",
+                    scope="account",
                     owner_type="user",
                     owner_id="user_1",
                     memory_type="preference",
@@ -190,7 +198,7 @@ def _eval_companion_2_memory_scope() -> dict:
             ("mode fit", "Current mode: companion_2 fresh companion chat" in prompt),
             ("memory use", "User prefers concise Chinese replies." in prompt),
             ("work isolation", "Hidden work task detail." not in prompt),
-            ("memory audit", package.included_memory_ids == ["memory_companion_pref"]),
+            ("memory audit", package.included_memory_ids == ["memory_account_pref"]),
         ]
     )
     return _result("companion_2_memory_scope", notes, started)
@@ -217,12 +225,12 @@ def _eval_work_memory_scope() -> dict:
                     confidence=0.9,
                 ),
                 MemoryCardSnapshot(
-                    id="memory_companion_hidden",
-                    scope="companion",
+                    id="memory_account_pref",
+                    scope="account",
                     owner_type="user",
                     owner_id="user_1",
                     memory_type="preference",
-                    summary="Hidden companion preference.",
+                    summary="User prefers launch critique.",
                     importance_score=1.0,
                     confidence=0.9,
                 ),
@@ -234,8 +242,8 @@ def _eval_work_memory_scope() -> dict:
         [
             ("mode fit", "Current mode: work" in prompt),
             ("memory use", "Use non-public target port for smoke." in prompt),
-            ("companion isolation", "Hidden companion preference." not in prompt),
-            ("memory audit", package.included_memory_ids == ["memory_work"]),
+            ("account memory use", "User prefers launch critique." in prompt),
+            ("memory audit", set(package.included_memory_ids) == {"memory_work", "memory_account_pref"}),
         ]
     )
     return _result("work_memory_scope", notes, started)

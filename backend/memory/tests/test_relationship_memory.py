@@ -40,6 +40,6 @@ class RelationshipMemoryContextTest(TestCase):
         )
         prompt = "\n\n".join(message.content for message in package.messages)
 
-        self.assertIn("Agent relationship memory", prompt)
+        self.assertIn("Account continuity memory", prompt)
         self.assertIn("friendly tension", prompt)
         self.assertIn("memory_relationship_1", package.included_memory_ids)

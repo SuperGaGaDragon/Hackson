@@ -211,6 +211,19 @@ Last Modified by: Codex
   - 重启 `hackson-domain-8145.service` 后，内网和公网 `/health` 均返回 `{"status":"ok"}`；补齐前端父级 state 同步后，最终公网 assets 为 `/assets/index-OVTNRPWP.js` 和 `/assets/index-QOvacDKh.css`。
   - 公网 API smoke 通过：completed Mission 的 `/start` 返回 `409 mission_followup_required`；`/follow-up` 返回 `200 running user_followup`；保留 `1` 个 Product 和 `1` 个 Artifact；worker launcher 触发 `1` 次。
   - 公网 UI smoke 通过：completed 状态 Start 禁用，Continue 输入可提交，页面切到 `running`，截图 `/tmp/work_followup_public_ui_smoke.png`。
+- 完成 Work Mode V1.0.6 evaluator tool 和论文/研究门禁：
+  - 先落文档：新增 `issue29-research-paper-final-draft-gate.md`、`issue30-evaluator-leader-tool.md`、`issue7-research-paper-evidence-gate.md`，明确这不是写死流程，而是最终交付质量门禁。
+  - Lead 工具箱新增 `evaluate_product`：模型自己选择调用；后端运行 Evaluator Runtime，持久化 Reliability Report Artifact，发 `RELIABILITY_REPORTED`，返回 score/status/top issues/recommended next tool。
+  - `finish_mission` 对论文/研究类目标新增三段门禁：大纲/计划不能当最终稿；最终稿后必须有 current Reliability Report；报告中有 actionable 质量问题时阻断完成。
+  - 修复一个关键死锁：pre-finish evaluator 会产生 `mission_incomplete`，完成门禁会忽略这个唯一 pre-finish issue，但仍阻断无证据、缺最终稿、unsupported claim 等真实问题。
+  - Evaluator 升级：无 Evidence Ledger 的 `research_reliability_v1` 封顶 `needs_human_review`；支持中文论文最终稿/大纲识别；中文事实句 token 支持更好。
+  - 前端 Reliability Panel 增加 Evidence Ledger、Suggested fixes、Evidence sources、Limitations，让用户不用打开 Diagnostics 也能理解为什么被拦。
+  - 本地验证通过：Work Mode `105` tests、frontend build。
+  - 目标机 `8165` 验证通过：新增相关 `45` unittest、frontend build、paper gate in-process smoke。
+  - 推广到 public `8145` 前确认 active-like Mission 为 `0`；public 备份到 `~/hackson_domain_8145_backups/evaluator_tool_20260528_110453`；public 目录 `45` unittest 和 frontend build 通过。
+  - 重启 `hackson-domain-8145.service` 后，内网和公网 `/health` 均正常；公网首页 assets 为 `/assets/index-Cy-unphL.js` 和 `/assets/index-Dx_ve1gX.css`。
+  - 公网 in-process smoke 通过：论文大纲完成被 `final_paper_draft_required` 拒绝；终稿未评估被 `reliability_evaluation_required` 拒绝；无证据评估返回 `needs_human_review` 且建议 `web_search`；随后完成被 `reliability_evaluation_needs_review` 拒绝。
+  - 公网日志检查无 traceback/500，active-like Mission 仍为 `0`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。

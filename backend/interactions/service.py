@@ -64,6 +64,8 @@ class SummaryServiceProtocol(Protocol):
 
 
 class MemoryServiceProtocol(Protocol):
+    def list_account_context_memory(self, user_id: str, limit: int = 8) -> list[MemoryCardSnapshot]: ...
+
     def list_context_memory(
         self,
         user_id: str,
@@ -693,22 +695,22 @@ class InteractionService:
     def _memory_cards(self, user_id: str, mode: ContextMode) -> list[MemoryCardSnapshot]:
         if self.memory_service is None:
             return []
+        account_cards = self.memory_service.list_account_context_memory(user_id, limit=8)
         if mode == ContextMode.IDLE:
-            return self.memory_service.list_context_memory(
-                user_id,
-                scope="idle",
-                owner_type="agent_pair",
-                owner_id="agent_1:agent_2",
-                limit=6,
+            return _dedupe_memory_cards(
+                [
+                    *account_cards,
+                    *self.memory_service.list_context_memory(
+                        user_id,
+                        scope="idle",
+                        owner_type="agent_pair",
+                        owner_id="agent_1:agent_2",
+                        limit=6,
+                    ),
+                ]
             )
         if mode in {ContextMode.COMPANION_1, ContextMode.COMPANION_2}:
-            cards = self.memory_service.list_context_memory(
-                user_id,
-                scope="companion",
-                owner_type="user",
-                owner_id=user_id,
-                limit=6,
-            )
+            cards = list(account_cards)
             if mode == ContextMode.COMPANION_1:
                 cards.extend(
                     self.memory_service.list_context_memory(
@@ -719,9 +721,14 @@ class InteractionService:
                         limit=6,
                     )
                 )
-            return cards
+            return _dedupe_memory_cards(cards)
         if mode == ContextMode.WORK:
-            return self.memory_service.list_context_memory(user_id, scope="work", limit=6)
+            return _dedupe_memory_cards(
+                [
+                    *account_cards,
+                    *self.memory_service.list_context_memory(user_id, scope="work", limit=6),
+                ]
+            )
         return []
 
     def _generate(
@@ -911,8 +918,19 @@ def _derived_job_types_for_mode(mode: str) -> list[str]:
     if mode in {"companion_1", "companion_2"}:
         return ["summary", "memory_candidate"]
     if mode == "work":
-        return ["summary"]
+        return ["summary", "memory_candidate"]
     return []
+
+
+def _dedupe_memory_cards(cards: list[MemoryCardSnapshot]) -> list[MemoryCardSnapshot]:
+    seen: set[str] = set()
+    deduped: list[MemoryCardSnapshot] = []
+    for card in cards:
+        if card.id in seen:
+            continue
+        seen.add(card.id)
+        deduped.append(card)
+    return deduped
 
 
 def _relationship_source_ids(recent_messages: list[ConversationMessage], current_agent_message_id: str) -> list[str]:
