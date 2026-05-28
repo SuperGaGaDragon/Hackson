@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 
 ## brief intro
@@ -13,6 +13,7 @@ Last Modified by: Codex
 - The `8150` rows describe the isolated Work V1 model-driven loop smoke service. It is not the public product service.
 - The `8160` rows describe the isolated Work V1 hardening smoke service with HTTP and browser release gates. It is not the public product service.
 - The `8161` rows describe the isolated Work V1 progress hardening smoke service with lifecycle events and bounded retry. It is not the public product service.
+- The `8162` rows describe the isolated Work V1 Delegate tolerance smoke service. It is not the public product service.
 
 ## current environment
 | Item | Value |
@@ -69,6 +70,13 @@ Last Modified by: Codex
 | Work V1 progress hardening backend bind | `127.0.0.1:8161` |
 | Work V1 progress hardening database | `hackson_work_v1_progress_8161` |
 | Work V1 progress hardening model provider | `codex_cli` through target-machine Codex CLI |
+| Work V1 Delegate tolerance source path | `~/hackson_work_v1_delegate_8162` |
+| Work V1 Delegate tolerance backend path | `~/hackson_work_v1_delegate_8162/backend` |
+| Work V1 Delegate tolerance frontend build path | `~/hackson_work_v1_delegate_8162/frontend/dist` |
+| Work V1 Delegate tolerance service | `hackson-work-v1-delegate-8162.service`, user-level systemd, active |
+| Work V1 Delegate tolerance backend bind | `127.0.0.1:8162` |
+| Work V1 Delegate tolerance database | `hackson_work_v1_delegate_8162` |
+| Work V1 Delegate tolerance model provider | `codex_cli` through target-machine Codex CLI |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -85,6 +93,7 @@ Last Modified by: Codex
 | 8150 | Hackson Work V1 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-8150.service` | Isolated verification for Work V1 model-selected tool loop, Product/Artifact lineage, retryable pause, and resume |
 | 8160 | Hackson Work V1 hardening smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-8160.service` | Isolated verification for Work V1 HTTP full smoke, browser UI smoke, and final Product/Artifact lineage |
 | 8161 | Hackson Work V1 progress hardening FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-progress-8161.service` | Isolated verification for Work V1 lifecycle events, bounded retry, Activity UI, and failed-window cleanup |
+| 8162 | Hackson Work V1 Delegate tolerance FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-delegate-8162.service` | Isolated verification for tolerant Delegate result ingestion, unstructured prose Artifact persistence, full smoke, HTTP smoke, and browser smoke |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
@@ -98,6 +107,7 @@ Last Modified by: Codex
 - On 2026-05-27, the Work V1 hardening build was promoted to public `8145` after target public-directory tests passed. Public health and static frontend checks passed, deterministic Work V1 full smoke and authenticated HTTP full smoke passed, and a real public browser-triggered Codex Mission entered `paused_retryable model_timeout` with persisted plan/product events and no orphan `codex exec` process.
 - On 2026-05-27, `8161` was introduced as the isolated Work V1 progress hardening service. It added safe lifecycle events, bounded automatic retry before `paused_retryable`, failed-window cleanup for delegate provider errors, and a compact Work UI activity strip. Target tests, frontend build, full smoke, HTTP smoke, browser smoke, health, and static React checks passed.
 - On 2026-05-27, the Work V1 progress hardening build was promoted to public `8145`. Public-directory Work Mode `52`, model_runtime `24`, interactions `21`, frontend build, deterministic full smoke, and HTTP smoke passed before restart. After restart, `https://hackson.catachess.com/health` and `/` returned `200`, assets `index-HYSRYan8.js` and `index-cInveBCH.css` were served, and real Codex Mission `6a17a145f01aad81f13bca71` completed with lifecycle events around each tool call.
+- On 2026-05-28, `8162` was introduced as the isolated Work V1 Delegate tolerance service. It fixes the public Mission `6a17a659f01aad81f13bca8a` failure mode where a Delegate window returned useful writing but missed the strict JSON wrapper. Target Work Mode `55`, model_runtime `24`, interactions `21`, frontend build, full smoke, HTTP smoke, Delegate unstructured-prose HTTP regression, browser smoke, health, and static React checks passed.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
