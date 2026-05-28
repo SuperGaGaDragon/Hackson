@@ -10,24 +10,27 @@ import { sortByCreatedAt } from "./eventDisplay";
 function ProductPanel({ artifacts = [], products = [] }) {
   const viewModel = useMemo(() => buildProductView(products, artifacts), [products, artifacts]);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedArtifactId, setSelectedArtifactId] = useState("all");
   const activeProduct =
     viewModel.products.find((product) => product.id === selectedProductId) ||
     viewModel.finalProduct ||
     viewModel.products[0] ||
     null;
   const productArtifacts = activeProduct?.artifacts || [];
-  const finalArtifact = activeProduct?.latestArtifact || productArtifacts[productArtifacts.length - 1] || null;
-  const renderStack = activeProduct?.status !== "final" && productArtifacts.length > 1;
-  const title = activeProduct?.title || finalArtifact?.title || "Product";
+  const selectedArtifact =
+    selectedArtifactId === "all" ? null : productArtifacts.find((artifact) => artifact.id === selectedArtifactId) || null;
+  const representativeArtifact = activeProduct?.latestArtifact || productArtifacts[productArtifacts.length - 1] || null;
+  const readerArtifacts = selectedArtifact ? [selectedArtifact] : productArtifacts;
+  const title = activeProduct?.title || representativeArtifact?.title || "Product";
 
   return (
     <div className="work-card product-panel">
       <div className="card-head">
         <p className="eyebrow">Product</p>
-        <span>{activeProduct?.status || finalArtifact?.kind || "empty"}</span>
+        <span>{activeProduct?.status || representativeArtifact?.kind || "empty"}</span>
       </div>
-      {!activeProduct && !finalArtifact && <p className="muted">No product</p>}
-      {(activeProduct || finalArtifact) && (
+      {!activeProduct && !representativeArtifact && <p className="muted">No product</p>}
+      {(activeProduct || representativeArtifact) && (
         <div className="product-body">
           <div className="product-title-row">
             <div>
@@ -42,7 +45,10 @@ function ProductPanel({ artifacts = [], products = [] }) {
                 <button
                   className={product.id === activeProduct?.id ? "active" : ""}
                   key={product.id}
-                  onClick={() => setSelectedProductId(product.id)}
+                  onClick={() => {
+                    setSelectedProductId(product.id);
+                    setSelectedArtifactId("all");
+                  }}
                   type="button"
                 >
                   <span>{product.title}</span>
@@ -53,24 +59,39 @@ function ProductPanel({ artifacts = [], products = [] }) {
           )}
           {productArtifacts.length > 0 && (
             <div className="artifact-lineage" aria-label="Artifact lineage">
+              {productArtifacts.length > 1 && (
+                <button
+                  className={selectedArtifactId === "all" ? "artifact-row active" : "artifact-row"}
+                  onClick={() => setSelectedArtifactId("all")}
+                  type="button"
+                >
+                  <strong>All</strong>
+                  <small>{productArtifacts.length} artifacts</small>
+                </button>
+              )}
               {productArtifacts.map((artifact) => (
-                <span className="artifact-row" key={artifact.id}>
+                <button
+                  className={artifact.id === selectedArtifactId ? "artifact-row active" : "artifact-row"}
+                  key={artifact.id}
+                  onClick={() => setSelectedArtifactId(artifact.id)}
+                  type="button"
+                >
                   <strong>{artifact.title}</strong>
                   <small>{artifact.kind}</small>
-                </span>
+                </button>
               ))}
             </div>
           )}
           <div className="artifact-content">
-            {renderStack ? (
-              productArtifacts.map((artifact) => (
+            {readerArtifacts.length > 0 ? (
+              readerArtifacts.map((artifact) => (
                 <section className="artifact-section" key={artifact.id}>
                   <h3>{artifact.title}</h3>
                   <p>{artifact.content || artifact.metadata?.summary || ""}</p>
                 </section>
               ))
             ) : (
-              <p>{finalArtifact?.content || activeProduct?.summary || "No product"}</p>
+              <p>{activeProduct?.summary || "No product"}</p>
             )}
           </div>
         </div>

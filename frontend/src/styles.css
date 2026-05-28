@@ -1443,6 +1443,15 @@ input:disabled {
   background: #102320;
 }
 
+.artifact-row {
+  text-align: left;
+}
+
+.artifact-row.active {
+  border-color: rgba(57, 208, 196, 0.58);
+  background: #102320;
+}
+
 .product-tabs span,
 .product-tabs small,
 .artifact-row strong,

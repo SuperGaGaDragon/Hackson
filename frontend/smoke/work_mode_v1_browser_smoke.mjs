@@ -78,7 +78,28 @@ async function main() {
   await firstWindow.locator("summary").click();
 
   const productText = await page.locator(".artifact-content").innerText();
-  const cjkCount = (productText.match(/[\u4e00-\u9fff]/g) || []).length;
+  for (const expectedProductSection of ["故事大纲", "第一章草稿", "第二章草稿", "最终成稿"]) {
+    if (!productText.includes(expectedProductSection)) {
+      throw new Error(`product_reader_missing_section:${expectedProductSection}`);
+    }
+  }
+  await page.getByRole("button", { name: /故事大纲/ }).click();
+  const outlineOnlyText = await page.locator(".artifact-content").innerText();
+  if (!outlineOnlyText.includes("故事大纲") || outlineOnlyText.includes("最终成稿")) {
+    throw new Error("artifact_single_select_failed");
+  }
+  await page.getByRole("button", { name: /最终成稿/ }).click();
+  const finalOnlyText = await page.locator(".artifact-content").innerText();
+  const finalOnlyCjk = (finalOnlyText.match(/[\u4e00-\u9fff]/g) || []).length;
+  if (!finalOnlyText.includes("最终成稿") || finalOnlyCjk < 8000) {
+    throw new Error(`final_artifact_too_short:${finalOnlyCjk}`);
+  }
+  await page.getByRole("button", { name: /All/ }).click();
+  const restoredProductText = await page.locator(".artifact-content").innerText();
+  if (!restoredProductText.includes("故事大纲") || !restoredProductText.includes("最终成稿")) {
+    throw new Error("artifact_all_restore_failed");
+  }
+  const cjkCount = (restoredProductText.match(/[\u4e00-\u9fff]/g) || []).length;
   if (cjkCount < 8000) {
     throw new Error(`final_product_too_short:${cjkCount}`);
   }
