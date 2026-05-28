@@ -33,6 +33,7 @@ Lst Modified by: Codex
 |-ProductPanel.jsx product and artifact reader
 |-RawLogPanel.jsx collapsed diagnostics event panel
 |-InspectorPanel.jsx status and lead Agent inspector
+|-eventDisplay.js shared Work event display labels, icons, time formatting, and sorting helpers
 
 ## 代办
 - Add ApprovalCard when backend approvals are implemented.

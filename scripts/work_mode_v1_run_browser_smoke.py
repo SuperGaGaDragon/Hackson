@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
 SCREENSHOT = ROOT / "scripts" / "artifacts" / "work_mode_v1_browser_smoke.png"
+MOBILE_SCREENSHOT = ROOT / "scripts" / "artifacts" / "work_mode_v1_browser_smoke_mobile.png"
 BACKEND_PORT = int(os.getenv("HACKSON_SMOKE_BACKEND_PORT", "9127"))
 FRONTEND_PORT = int(os.getenv("HACKSON_SMOKE_FRONTEND_PORT", "5127"))
 
@@ -63,6 +64,7 @@ def main() -> None:
                 **os.environ,
                 "HACKSON_SMOKE_FRONTEND_URL": f"http://127.0.0.1:{FRONTEND_PORT}",
                 "HACKSON_SMOKE_SCREENSHOT": str(SCREENSHOT),
+                "HACKSON_SMOKE_MOBILE_SCREENSHOT": str(MOBILE_SCREENSHOT),
             },
         )
     finally:

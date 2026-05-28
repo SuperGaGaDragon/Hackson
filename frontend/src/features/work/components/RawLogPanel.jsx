@@ -1,20 +1,26 @@
 /*
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
+import { formatEventTime } from "./eventDisplay";
+
 function RawLogPanel({ events }) {
-  const logs = events.filter((event) => event.type === "RAW_LOG");
   return (
-    <div className="raw-log-panel">
-      <div className="card-head">
-        <p className="eyebrow">Logs</p>
-        <span>{logs.length}</span>
-      </div>
-      <pre>{logs.map((event) => `[${event.sequence}] ${event.payload?.text || event.message}`).join("\n") || "No logs"}</pre>
-    </div>
+    <details className="raw-log-panel">
+      <summary>
+        <p className="eyebrow">Diagnostics</p>
+        <span>{events.length}</span>
+      </summary>
+      <pre>{events.map(formatDiagnosticEvent).join("\n\n") || "No events"}</pre>
+    </details>
   );
+}
+
+function formatDiagnosticEvent(event) {
+  const payload = Object.keys(event.payload || {}).length > 0 ? `\n${JSON.stringify(event.payload, null, 2)}` : "";
+  return `[${event.sequence}] ${formatEventTime(event)} ${event.type} ${event.title || ""}\n${event.message || ""}${payload}`;
 }
 
 export default RawLogPanel;

@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 :root {
@@ -1213,6 +1213,10 @@ input:disabled {
   font-size: 12px;
 }
 
+.activity-strip small {
+  white-space: nowrap;
+}
+
 .progress-row,
 .window-row {
   min-width: 0;
@@ -1223,10 +1227,10 @@ input:disabled {
 
 .progress-row {
   display: grid;
-  grid-template-columns: 12px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: 10px;
-  align-items: start;
-  padding: 9px;
+  align-items: center;
+  padding: 8px 9px;
 }
 
 .window-row summary {
@@ -1244,6 +1248,19 @@ input:disabled {
 
 .window-row[open] summary svg {
   transform: rotate(90deg);
+}
+
+.window-row.status-completed {
+  border-color: rgba(155, 229, 143, 0.28);
+}
+
+.window-row.status-running {
+  border-color: rgba(57, 208, 196, 0.38);
+}
+
+.window-row.status-blocked,
+.window-row.status-failed {
+  border-color: rgba(255, 158, 158, 0.4);
 }
 
 .window-row strong,
@@ -1280,12 +1297,80 @@ input:disabled {
   white-space: pre-wrap;
 }
 
-.progress-dot {
-  width: 9px;
-  height: 9px;
-  margin-top: 5px;
+.event-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #303941;
+  border-radius: 8px;
+  color: var(--teal);
+}
+
+.event-model .event-icon svg {
+  animation: soft-spin 1.2s linear infinite;
+}
+
+.event-plan .event-icon {
+  color: var(--violet);
+}
+
+.event-decision .event-icon,
+.event-window .event-icon {
+  color: var(--teal);
+}
+
+.event-product .event-icon {
+  color: var(--amber);
+}
+
+.event-done .event-icon {
+  color: var(--green);
+}
+
+.event-retry .event-icon,
+.event-danger .event-icon {
+  color: var(--amber);
+}
+
+.event-danger {
+  border-color: rgba(255, 158, 158, 0.42);
+}
+
+.progress-copy {
+  min-width: 0;
+}
+
+.progress-copy span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.progress-copy strong,
+.progress-copy em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.progress-copy em {
+  border: 1px solid #303941;
   border-radius: 999px;
-  background: var(--teal);
+  padding: 2px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.event-meta {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  min-width: 72px;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .progress-row p,
@@ -1302,9 +1387,98 @@ input:disabled {
   white-space: pre-wrap;
 }
 
-.progress-row small {
+.artifact-content p {
+  margin: 0;
+}
+
+.product-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-title-row h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.final-pill {
+  border: 1px solid rgba(155, 229, 143, 0.45);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: var(--green);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.product-tabs,
+.artifact-lineage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.product-tabs button,
+.artifact-row {
+  min-width: 0;
+  border: 1px solid #303941;
+  border-radius: 8px;
+  background: #0c1115;
+  color: var(--text);
+}
+
+.product-tabs button {
+  display: grid;
+  gap: 2px;
+  max-width: 220px;
+  padding: 7px 9px;
+  text-align: left;
+}
+
+.product-tabs button.active {
+  border-color: rgba(57, 208, 196, 0.58);
+  background: #102320;
+}
+
+.product-tabs span,
+.product-tabs small,
+.artifact-row strong,
+.artifact-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.product-tabs small,
+.artifact-row small {
   color: var(--muted);
   font-size: 11px;
+}
+
+.artifact-row {
+  display: grid;
+  gap: 2px;
+  max-width: 240px;
+  padding: 7px 9px;
+}
+
+.artifact-section {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid #263039;
+}
+
+.artifact-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.artifact-section h3 {
+  margin: 0;
+  font-size: 15px;
 }
 
 @keyframes soft-spin {
@@ -1355,6 +1529,28 @@ input:disabled {
   font-size: 12px;
   line-height: 1.45;
   white-space: pre-wrap;
+}
+
+.raw-log-panel {
+  padding: 0;
+}
+
+.raw-log-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.raw-log-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.raw-log-panel pre {
+  margin: 0 12px 12px;
 }
 
 @media (max-width: 1120px) {
@@ -1414,7 +1610,7 @@ input:disabled {
   }
 
   .sidebar {
-    position: sticky;
+    position: static;
     top: 0;
     z-index: 10;
     flex-direction: row;
@@ -1499,6 +1695,29 @@ input:disabled {
   }
 
   .mission-head {
+    flex-direction: column;
+  }
+
+  .activity-strip,
+  .progress-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .activity-strip small,
+  .event-meta {
+    grid-column: 2;
+    justify-items: start;
+  }
+
+  .window-row summary {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+
+  .window-row summary em {
+    grid-column: 2;
+  }
+
+  .product-title-row {
     flex-direction: column;
   }
 }

@@ -1,10 +1,11 @@
 /*
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 import { ChevronRight } from "lucide-react";
+import { formatEventTime } from "./eventDisplay";
 
 function WorkWindowPanel({ artifacts = [], workWindows = [] }) {
   const artifactById = new Map(artifacts.map((artifact) => [artifact.id, artifact]));
@@ -20,18 +21,24 @@ function WorkWindowPanel({ artifacts = [], workWindows = [] }) {
         {workWindows.map((window) => {
           const artifact = artifactById.get(window.resultArtifactId);
           return (
-            <details className="window-row" key={window.id}>
+            <details className={`window-row status-${window.status}`} key={window.id}>
               <summary>
                 <ChevronRight size={15} />
                 <span>
                   <strong>{window.title}</strong>
-                  <small>{window.agentSlot}</small>
+                  <small>
+                    {window.agentSlot}
+                    {artifact ? ` / ${artifact.title}` : ""}
+                  </small>
                 </span>
-                <em>{window.status}</em>
+                <em>
+                  {window.status}
+                  {formatEventTime(window) ? ` / ${formatEventTime(window)}` : ""}
+                </em>
               </summary>
               <p>{window.brief}</p>
               {window.summary && <p>{window.summary}</p>}
-              {artifact && <pre>{artifact.content}</pre>}
+              {artifact && <pre className="window-artifact-preview">{artifact.content}</pre>}
             </details>
           );
         })}

@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 import { useEffect, useMemo, useState } from "react";
@@ -23,7 +23,6 @@ import ProductPanel from "./components/ProductPanel";
 import ProgressTimeline from "./components/ProgressTimeline";
 import ProjectMissionRail from "./components/ProjectMissionRail";
 import RawLogPanel from "./components/RawLogPanel";
-import SummaryCard from "./components/SummaryCard";
 import WarningCard from "./components/WarningCard";
 import WorkWindowPanel from "./components/WorkWindowPanel";
 import WorkspaceView from "./components/WorkspaceView";
@@ -291,10 +290,9 @@ function WorkPage({ agents = [] }) {
         <MissionHeader busy={busy || loading} mission={selectedMission} onStart={start} onStop={stop} />
         <div className="mission-content">
           <ActivityStrip events={events} mission={selectedMission} />
-          <ProgressTimeline events={events} />
           <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
-          <SummaryCard events={events} />
           <ProductPanel artifacts={artifacts} products={products} />
+          <ProgressTimeline events={events} />
           <RawLogPanel events={events} />
         </div>
       </section>

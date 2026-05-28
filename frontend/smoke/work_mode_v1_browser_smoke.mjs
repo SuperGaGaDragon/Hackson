@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 
@@ -9,6 +9,8 @@ import { chromium } from "playwright";
 
 const frontendUrl = process.env.HACKSON_SMOKE_FRONTEND_URL || "http://127.0.0.1:4173";
 const screenshotPath = process.env.HACKSON_SMOKE_SCREENSHOT || "../scripts/artifacts/work_mode_v1_browser_smoke.png";
+const mobileScreenshotPath =
+  process.env.HACKSON_SMOKE_MOBILE_SCREENSHOT || "../scripts/artifacts/work_mode_v1_browser_smoke_mobile.png";
 
 async function main() {
   const browser = await chromium.launch();
@@ -30,6 +32,7 @@ async function main() {
   await page.locator(".activity-strip").waitFor();
   await assertVisible(page, "Windows");
   await assertVisible(page, "Product");
+  await assertVisible(page, "Diagnostics");
   await assertVisible(page, "8000字小说计划");
   await assertVisible(page, "第一章草稿");
   await assertVisible(page, "第二章草稿");
@@ -41,6 +44,30 @@ async function main() {
   if (windowCount < 2) {
     throw new Error(`expected_at_least_two_windows:${windowCount}`);
   }
+  const missionOrder = await page.locator(".mission-content > *").evaluateAll((nodes) =>
+    nodes.map((node) => {
+      if (node.classList.contains("activity-strip")) return "activity";
+      if (node.classList.contains("window-panel")) return "windows";
+      if (node.classList.contains("product-panel")) return "product";
+      if (node.classList.contains("timeline-card")) return "progress";
+      if (node.classList.contains("raw-log-panel")) return "diagnostics";
+      return "unknown";
+    }),
+  );
+  const expectedOrder = ["activity", "windows", "product", "progress", "diagnostics"];
+  if (expectedOrder.some((item, index) => missionOrder[index] !== item)) {
+    throw new Error(`mission_order_invalid:${missionOrder.join(",")}`);
+  }
+  const diagnosticOpen = await page.locator(".raw-log-panel").evaluate((node) => node.open);
+  if (diagnosticOpen) {
+    throw new Error("diagnostics_should_be_collapsed_by_default");
+  }
+  const lineageCount = await page.locator(".artifact-row").count();
+  if (lineageCount < 3) {
+    throw new Error(`expected_artifact_lineage:${lineageCount}`);
+  }
+  await page.locator(".event-time").first().waitFor();
+
   const firstWindow = windows.first();
   const isOpenBefore = await firstWindow.evaluate((node) => node.open);
   if (isOpenBefore) {
@@ -48,6 +75,7 @@ async function main() {
   }
   await firstWindow.locator("summary").click();
   await assertVisible(page, "雨夜车站里");
+  await firstWindow.locator("summary").click();
 
   const productText = await page.locator(".artifact-content").innerText();
   const cjkCount = (productText.match(/[\u4e00-\u9fff]/g) || []).length;
@@ -56,8 +84,19 @@ async function main() {
   }
 
   await page.screenshot({ path: screenshotPath, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator(".product-panel").scrollIntoViewIfNeeded();
+  const hasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  );
+  if (hasHorizontalOverflow) {
+    throw new Error("mobile_horizontal_overflow");
+  }
+  await page.screenshot({ path: mobileScreenshotPath, fullPage: true });
   await browser.close();
-  console.log(`work_mode_v1_browser_smoke=ok windows=${windowCount} final_cjk=${cjkCount} screenshot=${screenshotPath}`);
+  console.log(
+    `work_mode_v1_browser_smoke=ok windows=${windowCount} final_cjk=${cjkCount} screenshot=${screenshotPath} mobile=${mobileScreenshotPath}`,
+  );
 }
 
 async function register(page) {
