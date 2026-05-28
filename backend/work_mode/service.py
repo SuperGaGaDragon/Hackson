@@ -485,7 +485,16 @@ class WorkModeService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="work_window_not_found")
         return public_work_window(window)
 
-    def mark_mission_completed(self, user_id: str, mission_id: str, run_id: str, step_id: str | None) -> None:
+    def mark_mission_completed(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        step_id: str | None,
+        final_product_ids: list[str] | None = None,
+        final_artifact_ids: list[str] | None = None,
+        summary: str | None = None,
+    ) -> None:
         timestamp = now_utc()
         mission = self._update_mission(
             user_id,
@@ -500,8 +509,13 @@ class WorkModeService:
             step={"_id": step_id} if step_id else None,
             event_type="MISSION_COMPLETED",
             title="Done",
-            message="Mission completed.",
-            payload={"status": "completed", "employee": _employee_payload(mission)},
+            message=summary or "Mission completed.",
+            payload={
+                "status": "completed",
+                "finalProductIds": final_product_ids or [],
+                "finalArtifactIds": final_artifact_ids or [],
+                "employee": _employee_payload(mission),
+            },
         )
 
     def mark_product_final(self, user_id: str, product_id: str) -> dict[str, Any]:
@@ -513,6 +527,14 @@ class WorkModeService:
         if product is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="product_not_found")
         return public_product(product)
+
+    def require_artifact(self, user_id: str, mission_id: str, artifact_id: str) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        artifacts = self.repository.list_artifacts(user_id, mission_id, limit=500)
+        artifact = next((row for row in artifacts if str(row["_id"]) == artifact_id), None)
+        if artifact is None or str(artifact["mission_id"]) != str(mission["_id"]):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="artifact_not_found")
+        return public_artifact(artifact)
 
     def mark_mission_waiting_input(
         self,

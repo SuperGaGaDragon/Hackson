@@ -14,6 +14,11 @@ Lst Modified by: Codex
 ## folder structure
 |-README.md scripts folder guide
 |-work_mode_v1_full_smoke.py deterministic Work Mode V1 full acceptance smoke
+|-work_mode_v1_http_smoke.py deterministic Work Mode V1 authenticated HTTP smoke
+|-work_mode_v1_run_browser_smoke.py local browser smoke orchestrator
+|-work_mode_v1_smoke_helpers.py shared deterministic smoke model clients and assertions
+|-work_mode_v1_smoke_server.py isolated FastAPI app for browser smoke
+|-artifacts/ generated smoke artifacts folder
 
 ## 代办
-- Add target-machine smoke wrappers only after local full smoke is stable.
+- Add target-machine smoke wrappers only when they can run without stopping existing services.

@@ -405,9 +405,24 @@ class WorkModeToolExecutor:
         arguments: FinishMissionArguments,
     ) -> ToolExecutionResult:
         mission = self.service._require_mission(user_id, mission_id)
+        final_products = []
+        for product_id in arguments.final_product_ids:
+            final_products.append(self.service.repository.find_product(product_id, user_id))
+        if any(product is None or str(product["mission_id"]) != str(mission["_id"]) for product in final_products):
+            raise _http_not_found("product_not_found")
+        for artifact_id in arguments.final_artifact_ids:
+            self.service.require_artifact(user_id, mission_id, artifact_id)
         for product_id in arguments.final_product_ids:
             self.service.mark_product_final(user_id, product_id)
-        self.service.mark_mission_completed(user_id, mission_id, run_id, step_id=None)
+        self.service.mark_mission_completed(
+            user_id,
+            mission_id,
+            run_id,
+            step_id=None,
+            final_product_ids=arguments.final_product_ids,
+            final_artifact_ids=arguments.final_artifact_ids,
+            summary=arguments.summary,
+        )
         return ToolExecutionResult(
             {
                 "tool": "finish_mission",
@@ -456,6 +471,12 @@ def _employee_payload(mission: dict[str, Any]) -> dict[str, str]:
         "name": mission.get("lead_employee_name", "Lead"),
         "role": mission.get("lead_employee_role", "Mission lead"),
     }
+
+
+def _http_not_found(detail: str):
+    from fastapi import HTTPException, status
+
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
 def _delegate_agent_payload(agent_slot: str) -> dict[str, str]:

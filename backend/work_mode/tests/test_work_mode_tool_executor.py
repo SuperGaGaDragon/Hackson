@@ -211,6 +211,93 @@ class WorkModeToolExecutorTest(TestCase):
         detail = self.service.get_mission_detail("user_1", mission["id"])
         self.assertEqual(detail["mission"]["status"], "running")
 
+    def test_finish_mission_rejects_missing_final_artifact(self) -> None:
+        mission, run_id = self._started_agent_mission()
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="雨夜车站",
+            summary="长篇小说。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.executor.execute(
+                "user_1",
+                mission["id"],
+                run_id,
+                parse_tool_action(
+                    f"""
+                    {{
+                      "tool": "finish_mission",
+                      "arguments": {{
+                        "reason": "错误完成。",
+                        "summary": "Artifact 不存在。",
+                        "finalProductIds": ["{product["id"]}"],
+                        "finalArtifactIds": ["missing_artifact"]
+                      }}
+                    }}
+                    """
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 404)
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        self.assertEqual(detail["mission"]["status"], "running")
+        self.assertEqual(detail["products"][0]["status"], "active")
+
+    def test_finish_mission_event_records_final_lineage(self) -> None:
+        mission, run_id = self._started_agent_mission()
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="雨夜车站",
+            summary="长篇小说。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="final",
+            title="最终成稿",
+            content="雨夜车站最终成稿。",
+            summary="最终成稿完成。",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+
+        result = self.executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "finish_mission",
+                  "arguments": {{
+                    "reason": "最终成稿已完成。",
+                    "summary": "完成。",
+                    "finalProductIds": ["{product["id"]}"],
+                    "finalArtifactIds": ["{artifact["id"]}"]
+                  }}
+                }}
+                """
+            ),
+        )
+
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        completed_event = detail["events"][-1]
+
+        self.assertTrue(result.terminal)
+        self.assertEqual(detail["mission"]["status"], "completed")
+        self.assertEqual(detail["products"][0]["status"], "final")
+        self.assertEqual(completed_event["type"], "MISSION_COMPLETED")
+        self.assertEqual(completed_event["payload"]["finalProductIds"], [product["id"]])
+        self.assertEqual(completed_event["payload"]["finalArtifactIds"], [artifact["id"]])
+
     def _started_agent_mission(self) -> tuple[dict, str]:
         project = self.service.create_project("user_1", ProjectCreateRequest(name="Novel"))
         mission = self.service.create_mission(

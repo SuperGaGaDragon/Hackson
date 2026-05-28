@@ -74,3 +74,13 @@ The count SHOULD exclude metadata, titles, plan text, and event messages. It sho
 ## Acceptance
 
 No V1.0 release can be called product-ready until this smoke passes on the target machine or a user-approved equivalent target environment.
+
+## Product-Ready Smoke Layers
+
+The smoke suite has three layers:
+
+- In-process deterministic smoke: proves the MissionLoopRunner, ToolExecutor, Products, Artifacts, and Windows contract without network or provider cost.
+- HTTP deterministic smoke: proves the public authenticated API, database persistence, background runner override, and response shapes.
+- Browser smoke: proves the fixed React UI renders the same persisted Mission state as Timeline, Windows, Product, and terminal status.
+
+The in-process smoke is useful for local debugging, but it is not sufficient for release. Product-ready status requires HTTP and browser smoke on the target machine or a user-approved equivalent target environment.

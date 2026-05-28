@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-27
 Last Modified by: Codex
 
 ## brief intro
@@ -28,6 +28,7 @@ Last Modified by: Codex
 |-vite.config.js Vite React configuration
 |-src/ React source folder
 |-public/ static public assets folder
+|-smoke/ frontend browser smoke scripts
 
 ## 代办
 - Add Agent editing only after verified Agent APIs exist.

@@ -272,7 +272,26 @@ Exit criteria:
 - Browser smoke passes.
 - `api.md` records only verified endpoints and port facts.
 
-## 13. Recommended Test Commands
+## 13. Loop 11: Product-Ready Hardening
+
+V1.0 is not product-ready until the release gate is verified through public HTTP and the fixed React UI, not only in-process fake clients.
+
+Required hardening:
+
+- `finish_mission` completion events MUST include final Product and Artifact ids.
+- `finish_mission` MUST reject final Artifact ids that do not exist or do not belong to the current Mission.
+- The full 8000 CJK smoke MUST be runnable against a live HTTP server with authenticated API calls.
+- Browser smoke MUST prove Timeline, Work Windows, Product Panel, and terminal status are visible.
+- Browser smoke MUST verify delegate windows are collapsed by default and expandable.
+
+Exit criteria:
+
+- Backend unit tests cover final Product and Artifact lineage.
+- HTTP full smoke passes locally.
+- Browser UI smoke passes locally.
+- Target-machine HTTP and browser smoke pass on a new port before any promotion.
+
+## 14. Recommended Test Commands
 
 Backend scoped:
 
