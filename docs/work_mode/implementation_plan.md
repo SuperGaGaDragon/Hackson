@@ -299,7 +299,121 @@ Exit criteria:
 - Browser UI smoke passes locally.
 - Target-machine HTTP and browser smoke pass on a new port before any promotion.
 
-## 14. Recommended Test Commands
+## 14. Loop 12: V1.0.1 Progress Details And Create Modal
+
+Implement the lowest-risk quality-track UI improvements first.
+
+Required behavior:
+
+- Progress rows expand inline with bounded structured details.
+- Only one Progress row is expanded at a time unless a later UX decision changes this.
+- Product event details link to Product Panel for full content.
+- Plan event details show steps.
+- Selected Project rail no longer shows permanent Mission title/goal creation fields.
+- `New Mission` opens a modal or drawer and closes after successful creation.
+
+Required tests/build:
+
+```bash
+npm --prefix frontend run build
+```
+
+Browser checks:
+
+- Expand a plan row and see plan steps.
+- Expand a Product row and see Product/Artifact metadata plus bounded excerpt.
+- Confirm full long-form content remains in Product Panel.
+- Confirm completed Mission rail does not show permanent create inputs.
+- Create a Mission through `New Mission`.
+
+Exit criteria:
+
+- UI is quieter during completed Mission reading.
+- Progress is still useful as an audit trail with accessible detail.
+
+## 15. Loop 13: V1.0.2 Deterministic Product Checks
+
+Add product-quality checks before model review tools.
+
+Required checks:
+
+- Final Artifact CJK character count meets the configured full-smoke minimum.
+- Final Product ids exist and belong to the Mission.
+- Final Artifact ids exist and belong to the Mission.
+- At least one outline Artifact exists for long-form writing smoke.
+- At least one chapter/draft Artifact exists.
+- Final Artifact is not outline-only.
+- Product API exposes lineage needed by the UI.
+
+Required tests:
+
+- Passing full smoke Product passes all checks.
+- Too-short final Artifact fails.
+- Missing final Product reference fails.
+- Missing final Artifact reference fails.
+- Outline-only final fails.
+- Product lineage response includes all relevant Artifacts.
+
+Exit criteria:
+
+- Full smoke has deterministic failure reasons before any model-visible review tool is added.
+
+## 16. Loop 14: V1.0.3 Review And Discussion Tools
+
+Add model-visible quality workflow tools after deterministic checks are stable.
+
+Required backend behavior:
+
+- `review_product` validates Product/Artifact refs.
+- `review_product` persists a Review Artifact.
+- `review_product` emits `PRODUCT_REVIEWED`.
+- `discuss_with_delegate` validates non-lead Agent and source binding.
+- `discuss_with_delegate` creates a Discussion Window.
+- `discuss_with_delegate` persists a Discussion Artifact.
+- Review and Discussion tools do not modify Product content and do not finish Mission.
+
+Required UI behavior:
+
+- Review rows appear in Progress and Product lineage.
+- Discussion Windows appear in the Windows surface with distinct type/copy.
+- Discussion transcript summary and recommendation are expandable.
+
+Required tests:
+
+- Review Artifact creation.
+- Discussion Artifact creation.
+- Invalid cross-Mission Artifact refs rejected.
+- Discussion max turn bound enforced.
+- Neither tool mutates source Artifact content.
+
+Exit criteria:
+
+- A smoke Mission can review a Product, discuss a prior Artifact with the Delegate, then let the Lead choose the next tool.
+
+## 17. Loop 15: V1.0.4 Revision Lineage
+
+Add revision history after review/discussion Artifacts are stable.
+
+Required behavior:
+
+- `work_product.operation=revise_artifact` creates a new immutable Revision Artifact.
+- Revision metadata links source Artifact ids.
+- Revision metadata links Review and Discussion Artifact ids when provided.
+- Product reader keeps original, review, discussion, revision, and final Artifacts accessible.
+- Progress rows show change summary and linked source/review/discussion Artifacts.
+
+Required tests:
+
+- Original Artifact content remains unchanged after revision.
+- Revision Artifact references original source.
+- Final Product can reference revised/final Artifact explicitly.
+- Product reader API returns enough lineage for UI grouping.
+
+Exit criteria:
+
+- Users can understand what changed, why it changed, and which version entered the final Product.
+
+## 18. Recommended Test Commands
 
 Backend scoped:
 
@@ -322,7 +436,7 @@ Frontend:
 npm --prefix frontend run build
 ```
 
-## 14. Rollback
+## 19. Rollback
 
 Rollback should preserve:
 
@@ -337,6 +451,6 @@ If V1.0 loop is unstable:
 - Fall back to V0.5 single-call worker only as emergency compatibility.
 - Do not delete Products, Windows, or Artifacts created during testing.
 
-## 15. 代办
+## 20. 代办
 
 - Add concrete issue tracker tickets after this document is accepted.

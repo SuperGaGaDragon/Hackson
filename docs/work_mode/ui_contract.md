@@ -122,6 +122,18 @@ Timeline rows MUST show local clock time when `createdAt` exists. Sequence numbe
 
 Repeated heartbeat events MUST render compactly and MUST NOT dominate the Mission Console.
 
+Progress row expansion:
+
+- Rows expand inline, not as raw log modals.
+- One expanded row at a time is preferred.
+- Expanded details MUST be bounded and structured.
+- Plan rows show plan steps.
+- Product rows show Product id, Artifact id, kind, summary, bounded excerpt, and Product link.
+- Window rows show brief, expected output, target Product, source Artifacts, result summary, and linked Artifact.
+- Review rows show verdict, score, findings summary, and Review Artifact link.
+- Discussion rows show participants, linked Product/Artifact/Window, transcript summary, recommendation, and Discussion Artifact link.
+- Full long-form Product content MUST remain in Product Panel.
+
 ## 7. Diagnostics
 
 Diagnostics is the engineering/debug surface.
@@ -150,6 +162,25 @@ Control Panel MUST show:
 
 V1.0 text-only `waiting_input` MAY auto-resume after user answer, but UI still MUST show the question and answer.
 
+## 8.1 Project Rail And Mission Creation
+
+Selected Project rail default content:
+
+- Project name.
+- Back/navigation command.
+- Agent list.
+- Mission list.
+- `New Mission` command.
+
+Mission creation form:
+
+- MUST NOT stay permanently visible after a Mission is selected.
+- MUST open from `New Mission` as a modal or drawer.
+- MUST close after successful Mission creation.
+- SHOULD preserve typed values if the modal/drawer is dismissed accidentally without creation.
+
+Completed or running Mission view SHOULD prioritize reading and process context over creating another Mission.
+
 ## 9. Collapsed Content Rules
 
 Collapsed by default:
@@ -175,10 +206,15 @@ If content exceeds display limit, UI MUST link to the Product/Artifact reader.
 | `TOOL_CALLED` | Activity + Progress | Decision/action row |
 | `PRODUCT_UPDATED` | Progress + Product Panel | Progress compact, Product full |
 | `PRODUCT_INSPECTED` | Progress | Collapsed inspected excerpt |
+| `PRODUCT_REVIEWED` | Progress + Product Panel | Review summary, Artifact linked |
 | `WORK_WINDOW_OPENED` | Progress + Work Windows | Window row created |
 | `WORK_WINDOW_COMPLETED` | Progress + Work Windows + Product Panel | Result linked |
 | `WORK_WINDOW_BLOCKED` | Progress + Work Windows | Block reason visible |
 | `WORK_WINDOW_FAILED` | Activity + Progress + Work Windows | Failed window visible |
+| `DISCUSSION_WINDOW_OPENED` | Progress + Work Windows | Discussion row created |
+| `DISCUSSION_WINDOW_COMPLETED` | Progress + Work Windows + Product Panel | Transcript summary linked |
+| `DISCUSSION_WINDOW_BLOCKED` | Progress + Work Windows | Block reason visible |
+| `DISCUSSION_WINDOW_FAILED` | Activity + Progress + Work Windows | Failed discussion visible |
 | `USER_INPUT_REQUESTED` | Progress + Control Panel | Question visible |
 | `MISSION_PAUSED_RETRYABLE` | Activity + Progress + Control Panel | Resume visible |
 | `MISSION_COMPLETED` | Activity + Progress + Product Panel | Final Product highlighted |
@@ -216,6 +252,9 @@ V1.0 browser smoke MUST verify:
 - Delegate windows are collapsed by default and expandable.
 - Product Panel shows Product list and Artifact lineage.
 - Product Panel shows final Product full content.
+- Progress plan rows can expand to show steps.
+- Progress Product rows can expand to show bounded detail without rendering full long-form content.
+- Selected Project rail hides the Mission creation form until `New Mission` is used.
 - Diagnostics is present and collapsed by default.
 - Completed Mission highlights final Product.
 - No large text overlaps controls.

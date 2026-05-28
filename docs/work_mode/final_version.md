@@ -19,6 +19,7 @@ The active execution source is this document plus:
 - `state_machine.md`
 - `context_design.md`
 - `ui_contract.md`
+- `quality_track.md`
 - `implementation_plan.md`
 - linked documents under `issues/`
 
@@ -188,6 +189,21 @@ The Mission Console MUST render Work Windows and Product before the Progress aud
 
 See `ui_contract.md`, `issues/issue3-delegate-window.md`, `issues/issue9-work-ui-information-architecture.md`, and `issues/issue10-product-reader-final-lineage.md`.
 
+### 8.1 V1.0.x Quality Track
+
+The V1.0.x quality track refines the already-working V1.0 loop before the roadmap moves to V1.1 native tool calling and V1.2 streaming.
+
+Required order:
+
+1. V1.0.1 Progress details and Mission create modal.
+2. V1.0.2 deterministic Product checks.
+3. V1.0.3 Lead review and Delegate discussion tools.
+4. V1.0.4 immutable revision lineage.
+
+The quality track MUST preserve the core rule that the model chooses tools. It adds better tools, checks, and UI surfaces; it does not hard-code a writing workflow.
+
+See `quality_track.md`, `issues/issue11-progress-details-and-create-modal.md`, `issues/issue12-review-discussion-tools.md`, and `issues/issue13-revision-lineage.md`.
+
 ## 9. Failure And Resume Strategy
 
 V1.0 distinguishes:
@@ -243,8 +259,9 @@ Engineers MUST read these documents in order:
 5. `state_machine.md`
 6. `context_design.md`
 7. `ui_contract.md`
-8. `implementation_plan.md`
-9. linked `issues/*.md`
+8. `quality_track.md`
+9. `implementation_plan.md`
+10. linked `issues/*.md`
 
 Legacy documents are optional history only.
 
@@ -262,3 +279,6 @@ Known risks:
 - Delegate result tolerance after real-model wrapper misses: `issues/issue8-delegate-result-tolerance.md`
 - Work UI hierarchy, Product lineage, and diagnostics clarity: `issues/issue9-work-ui-information-architecture.md`
 - Final Product reader hiding earlier Artifacts after Done: `issues/issue10-product-reader-final-lineage.md`
+- Progress inline details and Mission create modal: `issues/issue11-progress-details-and-create-modal.md`
+- Review and Delegate discussion tool design: `issues/issue12-review-discussion-tools.md`
+- Immutable revision lineage after review/discussion: `issues/issue13-revision-lineage.md`

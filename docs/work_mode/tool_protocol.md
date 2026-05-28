@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 # Work Mode Tool Protocol
@@ -273,7 +273,110 @@ Delegate model call MUST return structured JSON:
 
 Backend MUST persist completed delegate output as an Artifact and return a structured observation to the Lead.
 
-## 13. Invalid Turns
+## 13. V1.0.x Quality Tools
+
+These tools are planned for the V1.0.x quality track after the base V1.0 loop is stable.
+
+They MUST follow the same one-tool-per-turn rule. They MUST be visible to the model only after implementation and smoke coverage exist.
+
+### 13.1 Tool: review_product
+
+Purpose:
+
+- Let the Lead create a structured review of existing Product or Artifact content.
+
+Schema:
+
+```json
+{
+  "reason": "string",
+  "productIds": ["string"],
+  "artifactIds": ["string"],
+  "reviewTitle": "string",
+  "reviewProfile": "long_form_novel_v1|general_text_v1",
+  "verdict": "pass|needs_revision|blocked",
+  "score": 0,
+  "summary": "string",
+  "findings": [
+    {
+      "severity": "critical|major|minor",
+      "area": "requirement|structure|length|consistency|style|readability|other",
+      "claim": "string",
+      "evidence": "string",
+      "requiredChange": "string"
+    }
+  ],
+  "passedChecks": ["string"],
+  "recommendedNextTool": "work_product|discuss_with_delegate|finish_mission|ask_user|block_mission"
+}
+```
+
+Constraints:
+
+- MUST reference current Mission Products or Artifacts.
+- MUST persist a Review Artifact.
+- MUST emit `PRODUCT_REVIEWED`.
+- MUST NOT modify Product content.
+- MUST NOT mark Mission completed.
+- Findings with `critical` or `major` severity SHOULD include evidence.
+- Review content MUST be bounded by context budget; the Lead should call `inspect_product` first when needed.
+
+### 13.2 Tool: discuss_with_delegate
+
+Purpose:
+
+- Let the Lead ask the non-lead Agent a short scoped question about prior work.
+
+Schema:
+
+```json
+{
+  "reason": "string",
+  "agentSlot": "agent_1|agent_2",
+  "discussionTitle": "string",
+  "windowId": "string|null",
+  "productId": "string|null",
+  "artifactIds": ["string"],
+  "question": "string",
+  "expectedOutcome": "string",
+  "maxTurns": 1
+}
+```
+
+Constraints:
+
+- `agentSlot` MUST be the non-lead Agent.
+- Discussion MUST be bound to at least one Product, Artifact, or Work Window.
+- Default `maxTurns` SHOULD be `1`; hard maximum is `3`.
+- Discussion MUST persist a Discussion Artifact.
+- Discussion MUST create a visible Discussion Window.
+- Discussion MUST NOT modify Product content.
+- Discussion MUST NOT finish the Mission.
+- Discussion MUST NOT recursively delegate.
+
+### 13.3 Discussion Result Protocol
+
+Discussion delegate model call MUST return structured JSON:
+
+```json
+{
+  "status": "completed|blocked",
+  "title": "string",
+  "summary": "string",
+  "transcript": [
+    {
+      "speaker": "lead|delegate",
+      "content": "string"
+    }
+  ],
+  "recommendation": "string",
+  "reason": "string"
+}
+```
+
+Backend MUST persist completed discussion output as a Discussion Artifact and return a structured observation to the Lead.
+
+## 14. Invalid Turns
 
 Invalid model turns include:
 
@@ -291,6 +394,6 @@ Runtime behavior:
 - Persist invalid turn events for debugging.
 - Mark Mission `failed` after invalid retries are exhausted.
 
-## 14. 代办
+## 15. 代办
 
 - Convert schemas into backend Pydantic models before implementation.

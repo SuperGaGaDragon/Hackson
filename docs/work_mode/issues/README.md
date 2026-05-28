@@ -24,6 +24,9 @@ Lst Modified by: Codex
 |-issue8-delegate-result-tolerance.md tolerant Delegate result ingestion after public smoke failure
 |-issue9-work-ui-information-architecture.md Work UI hierarchy, Product lineage, Progress, and Diagnostics decisions
 |-issue10-product-reader-final-lineage.md final Product reader must keep all Artifacts readable after Done
+|-issue11-progress-details-and-create-modal.md Progress inline details and selected Project rail creation cleanup
+|-issue12-review-discussion-tools.md Lead review and Delegate discussion tool design
+|-issue13-revision-lineage.md immutable revision lineage after review/discussion
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

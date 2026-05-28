@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 # Work Mode State Machine
@@ -161,6 +161,8 @@ V1.0 rules:
 - Work Windows run sequentially.
 - Work Windows cannot finish the Mission.
 - Work Windows cannot open child windows.
+- V1.0.3 Discussion Windows use the same lifecycle statuses with `windowType=discussion`.
+- UI MUST distinguish delegate Work Windows from Discussion Windows by type and copy, not by a separate hidden state machine.
 
 ## 8. Product Status
 
@@ -197,6 +199,9 @@ Artifact fields SHOULD include:
 - content
 - summary
 - source artifact ids
+- review artifact ids when applicable
+- discussion artifact ids when applicable
+- change summary when applicable
 - created at
 
 Rules:
@@ -204,6 +209,8 @@ Rules:
 - Artifacts MUST NOT be overwritten.
 - Revisions create new Artifacts referencing source Artifact ids.
 - Delegate outputs MUST persist as Artifacts.
+- Review tools MUST persist Review Artifacts and MUST NOT mutate Product content.
+- Discussion tools MUST persist Discussion Artifacts and MUST NOT mutate Product content.
 
 ## 10. Event Types
 
@@ -221,10 +228,15 @@ MODEL_TURN_INVALID
 TOOL_CALLED
 PRODUCT_UPDATED
 PRODUCT_INSPECTED
+PRODUCT_REVIEWED
 WORK_WINDOW_OPENED
 WORK_WINDOW_COMPLETED
 WORK_WINDOW_BLOCKED
 WORK_WINDOW_FAILED
+DISCUSSION_WINDOW_OPENED
+DISCUSSION_WINDOW_COMPLETED
+DISCUSSION_WINDOW_BLOCKED
+DISCUSSION_WINDOW_FAILED
 USER_INPUT_REQUESTED
 USER_INPUT_RECEIVED
 MISSION_PAUSED_RETRYABLE

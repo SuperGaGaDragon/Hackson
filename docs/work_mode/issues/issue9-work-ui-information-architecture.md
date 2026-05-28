@@ -79,7 +79,7 @@ Decision:
 
 - Product Panel MUST expose Product list and Artifact lineage.
 - Product Panel MUST NOT show only the latest Artifact as if it were the entire deliverable.
-- If a final Product exists, default to the final Artifact.
+- If a final Product exists, default to an all-Artifact reader stack with the final Artifact visible in context.
 - If no final Product exists, render a draft stack that keeps every Product Artifact visible in order.
 
 ### 7. What are Logs?
