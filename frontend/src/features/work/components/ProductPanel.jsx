@@ -57,47 +57,74 @@ function ProductPanel({ artifacts = [], products = [] }) {
               ))}
             </div>
           )}
-          {productArtifacts.length > 0 && (
-            <div className="artifact-lineage" aria-label="Artifact lineage">
-              {productArtifacts.length > 1 && (
-                <button
-                  className={selectedArtifactId === "all" ? "artifact-row active" : "artifact-row"}
-                  onClick={() => setSelectedArtifactId("all")}
-                  type="button"
-                >
-                  <strong>All</strong>
-                  <small>{productArtifacts.length} artifacts</small>
-                </button>
-              )}
-              {productArtifacts.map((artifact) => (
-                <button
-                  className={artifact.id === selectedArtifactId ? "artifact-row active" : "artifact-row"}
-                  key={artifact.id}
-                  onClick={() => setSelectedArtifactId(artifact.id)}
-                  type="button"
-                >
-                  <strong>{artifact.title}</strong>
-                  <small>{artifact.kind}</small>
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="artifact-content">
-            {readerArtifacts.length > 0 ? (
-              readerArtifacts.map((artifact) => (
-                <section className="artifact-section" key={artifact.id}>
-                  <h3>{artifact.title}</h3>
-                  <p>{artifact.content || artifact.metadata?.summary || ""}</p>
-                </section>
-              ))
-            ) : (
-              <p>{activeProduct?.summary || "No product"}</p>
+          <div className="product-reader-shell">
+            {productArtifacts.length > 0 && (
+              <nav className="artifact-navigator" aria-label="Artifact lineage">
+                {productArtifacts.length > 1 && (
+                  <button
+                    className={selectedArtifactId === "all" ? "artifact-nav-row active" : "artifact-nav-row"}
+                    onClick={() => setSelectedArtifactId("all")}
+                    type="button"
+                  >
+                    <span className="artifact-nav-index">All</span>
+                    <span className="artifact-nav-copy">
+                      <strong>All artifacts</strong>
+                      <small>{productArtifacts.length} items</small>
+                    </span>
+                  </button>
+                )}
+                {productArtifacts.map((artifact, index) => (
+                  <button
+                    className={artifact.id === selectedArtifactId ? "artifact-nav-row active" : "artifact-nav-row"}
+                    key={artifact.id}
+                    onClick={() => setSelectedArtifactId(artifact.id)}
+                    type="button"
+                  >
+                    <span className="artifact-nav-index">{index + 1}</span>
+                    <span className="artifact-nav-copy">
+                      <strong>{artifact.title}</strong>
+                      <small>{artifactLabel(artifact)}</small>
+                    </span>
+                  </button>
+                ))}
+              </nav>
             )}
+            <div className="artifact-content">
+              {readerArtifacts.length > 0 ? (
+                readerArtifacts.map((artifact) => (
+                  <section className="artifact-section" key={artifact.id}>
+                    <h3>{artifact.title}</h3>
+                    <ArtifactMeta artifact={artifact} />
+                    <p>{artifact.content || artifact.metadata?.summary || ""}</p>
+                  </section>
+                ))
+              ) : (
+                <p>{activeProduct?.summary || "No product"}</p>
+              )}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function ArtifactMeta({ artifact }) {
+  const items = [
+    artifact.kind,
+    artifact.metadata?.artifactRole,
+    artifact.metadata?.verdict ? `verdict ${artifact.metadata.verdict}` : "",
+    artifact.metadata?.revisionOf ? `revision of ${artifact.metadata.revisionOf}` : "",
+  ].filter(Boolean);
+  if (items.length === 0) return null;
+  return <small className="artifact-meta">{items.join(" / ")}</small>;
+}
+
+function artifactLabel(artifact) {
+  if (artifact.metadata?.artifactRole === "review") return "review";
+  if (artifact.metadata?.artifactRole === "discussion") return "discussion";
+  if (artifact.metadata?.revisionOf) return "revision";
+  return artifact.kind;
 }
 
 function buildProductView(products, artifacts) {

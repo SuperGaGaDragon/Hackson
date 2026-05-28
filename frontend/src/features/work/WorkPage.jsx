@@ -4,16 +4,19 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  answerMission,
   createMission,
   createProject,
+  evaluateMission,
   getMission,
   listMissionEvents,
   listProjectMissions,
   listProjects,
   startMission,
   stopMission,
+  streamMissionEvents,
 } from "../../api/workMode";
 import { normalizeAgents } from "../../domain/agents";
 import ActivityStrip from "./components/ActivityStrip";
@@ -23,6 +26,7 @@ import ProductPanel from "./components/ProductPanel";
 import ProgressTimeline from "./components/ProgressTimeline";
 import ProjectMissionRail from "./components/ProjectMissionRail";
 import RawLogPanel from "./components/RawLogPanel";
+import ReliabilityPanel from "./components/ReliabilityPanel";
 import WarningCard from "./components/WarningCard";
 import WorkWindowPanel from "./components/WorkWindowPanel";
 import WorkspaceView from "./components/WorkspaceView";
@@ -44,11 +48,22 @@ function WorkPage({ agents = [] }) {
   const [missionLeadId, setMissionLeadId] = useState(defaultLeadId);
   const [missionTitle, setMissionTitle] = useState("");
   const [missionGoal, setMissionGoal] = useState("");
+  const [showMissionCreate, setShowMissionCreate] = useState(false);
+  const [answerText, setAnswerText] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const afterSequence = useMemo(() => Math.max(0, ...events.map((event) => event.sequence || 0)), [events]);
+  const afterSequenceRef = useRef(0);
+  const inputRequest = useMemo(
+    () => [...events].reverse().find((event) => event.type === "USER_INPUT_REQUESTED") || null,
+    [events],
+  );
+
+  useEffect(() => {
+    afterSequenceRef.current = afterSequence;
+  }, [afterSequence]);
 
   useEffect(() => {
     let mounted = true;
@@ -68,6 +83,7 @@ function WorkPage({ agents = [] }) {
         setArtifacts([]);
         setProducts([]);
         setWorkWindows([]);
+        setAnswerText("");
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -90,24 +106,69 @@ function WorkPage({ agents = [] }) {
   useEffect(() => {
     if (!selectedMission || terminalStatuses.has(selectedMission.status)) return undefined;
     if (!["running", "stopping"].includes(selectedMission.status)) return undefined;
-    const timer = window.setInterval(async () => {
+    let stopped = false;
+    let pollingTimer = null;
+    const controller = new AbortController();
+
+    async function refreshWithEvents(nextEvents) {
+      if (stopped || nextEvents.length === 0) return;
+      const detail = await getMission(selectedMission.id);
+      if (stopped) return;
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents((current) => mergeEvents(current, nextEvents));
+      setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
+    }
+
+    function startPollingFallback() {
+      if (pollingTimer !== null) return;
+      pollingTimer = window.setInterval(async () => {
+        try {
+          const nextEvents = await listMissionEvents(selectedMission.id, afterSequenceRef.current);
+          await refreshWithEvents(nextEvents);
+        } catch (err) {
+          if (!stopped) setError(err.message || "Poll failed");
+        }
+      }, 1500);
+    }
+
+    async function startStream() {
       try {
-        const nextEvents = await listMissionEvents(selectedMission.id, afterSequence);
-        if (nextEvents.length > 0) {
+        await streamMissionEvents(selectedMission.id, afterSequenceRef.current, {
+          signal: controller.signal,
+          onEvent: async (event) => {
+            await refreshWithEvents([event]);
+          },
+        });
+        if (!stopped) {
           const detail = await getMission(selectedMission.id);
+          if (stopped) return;
           setSelectedMission(detail.mission);
           setMissions((current) => replaceMission(current, detail.mission));
-          setEvents((current) => mergeEvents(current, nextEvents));
+          setEvents(detail.events || []);
           setArtifacts(detail.artifacts || []);
           setProducts(detail.products || []);
           setWorkWindows(detail.workWindows || []);
+          if (["running", "stopping"].includes(detail.mission?.status)) {
+            startPollingFallback();
+          }
         }
       } catch (err) {
-        setError(err.message || "Poll failed");
+        if (!stopped && err.name !== "AbortError") {
+          startPollingFallback();
+        }
       }
-    }, 1500);
-    return () => window.clearInterval(timer);
-  }, [afterSequence, selectedMission]);
+    }
+
+    startStream();
+    return () => {
+      stopped = true;
+      controller.abort();
+      if (pollingTimer !== null) window.clearInterval(pollingTimer);
+    };
+  }, [selectedMission?.id, selectedMission?.status]);
 
   async function addProject() {
     if (!projectName.trim() || busy) return;
@@ -166,6 +227,8 @@ function WorkPage({ agents = [] }) {
     setMissionLeadId(defaultLeadId);
     setMissionTitle("");
     setMissionGoal("");
+    setShowMissionCreate(false);
+    setAnswerText("");
   }
 
   async function addMission() {
@@ -187,8 +250,11 @@ function WorkPage({ agents = [] }) {
       setArtifacts(detail.artifacts || []);
       setProducts(detail.products || []);
       setWorkWindows(detail.workWindows || []);
+      if (detail.mission?.status !== "waiting_input") setAnswerText("");
+      setAnswerText("");
       setMissionTitle("");
       setMissionGoal("");
+      setShowMissionCreate(false);
     } catch (err) {
       setError(err.message || "Create failed");
     } finally {
@@ -208,6 +274,8 @@ function WorkPage({ agents = [] }) {
       setArtifacts(detail.artifacts || []);
       setProducts(detail.products || []);
       setWorkWindows(detail.workWindows || []);
+      if (detail.mission?.status !== "waiting_input") setAnswerText("");
+      setAnswerText("");
     } catch (err) {
       setError(err.message || "Load failed");
     } finally {
@@ -253,6 +321,46 @@ function WorkPage({ agents = [] }) {
     }
   }
 
+  async function answer(event) {
+    event.preventDefault();
+    if (!selectedMission || busy || !answerText.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await answerMission(selectedMission.id, { answer: answerText });
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
+      setAnswerText("");
+    } catch (err) {
+      setError(err.message || "Reply failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function evaluate() {
+    if (!selectedMission || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await evaluateMission(selectedMission.id);
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
+    } catch (err) {
+      setError(err.message || "Evaluate failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!selectedProject) {
     return (
       <WorkspaceView
@@ -283,13 +391,26 @@ function WorkPage({ agents = [] }) {
         onMissionGoalChange={setMissionGoal}
         onMissionTitleChange={setMissionTitle}
         onSelectMission={selectMission}
+        onShowCreateMission={() => setShowMissionCreate((current) => !current)}
         selectedMission={selectedMission}
         selectedProject={selectedProject}
+        showMissionCreate={showMissionCreate}
       />
       <section className="mission-console">
-        <MissionHeader busy={busy || loading} mission={selectedMission} onStart={start} onStop={stop} />
+        <MissionHeader
+          answerText={answerText}
+          busy={busy || loading}
+          inputRequest={inputRequest}
+          mission={selectedMission}
+          onAnswer={answer}
+          onAnswerTextChange={setAnswerText}
+          onEvaluate={evaluate}
+          onStart={start}
+          onStop={stop}
+        />
         <div className="mission-content">
           <ActivityStrip events={events} mission={selectedMission} />
+          <ReliabilityPanel artifacts={artifacts} />
           <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
           <ProductPanel artifacts={artifacts} products={products} />
           <ProgressTimeline events={events} />

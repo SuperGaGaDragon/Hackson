@@ -8,7 +8,7 @@ import { Activity, BriefcaseBusiness, MessageSquare, Sparkles, UserRound } from 
 import { useEffect, useState } from "react";
 import { listAgents } from "./api/agents";
 import { getToken } from "./api/client";
-import { getCurrentUser } from "./api/users";
+import { bindDesktopHandoff, getCurrentUser } from "./api/users";
 import { FALLBACK_AGENTS, normalizeAgents } from "./domain/agents";
 import AuthPage from "./features/auth/AuthPage";
 import ChatPage from "./features/chat/ChatPage";
@@ -30,6 +30,7 @@ function App() {
   const [agents, setAgents] = useState(FALLBACK_AGENTS);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState("");
+  const desktopAuthCode = getDesktopAuthCode();
 
   useEffect(() => {
     let mounted = true;
@@ -44,6 +45,7 @@ function App() {
         const currentUser = await getCurrentUser();
         if (!mounted) return;
         setUser(currentUser);
+        if (desktopAuthCode) await completeDesktopHandoff(desktopAuthCode, setError);
         try {
           setAgents(await loadAgentProfiles());
         } catch (err) {
@@ -61,7 +63,7 @@ function App() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [desktopAuthCode]);
 
   if (booting) {
     return (
@@ -72,7 +74,7 @@ function App() {
   }
 
   if (!user) {
-    return <AuthPage onAuthed={(nextUser) => handleAuthed(nextUser, setUser, setAgents, setError)} />;
+    return <AuthPage onAuthed={(nextUser) => handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode)} />;
   }
 
   const visibleAgents = normalizeAgents(user.agentProfiles || agents);
@@ -104,13 +106,29 @@ async function loadAgentProfiles() {
   return normalizeAgents(await listAgents());
 }
 
-async function handleAuthed(nextUser, setUser, setAgents, setError) {
+async function handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode = "") {
   setUser(nextUser);
+  if (desktopAuthCode) await completeDesktopHandoff(desktopAuthCode, setError);
   try {
     setAgents(await loadAgentProfiles());
   } catch (err) {
     setAgents(FALLBACK_AGENTS);
     setError(err.message || "Agents failed");
+  }
+}
+
+function getDesktopAuthCode() {
+  return new URLSearchParams(window.location.search).get("desktopAuth") || "";
+}
+
+async function completeDesktopHandoff(code, setError) {
+  try {
+    await bindDesktopHandoff(code);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("desktopAuth");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  } catch (err) {
+    setError(err.message || "Desktop link failed");
   }
 }
 

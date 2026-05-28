@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 import { Send } from "lucide-react";
@@ -14,7 +14,14 @@ import {
 } from "../../api/conversations";
 import { joinIdle, sendCompanionMessage, sendIdleMessage, tickIdle } from "../../api/interactions";
 import { FALLBACK_AGENTS, nextAgentSlot, normalizeAgents } from "../../domain/agents";
-import { makePendingUserMessage, makeSystemMessage, sortMessages, uniqueMessages } from "../../domain/messages";
+import {
+  makeClientId,
+  makePendingUserMessage,
+  makeQueuedUserMessage,
+  makeSystemMessage,
+  sortMessages,
+  uniqueMessages,
+} from "../../domain/messages";
 import AgentSlot from "../../shared/components/AgentSlot";
 import StatusLine from "../../shared/components/StatusLine";
 import Timeline from "../../shared/components/Timeline";
@@ -34,6 +41,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
   const [mode, setMode] = useState("idle");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [queuedIdleMessage, setQueuedIdleMessage] = useState(null);
   const [autoIdle, setAutoIdle] = useState(false);
   const [error, setError] = useState("");
   const timelineRef = useRef(null);
@@ -76,12 +84,22 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
   }, [timelineMessages.length, busy]);
 
   useEffect(() => {
-    if (!autoIdle || !isIdle || busy || loading) return undefined;
+    if (!autoIdle || !isIdle || busy || loading || queuedIdleMessage) return undefined;
     const timer = window.setTimeout(() => {
       tick();
     }, idleMessages.length ? 3500 : 800);
     return () => window.clearTimeout(timer);
-  }, [autoIdle, isIdle, busy, loading, idleMessages.length, targetAgentId]);
+  }, [autoIdle, isIdle, busy, loading, idleMessages.length, targetAgentId, queuedIdleMessage]);
+
+  useEffect(() => {
+    if (!queuedIdleMessage || busy || loading || !isIdle || !idleConversation) return;
+    const queued = queuedIdleMessage;
+    setQueuedIdleMessage(null);
+    sendIdleInterjection(queued.content, {
+      pendingId: queued.id,
+      idempotencyKey: queued.idempotencyKey,
+    });
+  }, [queuedIdleMessage, busy, loading, isIdle, idleConversation]);
 
   async function tick() {
     if (!idleConversation || busy || !isIdle) return;
@@ -162,7 +180,12 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
 
   async function sendDraft() {
     const content = draft.trim();
-    if (!content || busy) return;
+    if (!content) return;
+    if (busy && isIdle && idleConversation) {
+      queueIdleInterjection(content);
+      return;
+    }
+    if (busy) return;
     if (!isIdle) {
       await sendCompanionTurn(content);
       return;
@@ -171,8 +194,24 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     await sendIdleInterjection(content);
   }
 
-  async function sendIdleInterjection(content) {
-    const pendingMessage = makePendingUserMessage(idleConversation, content, idleMessages);
+  function queueIdleInterjection(content) {
+    const idempotencyKey = `idle-say-${makeClientId()}`;
+    const queuedMessage = {
+      ...makeQueuedUserMessage(idleConversation, content, idleMessages),
+      idempotencyKey,
+    };
+    setDraft("");
+    setAutoIdle(false);
+    setQueuedIdleMessage(queuedMessage);
+    setIdleMessages((current) => uniqueMessages([...current, queuedMessage]));
+  }
+
+  async function sendIdleInterjection(content, options = {}) {
+    const pendingMessage =
+      options.pendingId
+        ? idleMessages.find((message) => message.id === options.pendingId) ||
+          makePendingUserMessage(idleConversation, content, idleMessages)
+        : makePendingUserMessage(idleConversation, content, idleMessages);
     setBusy(true);
     setError("");
     setDraft("");
@@ -181,6 +220,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
       const data = await sendIdleMessage(idleConversation.id, {
         content,
         discussionDirection: topic.trim() || undefined,
+        idempotencyKey: options.idempotencyKey || `idle-say-${makeClientId()}`,
         metadata: {},
       });
       setIdleMessages((current) =>
@@ -359,7 +399,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
         <div className="composer">
           <input
             aria-label={isIdle ? "Say" : "Message"}
-            disabled={busy || loading}
+            disabled={loading || (!isIdle && busy)}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") sendDraft();
@@ -367,7 +407,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
             placeholder={isIdle ? "Say" : "Message"}
             value={draft}
           />
-          <button disabled={busy || loading} onClick={sendDraft} title="Send" type="button">
+          <button disabled={loading || (!isIdle && busy)} onClick={sendDraft} title="Send" type="button">
             <Send size={18} />
           </button>
         </div>

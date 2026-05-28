@@ -20,14 +20,15 @@ function WorkWindowPanel({ artifacts = [], workWindows = [] }) {
         {workWindows.length === 0 && <p className="muted">None</p>}
         {workWindows.map((window) => {
           const artifact = artifactById.get(window.resultArtifactId);
+          const type = window.metadata?.windowType === "discussion" ? "Discussion" : "Delegate";
           return (
-            <details className={`window-row status-${window.status}`} key={window.id}>
+            <details className={`window-row status-${window.status} type-${type.toLowerCase()}`} key={window.id}>
               <summary>
                 <ChevronRight size={15} />
                 <span>
                   <strong>{window.title}</strong>
                   <small>
-                    {window.agentSlot}
+                    {type} / {window.agentSlot}
                     {artifact ? ` / ${artifact.title}` : ""}
                   </small>
                 </span>
@@ -37,6 +38,7 @@ function WorkWindowPanel({ artifacts = [], workWindows = [] }) {
                 </em>
               </summary>
               <p>{window.brief}</p>
+              {window.metadata?.expectedOutcome && <p>{window.metadata.expectedOutcome}</p>}
               {window.summary && <p>{window.summary}</p>}
               {artifact && <pre className="window-artifact-preview">{artifact.content}</pre>}
             </details>

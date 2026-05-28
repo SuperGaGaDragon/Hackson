@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -12,16 +12,19 @@ Lst Modified by: Codex
   - Local dev uses same-origin `/api` paths and Vite proxy to avoid CORS.
   - Feature-specific files expose small functions grouped by backend module.
   - Components should call feature hooks, not raw API paths.
+  - Work Mode streaming uses `fetch` + `ReadableStream`, not native `EventSource`, so existing Bearer auth headers remain valid.
+  - Desktop Pet handoff APIs live in `users.js` because the browser must bind the current authenticated user to a short-lived desktop code.
   - Idle `Say` must use the interaction API because it records the user interjection and the immediate Agent reply as one product turn.
 
 ## folder structure
 |-README.md API folder guide
 |-client.js shared fetch wrapper and token helpers
 |-agents.js backend-owned Agent display profile APIs
-|-users.js user auth and settings APIs
+|-users.js user auth, settings, Full Prompt Logging, prompt-log, and memory-control APIs
 |-conversations.js conversation creation and message history APIs
 |-interactions.js idle and companion product interaction APIs
 |-tasks.js Work Mode task APIs
+|-workMode.js Work Mode Project, Mission, event, SSE stream, and Evaluator Runtime APIs
 
 ## 代办
 - Add refresh-token support only if the backend implements it.

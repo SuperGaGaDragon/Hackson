@@ -16,6 +16,7 @@ Lst Modified by: Codex
   - `WorkWindowPanel` renders delegated Agent work above Progress because it answers who is working before showing the audit trail.
   - `ProductPanel` renders Product and Artifact lineage from persisted state and never treats only the latest Artifact as the whole deliverable.
   - `RawLogPanel` is the collapsed Diagnostics surface for raw event payloads.
+  - Running Missions use the SSE event stream when available and fall back to event polling if streaming fails.
   - Terminal mission actions must be truthful; a completed mission cannot present an enabled `Start` action.
   - Do not expose Work-only Employee or Team creation in the current product UI.
   - Do not expose autonomous tool execution before backend safety gates exist.
@@ -26,4 +27,4 @@ Lst Modified by: Codex
 |-components/ fixed Work UI components for Activity, Windows, Product, Progress, Diagnostics, and Inspector
 
 ## 代办
-- Add native streaming display after backend exposes a verified safe stream API.
+- Add richer streaming state labels after the backend exposes safe partial-progress events beyond persisted Mission events.

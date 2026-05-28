@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -14,7 +14,9 @@ Lst Modified by: Codex
   - `api/` owns HTTP calls to verified APIs.
   - `domain/` owns message and Agent display mapping.
   - `features/` owns product flows for Auth, Idle, Chat, and Me.
+  - `Me` owns editable settings, prompt logs, and memory controls.
   - `shared/` owns reusable UI components.
+  - Browser-to-desktop handoff is completed in `App.jsx` after normal auth so Desktop Pet can authorize without a desktop password form.
   - Keep copy short and keep mode boundaries visible.
 
 ## folder structure

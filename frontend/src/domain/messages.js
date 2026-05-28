@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 import { FALLBACK_AGENT_BY_SLOT, resolveAgent } from "./agents";
@@ -65,6 +65,14 @@ export function makePendingUserMessage(conversation, content, messages, sequence
     contentType: "text",
     metadata: { pending: true },
     createdAt: new Date().toISOString(),
+  };
+}
+
+export function makeQueuedUserMessage(conversation, content, messages, sequence = null) {
+  return {
+    ...makePendingUserMessage(conversation, content, messages, sequence),
+    id: `queued-${makeClientId()}`,
+    metadata: { pending: true, queued: true },
   };
 }
 

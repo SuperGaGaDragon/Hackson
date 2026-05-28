@@ -11,6 +11,8 @@ const frontendUrl = process.env.HACKSON_SMOKE_FRONTEND_URL || "http://127.0.0.1:
 const screenshotPath = process.env.HACKSON_SMOKE_SCREENSHOT || "../scripts/artifacts/work_mode_v1_browser_smoke.png";
 const mobileScreenshotPath =
   process.env.HACKSON_SMOKE_MOBILE_SCREENSHOT || "../scripts/artifacts/work_mode_v1_browser_smoke_mobile.png";
+const completionTimeoutMs = Number(process.env.HACKSON_SMOKE_COMPLETION_TIMEOUT_MS || "20000");
+const expectFixtureText = process.env.HACKSON_SMOKE_EXPECT_FIXTURE_TEXT !== "false";
 
 async function main() {
   const browser = await chromium.launch();
@@ -22,22 +24,33 @@ async function main() {
   await page.getByTitle("Work").click();
   await page.getByLabel("Project name").fill("Browser Smoke Project");
   await page.getByRole("button", { name: /Create/ }).click();
+  await page.getByTitle("New Mission").click();
   await page.getByLabel("Mission title").fill("写一个8000字小说");
   await page.getByLabel("Mission goal").fill("写一个8000字中文小说，题材自定，要求分章节，有大纲，有最终成稿。");
-  await page.getByRole("button", { name: /Create/ }).last().click();
+  await page.locator(".mission-create-modal").getByRole("button", { name: /Create/ }).click();
+  await page.locator(".mission-create-modal").waitFor({ state: "detached" });
+  if ((await page.getByLabel("Mission title").count()) !== 0) {
+    throw new Error("mission_create_form_should_not_remain_in_rail");
+  }
   await page.getByRole("button", { name: /Start/ }).click();
 
-  await page.getByText("completed").first().waitFor({ timeout: 20000 });
+  await page.locator(".mission-head .chip", { hasText: "completed" }).waitFor({ timeout: completionTimeoutMs });
+  await page.getByRole("button", { name: /Check/ }).click();
+  await page.locator(".reliability-panel").waitFor();
+  await assertVisible(page, "Reliability");
+  await assertReliabilityPanel(page);
   await assertVisible(page, "Progress");
   await page.locator(".activity-strip").waitFor();
   await assertVisible(page, "Windows");
   await assertVisible(page, "Product");
   await assertVisible(page, "Diagnostics");
-  await assertVisible(page, "8000字小说计划");
-  await assertVisible(page, "第一章草稿");
-  await assertVisible(page, "第二章草稿");
-  await assertVisible(page, "最终成稿");
   await assertVisible(page, "Final");
+  if (expectFixtureText) {
+    await assertVisible(page, "8000字小说计划");
+    await assertVisible(page, "第一章草稿");
+    await assertVisible(page, "第二章草稿");
+    await assertVisible(page, "最终成稿");
+  }
 
   const windows = page.locator(".window-row");
   const windowCount = await windows.count();
@@ -47,6 +60,7 @@ async function main() {
   const missionOrder = await page.locator(".mission-content > *").evaluateAll((nodes) =>
     nodes.map((node) => {
       if (node.classList.contains("activity-strip")) return "activity";
+      if (node.classList.contains("reliability-panel")) return "reliability";
       if (node.classList.contains("window-panel")) return "windows";
       if (node.classList.contains("product-panel")) return "product";
       if (node.classList.contains("timeline-card")) return "progress";
@@ -54,7 +68,7 @@ async function main() {
       return "unknown";
     }),
   );
-  const expectedOrder = ["activity", "windows", "product", "progress", "diagnostics"];
+  const expectedOrder = ["activity", "reliability", "windows", "product", "progress", "diagnostics"];
   if (expectedOrder.some((item, index) => missionOrder[index] !== item)) {
     throw new Error(`mission_order_invalid:${missionOrder.join(",")}`);
   }
@@ -67,6 +81,22 @@ async function main() {
     throw new Error(`expected_artifact_lineage:${lineageCount}`);
   }
   await page.locator(".event-time").first().waitFor();
+  const planRows = await page.locator(".mission_plan_updated").count();
+  if (planRows < 1) {
+    throw new Error("expected_plan_progress_row");
+  }
+  await page.locator(".mission_plan_updated").first().click();
+  await assertVisible(page, "Steps");
+  const productRows = await page.locator(".product_updated").count();
+  if (productRows < 1) {
+    throw new Error("expected_product_progress_row");
+  }
+  await page.locator(".product_updated").first().click();
+  const expandedRows = await page.locator(".progress-row[aria-expanded='true']").count();
+  if (expandedRows !== 1) {
+    throw new Error(`expected_one_expanded_progress_row:${expandedRows}`);
+  }
+  await assertVisible(page, "Product");
 
   const firstWindow = windows.first();
   const isOpenBefore = await firstWindow.evaluate((node) => node.open);
@@ -74,32 +104,40 @@ async function main() {
     throw new Error("window_should_be_collapsed_by_default");
   }
   await firstWindow.locator("summary").click();
-  await assertVisible(page, "雨夜车站里");
+  const windowPreviewText = await firstWindow.locator(".window-artifact-preview, p").last().innerText();
+  if ((windowPreviewText.match(/[\u4e00-\u9fff]/g) || []).length < 20) {
+    throw new Error("window_preview_missing_content");
+  }
   await firstWindow.locator("summary").click();
 
   const productText = await page.locator(".artifact-content").innerText();
-  for (const expectedProductSection of ["故事大纲", "第一章草稿", "第二章草稿", "最终成稿"]) {
-    if (!productText.includes(expectedProductSection)) {
-      throw new Error(`product_reader_missing_section:${expectedProductSection}`);
+  if (expectFixtureText) {
+    for (const expectedProductSection of ["故事大纲", "第一章草稿", "第二章草稿", "最终成稿"]) {
+      if (!productText.includes(expectedProductSection)) {
+        throw new Error(`product_reader_missing_section:${expectedProductSection}`);
+      }
     }
   }
-  await page.getByRole("button", { name: /故事大纲/ }).click();
+  const outlineButton = page.locator(".artifact-lineage .artifact-row", { hasText: /outline|大纲/i }).first();
+  await outlineButton.click();
   const outlineOnlyText = await page.locator(".artifact-content").innerText();
-  if (!outlineOnlyText.includes("故事大纲") || outlineOnlyText.includes("最终成稿")) {
+  if ((outlineOnlyText.match(/[\u4e00-\u9fff]/g) || []).length < 20 || /最终成稿|final/i.test(outlineOnlyText)) {
     throw new Error("artifact_single_select_failed");
   }
-  await page.getByRole("button", { name: /最终成稿/ }).click();
+  const finalButton = page.locator(".artifact-lineage .artifact-row", { hasText: /final|最终|成稿/i }).last();
+  await finalButton.click();
   const finalOnlyText = await page.locator(".artifact-content").innerText();
   const finalOnlyCjk = (finalOnlyText.match(/[\u4e00-\u9fff]/g) || []).length;
-  if (!finalOnlyText.includes("最终成稿") || finalOnlyCjk < 8000) {
+  if (finalOnlyCjk < 8000) {
     throw new Error(`final_artifact_too_short:${finalOnlyCjk}`);
   }
-  await page.getByRole("button", { name: /All/ }).click();
+  await page.locator(".artifact-lineage").getByRole("button", { name: /All/ }).click();
   const restoredProductText = await page.locator(".artifact-content").innerText();
-  if (!restoredProductText.includes("故事大纲") || !restoredProductText.includes("最终成稿")) {
+  const restoredCjk = (restoredProductText.match(/[\u4e00-\u9fff]/g) || []).length;
+  if (restoredCjk <= finalOnlyCjk) {
     throw new Error("artifact_all_restore_failed");
   }
-  const cjkCount = (restoredProductText.match(/[\u4e00-\u9fff]/g) || []).length;
+  const cjkCount = restoredCjk;
   if (cjkCount < 8000) {
     throw new Error(`final_product_too_short:${cjkCount}`);
   }
@@ -130,6 +168,16 @@ async function register(page) {
 
 async function assertVisible(page, text) {
   await page.getByText(text, { exact: false }).first().waitFor();
+}
+
+async function assertReliabilityPanel(page) {
+  const panelText = await page.locator(".reliability-panel").innerText();
+  if (!/\d+\s*\/\s*100/.test(panelText)) {
+    throw new Error(`reliability_score_missing:${panelText}`);
+  }
+  if (!/(Ship-ready|Minor review|Needs review|Unsafe)/.test(panelText)) {
+    throw new Error(`reliability_status_missing:${panelText}`);
+  }
 }
 
 main().catch((error) => {

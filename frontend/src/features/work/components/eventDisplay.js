@@ -9,13 +9,16 @@ import {
   Circle,
   Clock3,
   FileText,
+  MessagesSquare,
   ListChecks,
   PanelTopOpen,
   PauseCircle,
+  MessageSquareReply,
   RotateCw,
   Search,
   TriangleAlert,
   Wrench,
+  ShieldCheck,
 } from "lucide-react";
 
 const actionLabels = {
@@ -25,7 +28,10 @@ const actionLabels = {
   finish_mission: "Finish",
   inspect_product: "Inspect",
   mission_plan: "Plan",
+  review_product: "Review",
   work_product: "Product",
+  discuss_with_delegate: "Discuss",
+  web_search: "Search",
 };
 
 export function eventView(event) {
@@ -79,6 +85,14 @@ export function eventView(event) {
       return { ...common, icon: FileText, tone: "product", title: event.title || "Product" };
     case "PRODUCT_INSPECTED":
       return { ...common, icon: Search, tone: "product", title: event.title || "Inspect" };
+    case "WEB_SEARCH_COMPLETED":
+      return { ...common, icon: Search, tone: "product", title: event.title || "Search" };
+    case "WEB_SEARCH_FAILED":
+      return { ...common, icon: TriangleAlert, tone: "danger", title: event.title || "Search failed" };
+    case "RELIABILITY_REPORTED":
+      return { ...common, icon: ShieldCheck, tone: "review", title: event.title || "Reliability" };
+    case "PRODUCT_REVIEWED":
+      return { ...common, icon: ListChecks, tone: "review", title: event.title || "Review" };
     case "WORK_WINDOW_OPENED":
       return { ...common, icon: PanelTopOpen, tone: "window", title: event.title || "Window" };
     case "WORK_WINDOW_COMPLETED":
@@ -89,6 +103,18 @@ export function eventView(event) {
     case "WORK_WINDOW_FAILED":
     case "MISSION_FAILED":
       return { ...common, icon: TriangleAlert, tone: "danger", title: event.title || "Failed" };
+    case "DISCUSSION_WINDOW_OPENED":
+      return { ...common, icon: MessagesSquare, tone: "window", title: event.title || "Discussion" };
+    case "DISCUSSION_WINDOW_COMPLETED":
+      return { ...common, icon: CheckCircle2, tone: "done", title: event.title || "Discussion done" };
+    case "DISCUSSION_WINDOW_BLOCKED":
+      return { ...common, icon: PauseCircle, tone: "retry", title: event.title || "Discussion blocked" };
+    case "DISCUSSION_WINDOW_FAILED":
+      return { ...common, icon: TriangleAlert, tone: "danger", title: event.title || "Discussion failed" };
+    case "USER_INPUT_REQUESTED":
+      return { ...common, icon: MessageSquareReply, tone: "retry", title: event.title || "Input requested" };
+    case "USER_INPUT_RECEIVED":
+      return { ...common, icon: CheckCircle2, tone: "done", title: event.title || "Input received" };
     case "MISSION_PAUSED_RETRYABLE":
       return { ...common, icon: PauseCircle, tone: "retry", title: "Paused" };
     case "MISSION_COMPLETED":
