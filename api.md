@@ -14,6 +14,7 @@ Last Modified by: Codex
 - The `8160` rows describe the isolated Work V1 hardening smoke service with HTTP and browser release gates. It is not the public product service.
 - The `8161` rows describe the isolated Work V1 progress hardening smoke service with lifecycle events and bounded retry. It is not the public product service.
 - The `8162` rows describe the isolated Work V1 Delegate tolerance smoke service. It is not the public product service.
+- The `8163` rows describe the isolated Work V1 UI architecture smoke service. It is not the public product service.
 
 ## current environment
 | Item | Value |
@@ -77,6 +78,13 @@ Last Modified by: Codex
 | Work V1 Delegate tolerance backend bind | `127.0.0.1:8162` |
 | Work V1 Delegate tolerance database | `hackson_work_v1_delegate_8162` |
 | Work V1 Delegate tolerance model provider | `codex_cli` through target-machine Codex CLI |
+| Work V1 UI architecture source path | `~/hackson_work_ui_8163` |
+| Work V1 UI architecture backend path | `~/hackson_work_ui_8163/backend` |
+| Work V1 UI architecture frontend build path | `~/hackson_work_ui_8163/frontend/dist` |
+| Work V1 UI architecture service | `hackson-work-ui-8163.service`, user-level systemd, active |
+| Work V1 UI architecture backend bind | `127.0.0.1:8163` |
+| Work V1 UI architecture database | `hackson_work_ui_8163` |
+| Work V1 UI architecture model provider | `codex_cli` through target-machine Codex CLI |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -94,6 +102,7 @@ Last Modified by: Codex
 | 8160 | Hackson Work V1 hardening smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-8160.service` | Isolated verification for Work V1 HTTP full smoke, browser UI smoke, and final Product/Artifact lineage |
 | 8161 | Hackson Work V1 progress hardening FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-progress-8161.service` | Isolated verification for Work V1 lifecycle events, bounded retry, Activity UI, and failed-window cleanup |
 | 8162 | Hackson Work V1 Delegate tolerance FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-delegate-8162.service` | Isolated verification for tolerant Delegate result ingestion, unstructured prose Artifact persistence, full smoke, HTTP smoke, and browser smoke |
+| 8163 | Hackson Work V1 UI architecture FastAPI + React app | `127.0.0.1` | Active as `hackson-work-ui-8163.service` | Isolated verification for Activity, Windows, Product lineage, Progress, Diagnostics, desktop/mobile browser smoke, and no mobile horizontal overflow |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
@@ -109,6 +118,7 @@ Last Modified by: Codex
 - On 2026-05-27, the Work V1 progress hardening build was promoted to public `8145`. Public-directory Work Mode `52`, model_runtime `24`, interactions `21`, frontend build, deterministic full smoke, and HTTP smoke passed before restart. After restart, `https://hackson.catachess.com/health` and `/` returned `200`, assets `index-HYSRYan8.js` and `index-cInveBCH.css` were served, and real Codex Mission `6a17a145f01aad81f13bca71` completed with lifecycle events around each tool call.
 - On 2026-05-28, `8162` was introduced as the isolated Work V1 Delegate tolerance service. It fixes the public Mission `6a17a659f01aad81f13bca8a` failure mode where a Delegate window returned useful writing but missed the strict JSON wrapper. Target Work Mode `55`, model_runtime `24`, interactions `21`, frontend build, full smoke, HTTP smoke, Delegate unstructured-prose HTTP regression, browser smoke, health, and static React checks passed.
 - On 2026-05-28, the Work V1 Delegate tolerance build was promoted to public `8145`. Public-directory Work Mode `55`, model_runtime `24`, interactions `21`, frontend build, deterministic full smoke, HTTP smoke, and Delegate unstructured-prose regression passed before restart. After restart, `https://hackson.catachess.com/health` and `/` returned `200`, assets `index-HYSRYan8.js` and `index-cInveBCH.css` were served, public runtime Delegate parse returned `completed` with `delegateStructured=false`, and no orphan `codex exec` process was present.
+- On 2026-05-28, `8163` was introduced as the isolated Work V1 UI architecture service. It verifies the Work Console order `Activity -> Windows -> Product -> Progress -> Diagnostics`, Product Artifact lineage, default-collapsed Diagnostics, desktop and mobile browser smoke, and mobile no-horizontal-overflow without touching public `8145`.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
@@ -407,3 +417,13 @@ V0.5 Work Mission generation is intentionally bounded to one model pass. Long re
   - Local verification passed: all backend test directories, Work Mode `51`, model_runtime `24`, interactions `21`, frontend build, in-process full smoke `final_cjk=9936`, HTTP full smoke `final_cjk=9936`, and browser smoke `windows=2/final_cjk=9936`.
   - After adding env-tunable progress settings, local Work Mode tests passed with `52` tests and all backend test directories passed.
   - Target isolated `8161` verification passed: Work Mode `52`, model_runtime `24`, interactions `21`, frontend build, in-process full smoke `events=30/windows=2/products=1/artifacts=4/final_cjk=9936`, HTTP full smoke `events=30/windows=2/products=1/artifacts=4/final_cjk=9936`, browser smoke `windows=2/final_cjk=9936`, service `active`, `/health` ok, and static React root/assets present.
+- Work V1 UI architecture isolated verification on active `8163`:
+  - Target source: `~/hackson_work_ui_8163`.
+  - Target service: `hackson-work-ui-8163.service`, active on `127.0.0.1:8163`.
+  - Target database: `hackson_work_ui_8163`.
+  - Target Work Mode tests passed: `55`.
+  - Target frontend build passed with Node `20.19.6`, assets `/assets/index-qPU-cMH4.js` and `/assets/index-BbzX_UAM.css`.
+  - Target in-process full smoke passed: `events=30/windows=2/products=1/artifacts=4/final_cjk=9936`.
+  - Target HTTP full smoke passed: `events=30/windows=2/products=1/artifacts=4/final_cjk=9936`.
+  - Target browser smoke passed with desktop and mobile screenshots, verified Work Console order, Artifact lineage, default-collapsed Diagnostics, final CJK count `9936`, and no mobile horizontal overflow.
+  - Target `8163` live service health returned `{"status":"ok"}` and static root/assets returned `200`.
