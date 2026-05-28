@@ -11,6 +11,7 @@ Last Modified by: Codex
 - The `8147` rows describe the isolated Idle Auto smoke service used for its fix.
 - The `8148` rows describe the isolated Work V0.5 artifact smoke service. It is not the public product service.
 - The `8150` rows describe the isolated Work V1 model-driven loop smoke service. It is not the public product service.
+- The `8160` rows describe the isolated Work V1 hardening smoke service with HTTP and browser release gates. It is not the public product service.
 
 ## current environment
 | Item | Value |
@@ -52,6 +53,13 @@ Last Modified by: Codex
 | Work V1 smoke backend bind | `127.0.0.1:8150` |
 | Work V1 smoke database | `hackson_work_v1_8150` |
 | Work V1 smoke model provider | `codex_cli` through target-machine Codex CLI |
+| Work V1 hardening smoke source path | `~/hackson_work_v1_8160` |
+| Work V1 hardening smoke backend path | `~/hackson_work_v1_8160/backend` |
+| Work V1 hardening smoke frontend build path | `~/hackson_work_v1_8160/frontend/dist` |
+| Work V1 hardening smoke service | `hackson-work-v1-8160.service`, user-level systemd, active |
+| Work V1 hardening smoke backend bind | `127.0.0.1:8160` |
+| Work V1 hardening smoke database | `hackson_work_v1_8160` |
+| Work V1 hardening smoke model provider | `codex_cli` through target-machine Codex CLI |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -66,6 +74,7 @@ Last Modified by: Codex
 | 8148 | Hackson Work V0.5 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v05-8148.service` | Isolated verification for Work Mission artifact persistence and Product UI render |
 | 18148 | Work V0.5 fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-work-v05-fake-model-18148.service` | Test-only model relay for deterministic Work V0.5 success smoke; not a product API |
 | 8150 | Hackson Work V1 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-8150.service` | Isolated verification for Work V1 model-selected tool loop, Product/Artifact lineage, retryable pause, and resume |
+| 8160 | Hackson Work V1 hardening smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-work-v1-8160.service` | Isolated verification for Work V1 HTTP full smoke, browser UI smoke, and final Product/Artifact lineage |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
@@ -75,6 +84,7 @@ Last Modified by: Codex
 - On 2026-05-27, temporary Orchestrator V1 smoke ports `8148` and `18148` were used for isolated target-machine verification, then stopped.
 - On 2026-05-27, `8148` and `18148` were reintroduced as Work V0.5 isolated smoke services. They are active and intentionally separate from public `8145`.
 - On 2026-05-27, `8150` was introduced as the isolated Work V1 model-driven loop smoke service. It is active and intentionally separate from public `8145`, Idle Auto `8147`, Work V0.5 `8148`, and legacy `8130`.
+- On 2026-05-27, `8160` was introduced as the isolated Work V1 hardening smoke service. It verified backend tests, frontend build, deterministic full smoke, authenticated HTTP full smoke, browser UI smoke, static frontend serving, and health check without stopping existing services.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 

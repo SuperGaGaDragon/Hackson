@@ -82,6 +82,15 @@ Lst Modified by: Codex
   - 目标机真实 Codex HTTP smoke：真实模型能自动调用 `mission_plan` 和 `work_product`，持久化真实大纲 Product；长模型调用 timeout 后进入 `paused_retryable`，没有 fake artifact。
   - 修复 `codex_cli` timeout 清理：超时后 kill 整个 process group，目标机验证没有 orphan `codex exec`。
   - 修复 `paused_retryable` resume：公开 `POST /api/work/missions/{missionId}/start` 可对同一 Mission 创建新 run 并继续；目标机 resume smoke 最终 `MISSION_COMPLETED`。
+- 强化 Work Mode V1 产品门禁：
+  - `finish_mission` 现在先校验 final Product 和 final Artifact 都属于当前 Mission，再标记 Product final 和 Mission completed。
+  - `MISSION_COMPLETED` 事件 payload 记录 `finalProductIds` 和 `finalArtifactIds`，方便 smoke、UI 和后续审计。
+  - 抽出 deterministic smoke helper，保留 in-process full smoke，同时新增 authenticated HTTP full smoke。
+  - 新增 Playwright browser smoke：通过真实 React UI 注册、进入 Work、创建项目和 Mission、启动 V1 loop，验证 Timeline、Windows、Product、Final 状态、窗口默认折叠、窗口可展开、最终正文 CJK 字数 `>=8000`。
+  - 本地通过：Work Mode `48`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke、HTTP full smoke、browser smoke。
+  - 目标机新隔离服务 `hackson-work-v1-8160.service`，新目录 `~/hackson_work_v1_8160`，新库 `hackson_work_v1_8160`，绑定 `127.0.0.1:8160`。
+  - 目标机通过：Work Mode `48`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke `final_cjk=9936`、HTTP full smoke `final_cjk=9936`、browser smoke `windows=2/final_cjk=9936`。
+  - 目标机 `127.0.0.1:8160/health` 返回 `{"status":"ok"}`，静态首页返回 `200`，未停止 `8145/8147/8148/8150/8130` 等现有服务。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -96,6 +105,7 @@ Lst Modified by: Codex
 - 继续观察 `codex_cli` 冷启动延迟；如需要，再做常驻 worker 或队列化。
 - V1.1 再做 streaming、Thinking/Search 状态、citation UI。
 - Work V1 下一步先把 `8150` 的通过内容推广到 public `8145` 前，再做 public browser full smoke。
+- Work V1 当前更完整的 release candidate 在 isolated `8160`，推广 public `8145` 前需要用户确认。
 - Work V1.1 增加 native tool calling adapter；V1.2 再加 streaming，不改变当前 ToolExecutor。
 - Work V1.3 再加并行 Work Window；V2 才引入 Codex/file/browser/computer tools。
 
