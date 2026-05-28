@@ -121,6 +121,7 @@ Last Modified by: Codex
 | Public frontend assets after Evaluator V1 contract closure | `/assets/index-CHVyLRVQ.js`, `/assets/index-Cg9l671U.css` |
 | Local frontend assets after Desktop Companion download page | `/assets/index-BtKsAU0T.js`, `/assets/index-CFlhTWvI.css`, `/assets/downloads/hackson-pet-mac-arm64.zip` |
 | Public frontend assets after Desktop Companion download page | `/assets/index-BtKsAU0T.js`, `/assets/index-CFlhTWvI.css`, `/assets/downloads/hackson-pet-mac-arm64.zip` |
+| Public frontend assets after Work Pause/Resume promotion | `/assets/index-BVIVPabB.js`, `/assets/index-CFlhTWvI.css` |
 | Local frontend assets after Evaluator V1 contract closure | `/assets/index-CHVyLRVQ.js`, `/assets/index-Cg9l671U.css` |
 | Context Runtime 8166 frontend assets after Agent origin story check | `/assets/index-Bb_Fx5DE.js`, `/assets/index-DTBHuMeq.css` |
 | Context Runtime V1.0-V1.6 smoke service | `hackson-context-runtime-8166.service`, user-level systemd, active |
@@ -242,7 +243,8 @@ Model-backed public rows were additionally verified on the target machine agains
 | POST | `/api/work/missions` | Bearer JWT | `backend/work_mode/` | Create a Mission with `agent_1` or `agent_2` as lead |
 | GET | `/api/work/projects/{projectId}/missions` | Bearer JWT | `backend/work_mode/` | List Missions in one Project |
 | GET | `/api/work/missions/{missionId}` | Bearer JWT | `backend/work_mode/` | Read Mission detail, current event timeline, persisted Products, Work Windows, and Artifacts |
-| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start or resume the public V1.0.5 model-driven tool loop through the daemon launcher, with visible progress, Product/Artifact lineage, review/discussion tools, controlled `web_search`, deterministic long-novel final quality gates, and restart recovery for interrupted runs |
+| POST | `/api/work/missions/{missionId}/start` | Bearer JWT | `backend/work_mode/` | Start or resume the public V1 model-driven tool loop through the daemon launcher. Resume from `paused`, `paused_retryable`, `failed`, `stopped`, or `blocked` creates a new Run with checkpoint metadata and preserves existing Product/Artifact/Event lineage. |
+| POST | `/api/work/missions/{missionId}/pause` | Bearer JWT | `backend/work_mode/` | Request a reversible pause for a running Mission. The runner records `MISSION_PAUSED` and leaves the Mission resumable as `paused` once the cooperative pause is observed. Verified on public `8145` on 2026-05-28. |
 | POST | `/api/work/missions/{missionId}/answer` | Bearer JWT | `backend/work_mode/` | Submit the user's answer while a Mission is `waiting_input`; records `USER_INPUT_RECEIVED`, resumes the Mission, and launches the model loop |
 | POST | `/api/work/missions/{missionId}/follow-up` | Bearer JWT | `backend/work_mode/` | Continue a `completed` Mission with a new user request; records `USER_FOLLOWUP_REQUESTED`, creates a new `running` Run with `resumeReason=user_followup`, preserves prior Products/Artifacts, and launches the model loop |
 | POST | `/api/work/missions/{missionId}/evaluate` | Bearer JWT | `backend/work_mode/` | Public AgentLens evaluator; request accepts `{"profile":"research_reliability_v1","mode":"live|replay"}`; reads Mission trace, persists a Reliability Report artifact with `mode`, `issueCounts`, `toolFailures`, evidence, requirements, claims, and limitations, and records `EVALUATION_STARTED` plus `RELIABILITY_REPORTED` or `EVALUATION_FAILED` |

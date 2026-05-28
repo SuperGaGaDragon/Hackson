@@ -106,8 +106,8 @@ Last Modified by: Codex
 - Public backend binds to `127.0.0.1:8145`.
 - Public MongoDB database is `hackson_domain_8145`.
 - Latest verified public frontend asset:
-  - `/assets/index-CTj8ztQu.js`
-  - `/assets/index-DTBHuMeq.css`
+  - `/assets/index-BVIVPabB.js`
+  - `/assets/index-CFlhTWvI.css`
 - Latest public API smoke verified:
   - `GET /health`
   - `GET /`
@@ -134,6 +134,7 @@ Last Modified by: Codex
   - `GET /api/work/projects/{projectId}/missions`
   - `GET /api/work/missions/{missionId}`
   - `POST /api/work/missions/{missionId}/start`
+  - `POST /api/work/missions/{missionId}/pause`
   - `POST /api/work/missions/{missionId}/evaluate`
   - `GET /api/work/missions/{missionId}/events`
 - Latest public UI E2E verified on `https://hackson.catachess.com/`:
@@ -149,6 +150,7 @@ Last Modified by: Codex
 - AgentLens public promotion on 2026-05-28 backed up touched public files to `~/hackson_backups/agentlens_public_20260528023904`, restarted only `hackson-domain-8145.service`, verified `POST /api/work/missions/{missionId}/evaluate`, and saved public UI screenshot `scripts/artifacts/work_mode_agentlens_public_ui_smoke.png`.
 - Desktop Pet handoff public promotion on 2026-05-28 backed up touched public files to `~/hackson_backups/desktop_handoff_public_20260528084126`, restarted only `hackson-domain-8145.service`, verified `POST /api/users/desktop-handoff/claim` returned `200` instead of `405`, verified `pending -> linked -> authorized -> pending`, and saved browser smoke screenshot `scripts/artifacts/desktop_pet_browser_handoff_public.png`.
 - Desktop Companion download public promotion on 2026-05-28 backed up `frontend/dist` to `~/hackson_domain_8145/frontend/dist.backup_desktop_companion_20260528142632`, replaced only static frontend assets without restarting `hackson-domain-8145.service`, verified `/download/companion`, `/idle`, `/companion`, `/work`, `/me`, `/work_project/not-real`, and `/assets/downloads/hackson-pet-mac-arm64.zip`, and saved screenshots `scripts/artifacts/companion_download_public_desktop.png` and `scripts/artifacts/companion_download_public_mobile.png`.
+- Work Pause/Resume public promotion on 2026-05-28 backed up touched public files to `~/hackson_domain_8145_backups/resumable_pause_20260528144430`, waited for active Work Missions and running Work Windows to reach `0`, restarted only `hackson-domain-8145.service`, verified public `/health`, public `/`, assets `/assets/index-BVIVPabB.js` and `/assets/index-CFlhTWvI.css`, Work Mode HTTP smoke, and a public API pause/resume smoke where `/pause` produced a resumable pause and `/start` resumed with checkpoint metadata.
 - Model-backed Idle/Companion smoke can return upstream `429` during provider throttling; the public API now exposes this as `{"detail":"model_rate_limited"}` instead of an unhandled `500`.
 - Idle Auto smoke service `hackson-idle-auto-8147.service` is active on `127.0.0.1:8147` for isolated verification of topic start, user interjection, server-owned speaker selection, and rate-limit behavior.
 - Idle Auto smoke UI path `5187 -> 18147 -> 8147` verified rate-limit behavior: frontend shows `Model busy`, Auto turns off, no extra tick request is scheduled, and failed tick leaves no messages.
