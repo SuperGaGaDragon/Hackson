@@ -1,0 +1,25 @@
+[package.metadata.hackson]
+# Created at: 2026-05-28
+# Created by: Codex
+# Last Modified at: 2026-05-28
+# Last Modified by: Codex
+#
+# This metadata table exists only to keep the local file header explicit for
+# repository documentation rules. Cargo ignores these values for builds.
+
+[package]
+name = "hackson-desktop-pet"
+version = "0.8.0"
+description = "Hackson Desktop Pet"
+authors = ["Codex"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.5.3", features = [] }
+
+[dependencies]
+reqwest = { version = "0.12.24", features = ["json", "rustls-tls"], default-features = false }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+open = "5.3.3"
+tauri = { version = "2.11.0", features = ["macos-private-api"] }
