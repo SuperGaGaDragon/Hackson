@@ -17,6 +17,7 @@ from work_mode.schemas import (
     EmployeeCreateRequest,
     MissionCreateRequest,
     MissionFollowUpRequest,
+    MissionInstructionRequest,
     MissionPauseRequest,
     MissionStartRequest,
     MissionStopRequest,
@@ -450,6 +451,55 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(resumed["activeRun"]["metadata"]["previousStatus"], "failed")
         self.assertEqual(resumed["activeRun"]["metadata"]["previousError"], "tool_action_schema_invalid")
         self.assertEqual(resumed["events"][-1]["title"], "Resumed")
+
+    def test_start_resume_can_record_user_instruction(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        first_run_id = detail["activeRun"]["id"]
+        self.service.mark_mission_paused_retryable("user_1", mission["id"], first_run_id, "model_timeout")
+
+        resumed = self.service.start_mission(
+            "user_1",
+            mission["id"],
+            MissionStartRequest(instruction="继续，但先收束为三章结构。"),
+        )
+
+        event_types = [event["type"] for event in resumed["events"]]
+        self.assertIn("USER_INSTRUCTION_ADDED", event_types)
+        instruction = next(event for event in resumed["events"] if event["type"] == "USER_INSTRUCTION_ADDED")
+        self.assertEqual(instruction["payload"]["instruction"], "继续，但先收束为三章结构。")
+        self.assertEqual(instruction["payload"]["mode"], "resume")
+        self.assertEqual(resumed["activeRun"]["metadata"]["resumeReason"], "checkpoint_resume")
+        self.assertEqual(resumed["events"][-1]["type"], "MISSION_STARTED")
+
+    def test_running_mission_records_user_instruction_without_new_run(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+
+        updated = self.service.add_mission_instruction(
+            "user_1",
+            mission["id"],
+            MissionInstructionRequest(instruction="接下来加一个参考文献检查。"),
+        )
+
+        self.assertEqual(updated["mission"]["status"], "running")
+        self.assertEqual(updated["activeRun"]["id"], detail["activeRun"]["id"])
+        self.assertEqual(updated["events"][-1]["type"], "USER_INSTRUCTION_ADDED")
+        self.assertEqual(updated["events"][-1]["payload"]["mode"], "running")
+        self.assertEqual(updated["events"][-1]["payload"]["instruction"], "接下来加一个参考文献检查。")
+
+    def test_user_instruction_requires_running_mission(self) -> None:
+        mission = self._mission()
+
+        with self.assertRaises(HTTPException) as error:
+            self.service.add_mission_instruction(
+                "user_1",
+                mission["id"],
+                MissionInstructionRequest(instruction="现在开始。"),
+            )
+
+        self.assertEqual(error.exception.status_code, 409)
+        self.assertEqual(error.exception.detail, "mission_not_running")
 
     def test_pause_mission_records_reversible_pause_request(self) -> None:
         mission = self._mission()

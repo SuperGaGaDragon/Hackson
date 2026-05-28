@@ -583,6 +583,50 @@ class WorkModeRoutesTest(TestCase):
             ["MISSION_CREATED", "MISSION_STARTED", "MISSION_PAUSE_REQUESTED"],
         )
 
+    def test_instruction_route_records_running_user_instruction(self) -> None:
+        self.client.app.dependency_overrides[get_work_mode_worker_launcher] = lambda: lambda user_id, mission_id, run_id: None
+        project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={"projectId": project["id"], "title": "Mission", "goal": "Run V0."},
+        ).json()
+        self.client.post(f"/api/work/missions/{mission['id']}/start", json={})
+
+        response = self.client.post(
+            f"/api/work/missions/{mission['id']}/instruction",
+            json={"instruction": "先补一轮参考资料。"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        detail = response.json()
+        self.assertEqual(detail["mission"]["status"], "running")
+        self.assertEqual(detail["events"][-1]["type"], "USER_INSTRUCTION_ADDED")
+        self.assertEqual(detail["events"][-1]["payload"]["mode"], "running")
+        self.assertEqual(detail["events"][-1]["payload"]["instruction"], "先补一轮参考资料。")
+
+    def test_start_route_accepts_resume_instruction(self) -> None:
+        self.client.app.dependency_overrides[get_work_mode_worker_launcher] = lambda: lambda user_id, mission_id, run_id: None
+        project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={"projectId": project["id"], "title": "Mission", "goal": "Run V0."},
+        ).json()
+        started = self.client.post(f"/api/work/missions/{mission['id']}/start", json={}).json()
+        self.service.mark_mission_paused_retryable(TEST_USER_ID, mission["id"], started["activeRun"]["id"], "model_timeout")
+
+        response = self.client.post(
+            f"/api/work/missions/{mission['id']}/start",
+            json={"instruction": "继续，但改成更短版本。"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        detail = response.json()
+        event_types = [event["type"] for event in detail["events"]]
+        self.assertIn("USER_INSTRUCTION_ADDED", event_types)
+        instruction = next(event for event in detail["events"] if event["type"] == "USER_INSTRUCTION_ADDED")
+        self.assertEqual(instruction["payload"]["instruction"], "继续，但改成更短版本。")
+        self.assertEqual(instruction["payload"]["mode"], "resume")
+
     def test_employee_routes_allow_project_lead_selection(self) -> None:
         project = self.client.post("/api/work/projects", json={"name": "Demo"}).json()
         employee_response = self.client.post(

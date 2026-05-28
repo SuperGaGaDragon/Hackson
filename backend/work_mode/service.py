@@ -28,6 +28,7 @@ from work_mode.schemas import (
     MissionAnswerRequest,
     MissionCreateRequest,
     MissionFollowUpRequest,
+    MissionInstructionRequest,
     MissionPauseRequest,
     MissionStartRequest,
     MissionStopRequest,
@@ -267,6 +268,21 @@ class WorkModeService:
             }
         )
         is_resume = previous_status != "draft"
+        if payload.instruction:
+            self.append_event(
+                user_id,
+                mission,
+                run=run,
+                step=None,
+                event_type="USER_INSTRUCTION_ADDED",
+                title="Instruction",
+                message=payload.instruction,
+                payload={
+                    "instruction": payload.instruction,
+                    "mode": "resume" if is_resume else "start",
+                    "employee": _employee_payload(mission),
+                },
+            )
         self.append_event(
             user_id,
             mission,
@@ -280,6 +296,7 @@ class WorkModeService:
                 "resumeReason": "checkpoint_resume" if is_resume else "initial_start",
                 "previousStatus": previous_status,
                 "previousError": previous_error,
+                "instruction": payload.instruction,
                 "employee": _employee_payload(mission),
             },
         )
@@ -594,6 +611,41 @@ class WorkModeService:
             title="Continued",
             message="Mission continued with user follow-up.",
             payload={"resumeReason": "user_followup", "employee": _employee_payload(mission)},
+        )
+        return self.get_mission_detail(user_id, str(mission["_id"]))
+
+    def add_mission_instruction(
+        self,
+        user_id: str,
+        mission_id: str,
+        payload: MissionInstructionRequest,
+    ) -> dict[str, Any]:
+        mission = self._require_mission(user_id, mission_id)
+        if mission["status"] != "running":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_not_running")
+        timestamp = now_utc()
+        mission = self._update_mission(
+            user_id,
+            mission_id,
+            {
+                "current_step": "Instruction added",
+                "updated_at": timestamp,
+            },
+        )
+        run = self.repository.find_active_run(str(mission["_id"]), user_id)
+        self.append_event(
+            user_id,
+            mission,
+            run=run,
+            step=None,
+            event_type="USER_INSTRUCTION_ADDED",
+            title="Instruction",
+            message=payload.instruction,
+            payload={
+                "instruction": payload.instruction,
+                "mode": "running",
+                "employee": _employee_payload(mission),
+            },
         )
         return self.get_mission_detail(user_id, str(mission["_id"]))
 

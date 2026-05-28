@@ -76,6 +76,7 @@ EventType = Literal[
     "USER_INPUT_REQUESTED",
     "USER_INPUT_RECEIVED",
     "USER_FOLLOWUP_REQUESTED",
+    "USER_INSTRUCTION_ADDED",
     "MISSION_PAUSED_RETRYABLE",
     "MISSION_PAUSE_REQUESTED",
     "MISSION_PAUSED",
@@ -187,7 +188,16 @@ class MissionCreateRequest(BaseModel):
 
 
 class MissionStartRequest(BaseModel):
+    instruction: str | None = Field(default=None, max_length=8000)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("instruction")
+    @classmethod
+    def strip_instruction(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
 
 
 class MissionStopRequest(BaseModel):
@@ -234,6 +244,19 @@ class MissionFollowUpRequest(BaseModel):
     @field_validator("request")
     @classmethod
     def strip_request(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("required_text_empty")
+        return value
+
+
+class MissionInstructionRequest(BaseModel):
+    instruction: str = Field(min_length=1, max_length=8000)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("instruction")
+    @classmethod
+    def strip_instruction(cls, value: str) -> str:
         value = value.strip()
         if not value:
             raise ValueError("required_text_empty")

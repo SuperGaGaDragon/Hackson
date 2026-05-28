@@ -45,6 +45,7 @@ Last Modified by: Codex
 |-issue31-discussion-result-tolerance-and-schema-feedback.md tolerant Discussion ingestion and actionable Lead schema feedback
 |-issue32-resumable-failure-and-pause-resume-controls.md resumable invalid-turn exhaustion and stateful Start/Pause/Resume controls
 |-issue33-command-rail-and-compact-reading-ui.md selected Project rail as Directory plus Composer, and compact long-text display rules
+|-issue34-progress-filters.md Progress segmented filters for Thinking, Reliability, Products, Windows, Search, Inputs, and Issues
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

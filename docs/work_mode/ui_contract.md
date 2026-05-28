@@ -138,6 +138,15 @@ Progress row expansion:
 - Web Search rows show query, source count, source links, provider, and truncation state.
 - Full long-form Product content MUST remain in Product Panel.
 
+Progress filters:
+
+- Progress MUST support client-side single-select filters.
+- Default filter MUST be `All`.
+- Required filters are `Thinking`, `Reliability`, `Products`, `Windows`, `Search`, `Inputs`, and `Issues`.
+- Filter controls SHOULD show event counts.
+- Empty filtered views MUST say `No matching events`.
+- Diagnostics MUST remain unfiltered.
+
 ## 7. Diagnostics
 
 Diagnostics is the engineering/debug surface.
@@ -295,6 +304,7 @@ V1.0 browser smoke MUST verify:
 - Selected Project rail separates Directory from Composer.
 - Waiting-input and completed follow-up text entry appear in Composer, not Mission Header.
 - Long timeline/product summary text is compact by default and full content remains reachable.
+- Progress filters can isolate Thinking and Reliability events.
 - Delegate windows are collapsed by default and expandable.
 - Product Panel shows Product list and Artifact lineage.
 - Product Panel shows final Product full content.

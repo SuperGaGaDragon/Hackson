@@ -13,7 +13,9 @@ import {
   ListChecks,
   PanelTopOpen,
   PauseCircle,
+  MessageSquarePlus,
   MessageSquareReply,
+  MessageSquareText,
   RotateCw,
   Search,
   TriangleAlert,
@@ -122,6 +124,10 @@ export function eventView(event) {
       return { ...common, icon: MessageSquareReply, tone: "retry", title: event.title || "Input requested" };
     case "USER_INPUT_RECEIVED":
       return { ...common, icon: CheckCircle2, tone: "done", title: event.title || "Input received" };
+    case "USER_FOLLOWUP_REQUESTED":
+      return { ...common, icon: MessageSquarePlus, tone: "decision", title: event.title || "Follow-up" };
+    case "USER_INSTRUCTION_ADDED":
+      return { ...common, icon: MessageSquareText, tone: "decision", title: event.title || "Instruction" };
     case "MISSION_PAUSED_RETRYABLE":
       return { ...common, icon: PauseCircle, tone: "retry", title: "Paused" };
     case "MISSION_COMPLETED":

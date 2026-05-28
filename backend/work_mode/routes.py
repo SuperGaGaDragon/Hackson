@@ -25,6 +25,7 @@ from work_mode.schemas import (
     MissionDetailResponse,
     MissionEvaluateRequest,
     MissionFollowUpRequest,
+    MissionInstructionRequest,
     MissionPauseRequest,
     MissionResponse,
     MissionStartRequest,
@@ -212,6 +213,16 @@ def continue_mission_follow_up(
     if active_run is not None:
         worker_launcher(current_user_id, mission_id, active_run["id"])
     return detail
+
+
+@router.post("/missions/{mission_id}/instruction", response_model=MissionDetailResponse)
+def add_mission_instruction(
+    mission_id: str,
+    payload: MissionInstructionRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.add_mission_instruction(current_user_id, mission_id, payload)
 
 
 @router.post("/missions/{mission_id}/evaluate", response_model=MissionDetailResponse)

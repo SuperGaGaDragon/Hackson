@@ -83,6 +83,7 @@ class WorkModeContextTest(TestCase):
         self.assertIn("toolUseGuidance", context)
         self.assertIn("requirementGrill", context)
         self.assertEqual(context["latestUserFollowUp"], {})
+        self.assertEqual(context["latestUserInstruction"], {})
         self.assertTrue(any("Prefer web_search early" in item for item in context["toolUseGuidance"]))
         self.assertTrue(any("short 3-6 term queries" in item for item in context["toolUseGuidance"]))
         self.assertTrue(any("Prefer review_product before finish_mission" in item for item in context["toolUseGuidance"]))
@@ -135,6 +136,43 @@ class WorkModeContextTest(TestCase):
         self.assertEqual(context["latestUserFollowUp"]["sequence"], 2)
         self.assertEqual(context["latestUserFollowUp"]["request"], "把最终稿改成英文版。")
         self.assertTrue(any("completed-Mission follow-up" in item for item in context["requirementGrill"]["rules"]))
+
+    def test_lead_context_surfaces_latest_user_instruction(self) -> None:
+        context = build_lead_context(
+            mission={
+                "id": "mission_1",
+                "title": "论文",
+                "goal": "写论文。",
+                "status": "running",
+            },
+            lead_agent={"id": "agent_1", "name": "Planner", "role": "lead"},
+            delegate_agent={"id": "agent_2", "name": "Writer", "role": "delegate"},
+            products=[],
+            work_windows=[],
+            events=[
+                {
+                    "sequence": 1,
+                    "type": "USER_INSTRUCTION_ADDED",
+                    "title": "Instruction",
+                    "message": "先补参考文献。",
+                    "payload": {"instruction": "先补参考文献。", "mode": "running"},
+                },
+                {
+                    "sequence": 2,
+                    "type": "MODEL_TURN_STARTED",
+                    "title": "Thinking",
+                    "message": "Selecting next tool.",
+                    "payload": {},
+                },
+            ],
+            artifacts=[],
+            last_observation=None,
+            budget={"modelTurnsUsed": 0, "modelTurnsMax": 20},
+        )
+
+        self.assertEqual(context["latestUserInstruction"]["sequence"], 1)
+        self.assertEqual(context["latestUserInstruction"]["instruction"], "先补参考文献。")
+        self.assertEqual(context["latestUserInstruction"]["mode"], "running")
 
     def test_delegate_context_excludes_toolbox_and_scopes_brief(self) -> None:
         context = build_delegate_context(

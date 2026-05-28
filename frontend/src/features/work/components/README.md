@@ -10,7 +10,7 @@ Last Modified by: Codex
 - 架构思路
   - Components render fixed event types from `/api/work`.
   - Project detail renders the two user-owned Agents passed from `App.jsx`; it does not create Work-only Employees.
-  - Selected Project rail is moving toward a two-zone command surface: Directory above, Composer below.
+  - Selected Project rail is a two-zone command surface: Directory above, Composer below.
   - Mission console cards are vertical siblings; cards must not overlap or nest inside each other.
   - Main order is Activity, optional Reliability, Windows, Product, Progress, then Diagnostics.
   - `MissionHeader` mirrors selected Mission identity/status and lifecycle controls; it must not own textarea forms after the command-rail refactor.
@@ -28,11 +28,11 @@ Last Modified by: Codex
 |-README.md work component guide
 |-WorkspaceView.jsx workspace project list and new project form
 |-ProjectMissionRail.jsx project detail rail with user Agents and missions
-|-MissionComposer.jsx planned selected Mission command input for waiting answers, follow-up, resume, and running instructions
+|-MissionComposer.jsx selected Mission command input for waiting answers, follow-up, resume, draft start, and running instructions
 |-MissionHeader.jsx selected mission title, status, and controls
 |-ActivityStrip.jsx latest compact Mission activity row
 |-ReliabilityPanel.jsx latest event-backed Evaluator Runtime score, issue counts, collapsed report history, requirement evidence, claim support, tool failures, and evidence summary
-|-ProgressTimeline.jsx compact mission progress audit trail
+|-ProgressTimeline.jsx compact mission progress audit trail with single-select category filters
 |-WorkWindowPanel.jsx delegate work window list
 |-SummaryCard.jsx summary event card
 |-WarningCard.jsx warning event card
@@ -43,5 +43,3 @@ Last Modified by: Codex
 
 ## 代办
 - Add ApprovalCard when backend approvals are implemented.
-- Implement `MissionComposer.jsx` per `docs/work_mode/issues/issue33-command-rail-and-compact-reading-ui.md`.
-- Remove waiting-input and completed follow-up textarea ownership from `MissionHeader.jsx` after Composer is implemented.

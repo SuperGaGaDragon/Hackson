@@ -6,6 +6,7 @@ Last Modified by: Codex
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  addMissionInstruction,
   answerMission,
   continueMissionFollowUp,
   createMission,
@@ -53,6 +54,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
   const [showMissionCreate, setShowMissionCreate] = useState(false);
   const [answerText, setAnswerText] = useState("");
   const [followUpText, setFollowUpText] = useState("");
+  const [instructionText, setInstructionText] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -228,6 +230,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     setWorkWindows(detail?.workWindows || []);
     setAnswerText("");
     setFollowUpText("");
+    setInstructionText("");
   }
 
   async function loadMissionRoute(projectRows, missionId) {
@@ -247,6 +250,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
         setWorkWindows(detail?.workWindows || []);
         setAnswerText("");
         setFollowUpText("");
+        setInstructionText("");
         return true;
       }
     }
@@ -281,6 +285,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     setShowMissionCreate(false);
     setAnswerText("");
     setFollowUpText("");
+    setInstructionText("");
     writeRoute("/work");
   }
 
@@ -306,6 +311,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       if (detail.mission?.status !== "waiting_input") setAnswerText("");
       setAnswerText("");
       setFollowUpText("");
+      setInstructionText("");
       setMissionTitle("");
       setMissionGoal("");
       setShowMissionCreate(false);
@@ -332,6 +338,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       if (detail.mission?.status !== "waiting_input") setAnswerText("");
       setAnswerText("");
       setFollowUpText("");
+      setInstructionText("");
       writeRoute(`/work_mission/${encodeURIComponent(detail.mission.id)}`);
     } catch (err) {
       setError(err.message || "Load failed");
@@ -340,12 +347,14 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     }
   }
 
-  async function start() {
+  async function start(event) {
+    event?.preventDefault?.();
     if (!selectedMission || busy) return;
     setBusy(true);
     setError("");
     try {
-      const detail = await startMission(selectedMission.id);
+      const payload = instructionText.trim() ? { instruction: instructionText } : {};
+      const detail = await startMission(selectedMission.id, payload);
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
@@ -353,6 +362,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setProducts(detail.products || []);
       setWorkWindows(detail.workWindows || []);
       setFollowUpText("");
+      setInstructionText("");
     } catch (err) {
       setError(err.message || "Start failed");
     } finally {
@@ -440,6 +450,27 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     }
   }
 
+  async function addInstruction(event) {
+    event.preventDefault();
+    if (!selectedMission || busy || !instructionText.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const detail = await addMissionInstruction(selectedMission.id, { instruction: instructionText });
+      setSelectedMission(detail.mission);
+      setMissions((current) => replaceMission(current, detail.mission));
+      setEvents(detail.events || []);
+      setArtifacts(detail.artifacts || []);
+      setProducts(detail.products || []);
+      setWorkWindows(detail.workWindows || []);
+      setInstructionText("");
+    } catch (err) {
+      setError(err.message || "Send failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function evaluate() {
     if (!selectedMission || busy) return;
     setBusy(true);
@@ -478,36 +509,39 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     <div className="work-console-grid">
       <ProjectMissionRail
         agents={workAgents}
+        answerText={answerText}
         busy={busy || loading}
+        followUpText={followUpText}
+        inputRequest={inputRequest}
+        instructionText={instructionText}
         missionLeadId={missionLeadId}
         missionGoal={missionGoal}
         missionTitle={missionTitle}
         missions={missions}
+        onAnswer={answer}
+        onAnswerTextChange={setAnswerText}
         onBackToWorkspace={backToWorkspace}
         onCreateMission={addMission}
+        onFollowUp={continueFollowUp}
+        onFollowUpTextChange={setFollowUpText}
+        onInstruction={addInstruction}
+        onInstructionTextChange={setInstructionText}
         onMissionLeadChange={setMissionLeadId}
         onMissionGoalChange={setMissionGoal}
         onMissionTitleChange={setMissionTitle}
         onSelectMission={selectMission}
         onShowCreateMission={() => setShowMissionCreate((current) => !current)}
+        onStart={start}
         selectedMission={selectedMission}
         selectedProject={selectedProject}
         showMissionCreate={showMissionCreate}
       />
       <section className="mission-console">
         <MissionHeader
-          answerText={answerText}
           busy={busy || loading}
-          followUpText={followUpText}
-          inputRequest={inputRequest}
           mission={selectedMission}
-          onAnswer={answer}
-          onAnswerTextChange={setAnswerText}
           onEvaluate={evaluate}
-          onFollowUp={continueFollowUp}
-          onFollowUpTextChange={setFollowUpText}
           onPause={pause}
-          onStart={start}
         />
         <div className="mission-content">
           <ActivityStrip events={events} mission={selectedMission} />

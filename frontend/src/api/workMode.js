@@ -54,10 +54,10 @@ export function getMission(missionId) {
   return apiRequest(`/api/work/missions/${missionId}`);
 }
 
-export function startMission(missionId) {
+export function startMission(missionId, payload = {}) {
   return apiRequest(`/api/work/missions/${missionId}/start`, {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -86,6 +86,18 @@ export function continueMissionFollowUp(missionId, payload) {
   return apiRequest(`/api/work/missions/${missionId}/follow-up`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function addMissionInstruction(missionId, payload) {
+  return apiRequest(`/api/work/missions/${missionId}/instruction`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).catch((error) => {
+    if (error.status === 404 || error.status === 405) {
+      throw new ApiError("mission_instruction_unavailable", error.status);
+    }
+    throw error;
   });
 }
 

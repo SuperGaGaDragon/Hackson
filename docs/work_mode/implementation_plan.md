@@ -540,7 +540,39 @@ Exit criteria:
 - Full Product text remains readable in Product Panel.
 - No default row displays an unbounded paragraph wall.
 
-## 21. Recommended Test Commands
+## 21. Loop 20: V1.0.9 Progress Filters
+
+Add focused views for the Mission Progress audit trail.
+
+Required behavior:
+
+- Progress card supports a single active filter.
+- Default filter is `All`.
+- Filters include Thinking, Reliability, Products, Windows, Search, Inputs, and Issues.
+- Filter chips show counts.
+- Selecting a filter resets expanded row state.
+- Empty filtered result says `No matching events`.
+- Diagnostics remains unfiltered.
+
+Required tests/build:
+
+```bash
+npm --prefix frontend run build
+```
+
+Browser checks:
+
+- Thinking filter shows model/tool decision events only.
+- Reliability filter shows evaluator lifecycle/report events only.
+- Issues filter shows invalid/failure/blocked/retry events.
+- Returning to All restores the full Progress feed.
+
+Exit criteria:
+
+- Progress is scannable for both normal writing Missions and Reliability-heavy research Missions.
+- Filter UI does not dominate the card or wrap into unreadable controls on mobile.
+
+## 22. Recommended Test Commands
 
 Backend scoped:
 
@@ -563,7 +595,7 @@ Frontend:
 npm --prefix frontend run build
 ```
 
-## 22. Rollback
+## 23. Rollback
 
 Rollback should preserve:
 
@@ -578,6 +610,6 @@ If V1.0 loop is unstable:
 - Fall back to V0.5 single-call worker only as emergency compatibility.
 - Do not delete Products, Windows, or Artifacts created during testing.
 
-## 23. 代办
+## 24. 代办
 
 - Add concrete issue tracker tickets after this document is accepted.

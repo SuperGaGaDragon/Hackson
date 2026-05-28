@@ -4,90 +4,107 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { ArrowLeft, Plus, UsersRound } from "lucide-react";
+import { ArrowLeft, Plus, UserRound } from "lucide-react";
+import MissionComposer from "./MissionComposer";
 
 function ProjectMissionRail({
   agents,
+  answerText,
   busy,
+  followUpText,
+  inputRequest,
+  instructionText,
   missionLeadId,
   missionGoal,
   missionTitle,
   missions,
+  onAnswer,
+  onAnswerTextChange,
   onBackToWorkspace,
   onCreateMission,
+  onFollowUp,
+  onFollowUpTextChange,
+  onInstruction,
+  onInstructionTextChange,
   onMissionLeadChange,
   onMissionGoalChange,
   onMissionTitleChange,
   onSelectMission,
   onShowCreateMission,
+  onStart,
   selectedMission,
   selectedProject,
   showMissionCreate,
 }) {
+  const activeLeadId = selectedMission?.leadEmployeeId || missionLeadId;
+  const selectedLead = agents.find((agent) => agent.slot === activeLeadId) || agents[0];
   return (
     <aside className="history-rail work-rail">
-      <div className="panel-head compact">
-        <div>
-          <p className="eyebrow">Project</p>
-          <h2>{selectedProject?.name || "Project"}</h2>
+      <div className="rail-directory">
+        <div className="panel-head compact">
+          <div>
+            <p className="eyebrow">Project</p>
+            <h2>{selectedProject?.name || "Project"}</h2>
+          </div>
+          <button className="icon-button" disabled={busy} onClick={onBackToWorkspace} title="Workspace" type="button">
+            <ArrowLeft size={16} />
+          </button>
         </div>
-        <button className="icon-button" disabled={busy} onClick={onBackToWorkspace} title="Workspace" type="button">
-          <ArrowLeft size={16} />
-        </button>
-      </div>
-      <div className="panel-head compact rail-section">
-        <div>
-          <p className="eyebrow">Lead</p>
-          <h2>Agents</h2>
+        <div className="rail-lead">
+          <span className="lead-icon">
+            <UserRound size={15} />
+          </span>
+          <span>
+            <small>Lead</small>
+            <strong>{selectedLead?.name || "Agent"}</strong>
+          </span>
+          <em>{selectedLead?.voice || selectedMission?.leadEmployeeRole || ""}</em>
         </div>
-        <UsersRound size={18} />
-      </div>
-      <div className="agent-choice-list">
-        {agents.map((agent) => (
+        <div className="panel-head compact rail-section">
+          <div>
+            <p className="eyebrow">Directory</p>
+            <h2>Missions</h2>
+          </div>
           <button
-            aria-pressed={missionLeadId === agent.slot}
-            className={`agent-choice ${agent.color} ${missionLeadId === agent.slot ? "active" : ""}`}
-            disabled={busy}
-            key={agent.slot}
-            onClick={() => onMissionLeadChange(agent.slot)}
+            className="icon-button"
+            disabled={busy || !selectedProject}
+            onClick={onShowCreateMission}
+            title="New Mission"
             type="button"
           >
-            <span className="avatar">{agent.short}</span>
-            <span>
-              <strong>{agent.name}</strong>
-              <small>{agent.voice}</small>
-            </span>
+            <Plus size={16} />
           </button>
-        ))}
-      </div>
-      <div className="panel-head compact rail-section">
-        <div>
-          <p className="eyebrow">Project</p>
-          <h2>Missions</h2>
         </div>
-        <button
-          className="icon-button"
-          disabled={busy || !selectedProject}
-          onClick={onShowCreateMission}
-          title="New Mission"
-          type="button"
-        >
-          <Plus size={16} />
-        </button>
+        <div className="history-list mission-list">
+          {missions.length === 0 && <p className="muted">No missions</p>}
+          {missions.map((mission) => (
+            <button
+              className={`history-item mission-nav-item ${mission.id === selectedMission?.id ? "active" : ""}`}
+              key={mission.id}
+              onClick={() => onSelectMission(mission)}
+              type="button"
+            >
+              <strong>{mission.title}</strong>
+              <span>{mission.status}</span>
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="history-list">
-        {missions.map((mission) => (
-          <button
-            className={`history-item ${mission.id === selectedMission?.id ? "active" : ""}`}
-            key={mission.id}
-            onClick={() => onSelectMission(mission)}
-            type="button"
-          >
-            <strong>{mission.title}</strong>
-            <span>{mission.status}</span>
-          </button>
-        ))}
-      </div>
+      <MissionComposer
+        answerText={answerText}
+        busy={busy}
+        followUpText={followUpText}
+        inputRequest={inputRequest}
+        instructionText={instructionText}
+        mission={selectedMission}
+        onAnswer={onAnswer}
+        onAnswerTextChange={onAnswerTextChange}
+        onFollowUp={onFollowUp}
+        onFollowUpTextChange={onFollowUpTextChange}
+        onInstruction={onInstruction}
+        onInstructionTextChange={onInstructionTextChange}
+        onStart={onStart}
+      />
       <MissionCreateModal
         agents={agents}
         busy={busy}

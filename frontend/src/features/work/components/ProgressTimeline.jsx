@@ -38,6 +38,10 @@ const timelineTypes = new Set([
   "DISCUSSION_WINDOW_FAILED",
   "USER_INPUT_REQUESTED",
   "MISSION_PAUSED_RETRYABLE",
+  "USER_INPUT_RECEIVED",
+  "USER_FOLLOWUP_REQUESTED",
+  "USER_INSTRUCTION_ADDED",
+  "WARNING",
   "MISSION_PAUSE_REQUESTED",
   "MISSION_PAUSED",
   "MISSION_BLOCKED",
@@ -47,17 +51,81 @@ const timelineTypes = new Set([
   "MISSION_FAILED",
 ]);
 
+const progressFilters = [
+  { id: "all", label: "All" },
+  { id: "thinking", label: "Thinking" },
+  { id: "reliability", label: "Reliability" },
+  { id: "products", label: "Products" },
+  { id: "windows", label: "Windows" },
+  { id: "search", label: "Search" },
+  { id: "inputs", label: "Inputs" },
+  { id: "issues", label: "Issues" },
+];
+
+const filterTypes = {
+  thinking: new Set(["MODEL_TURN_STARTED", "MODEL_TURN_HEARTBEAT", "MODEL_TURN_COMPLETED", "MODEL_TURN_RETRYING", "MODEL_TURN_INVALID", "TOOL_CALLED"]),
+  reliability: new Set(["EVALUATION_STARTED", "RELIABILITY_REPORTED", "EVALUATION_FAILED"]),
+  products: new Set(["PRODUCT_UPDATED", "PRODUCT_INSPECTED", "PRODUCT_REVIEWED"]),
+  windows: new Set([
+    "WORK_WINDOW_OPENED",
+    "WORK_WINDOW_COMPLETED",
+    "WORK_WINDOW_BLOCKED",
+    "WORK_WINDOW_FAILED",
+    "DISCUSSION_WINDOW_OPENED",
+    "DISCUSSION_WINDOW_COMPLETED",
+    "DISCUSSION_WINDOW_BLOCKED",
+    "DISCUSSION_WINDOW_FAILED",
+  ]),
+  search: new Set(["WEB_SEARCH_COMPLETED", "WEB_SEARCH_FAILED"]),
+  inputs: new Set(["USER_INPUT_REQUESTED", "USER_INPUT_RECEIVED", "USER_FOLLOWUP_REQUESTED", "USER_INSTRUCTION_ADDED"]),
+  issues: new Set([
+    "MODEL_TURN_RETRYING",
+    "MODEL_TURN_INVALID",
+    "WEB_SEARCH_FAILED",
+    "EVALUATION_FAILED",
+    "WORK_WINDOW_BLOCKED",
+    "WORK_WINDOW_FAILED",
+    "DISCUSSION_WINDOW_BLOCKED",
+    "DISCUSSION_WINDOW_FAILED",
+    "MISSION_PAUSED_RETRYABLE",
+    "MISSION_BLOCKED",
+    "MISSION_FAILED",
+    "WARNING",
+  ]),
+};
+
 function ProgressTimeline({ events }) {
   const [expandedId, setExpandedId] = useState(null);
-  const rows = compactTimeline(events.filter((event) => timelineTypes.has(event.type)));
+  const [activeFilter, setActiveFilter] = useState("all");
+  const allRows = compactTimeline(events.filter((event) => timelineTypes.has(event.type)));
+  const rows = filterRows(allRows, activeFilter);
+  const counts = progressFilterCounts(allRows);
   return (
     <div className="work-card timeline-card">
-      <div className="card-head">
-        <p className="eyebrow">Progress</p>
-        <span>{rows.length}</span>
+      <div className="card-head progress-head">
+        <div>
+          <p className="eyebrow">Progress</p>
+          <span>{activeFilter === "all" ? allRows.length : `${rows.length} / ${allRows.length}`}</span>
+        </div>
+        <div className="progress-filters" aria-label="Progress filters">
+          {progressFilters.map((filter) => (
+            <button
+              className={activeFilter === filter.id ? "active" : ""}
+              key={filter.id}
+              onClick={() => {
+                setActiveFilter(filter.id);
+                setExpandedId(null);
+              }}
+              type="button"
+            >
+              <span>{filter.label}</span>
+              <small>{counts[filter.id]}</small>
+            </button>
+          ))}
+        </div>
       </div>
       <div className="progress-list">
-        {rows.length === 0 && <p className="muted">No events</p>}
+        {rows.length === 0 && <p className="muted">{activeFilter === "all" ? "No events" : "No matching events"}</p>}
         {rows.map((event) => {
           const view = eventView(event);
           const Icon = view.icon;
@@ -93,6 +161,22 @@ function ProgressTimeline({ events }) {
       </div>
     </div>
   );
+}
+
+function filterRows(rows, activeFilter) {
+  if (activeFilter === "all") return rows;
+  const accepted = filterTypes[activeFilter];
+  if (!accepted) return rows;
+  return rows.filter((event) => accepted.has(event.type));
+}
+
+function progressFilterCounts(rows) {
+  const counts = { all: rows.length };
+  for (const filter of progressFilters) {
+    if (filter.id === "all") continue;
+    counts[filter.id] = filterRows(rows, filter.id).length;
+  }
+  return counts;
 }
 
 function ProgressDetail({ event }) {

@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 const TOKEN_KEY = "hackson_access_token";
@@ -76,4 +76,5 @@ function resolveErrorMessage(data) {
 const KNOWN_ERROR_MESSAGES = {
   model_rate_limited: "Model busy",
   model_unavailable: "Model unavailable",
+  mission_instruction_unavailable: "Command is updating. Refresh or retry shortly.",
 };

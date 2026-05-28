@@ -49,6 +49,7 @@ def build_lead_context(
         "toolUseGuidance": _tool_use_guidance(),
         "requirementGrill": _requirement_grill_guidance(),
         "latestUserFollowUp": _latest_user_follow_up(events),
+        "latestUserInstruction": _latest_user_instruction(events),
         "hardConstraints": [
             "Return exactly one tool action.",
             "Return valid JSON only, with top-level tool and arguments.",
@@ -150,6 +151,19 @@ def _latest_user_follow_up(events: list[dict[str, Any]]) -> dict[str, Any]:
                 "sequence": event["sequence"],
                 "request": payload.get("request") or event.get("message", ""),
                 "message": event.get("message", ""),
+            }
+    return {}
+
+
+def _latest_user_instruction(events: list[dict[str, Any]]) -> dict[str, Any]:
+    for event in reversed(events):
+        if event.get("type") == "USER_INSTRUCTION_ADDED":
+            payload = event.get("payload", {})
+            return {
+                "sequence": event["sequence"],
+                "instruction": payload.get("instruction") or event.get("message", ""),
+                "message": event.get("message", ""),
+                "mode": payload.get("mode", "instruction"),
             }
     return {}
 
