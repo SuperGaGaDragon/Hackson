@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 """
 
@@ -56,7 +56,11 @@ def main() -> None:
     _expect_ok(client.post(f"/api/work/missions/{mission['id']}/start", json={}), 200)
     detail = _expect_ok(client.get(f"/api/work/missions/{mission['id']}"), 200)
     acceptance = assert_full_acceptance(detail)
+    evaluation = _expect_ok(client.post(f"/api/work/missions/{mission['id']}/evaluate", json={}), 200)
+    report_artifact = _expect_report_artifact(evaluation)
+    report_payload = report_artifact["metadata"]["reportPayload"]
     events = _expect_ok(client.get(f"/api/work/missions/{mission['id']}/events"), 200)
+    assert any(event["type"] == "RELIABILITY_REPORTED" for event in events), "missing_reliability_reported_event"
 
     print(
         "work_mode_v1_http_smoke=ok "
@@ -64,6 +68,8 @@ def main() -> None:
         f"windows={len(detail['workWindows'])} "
         f"products={len(detail['products'])} "
         f"artifacts={len(detail['artifacts'])} "
+        f"reliability_score={report_payload['score']} "
+        f"reliability_status={report_payload['status']} "
         f"final_cjk={acceptance['finalCjk']}"
     )
 
@@ -122,6 +128,21 @@ class SmokeWorker:
 def _expect_ok(response, expected_status: int) -> dict | list:
     assert response.status_code == expected_status, response.text
     return response.json()
+
+
+def _expect_report_artifact(detail: dict) -> dict:
+    reports = [
+        artifact
+        for artifact in detail["artifacts"]
+        if artifact.get("metadata", {}).get("artifactRole") == "reliability_report"
+    ]
+    assert reports, "missing_reliability_report_artifact"
+    report = reports[0]
+    payload = report["metadata"].get("reportPayload")
+    assert isinstance(payload, dict), "missing_reliability_report_payload"
+    assert isinstance(payload.get("score"), int), "missing_reliability_score"
+    assert payload.get("profile") == "research_reliability_v1", "unexpected_reliability_profile"
+    return report
 
 
 if __name__ == "__main__":

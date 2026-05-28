@@ -141,6 +141,151 @@ class FullSmokeDelegateClient:
         }
 
 
+class WaitingInputLeadClient:
+    """Deterministic Lead client for the waiting_input answer loop."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def generate_action(self, context: dict[str, Any]):
+        self.calls += 1
+        product = (context.get("productManifest") or [None])[0]
+        received = [
+            event
+            for event in context.get("recentEvents", [])
+            if event.get("type") == "USER_INPUT_RECEIVED"
+        ]
+        if not received:
+            return parse_tool_action(
+                """
+                {
+                  "tool": "ask_user",
+                  "arguments": {
+                    "reason": "需要确认是否改为受其特质启发，而不是直接模仿指定作者。",
+                    "question": "要按“受其特质启发”的方向开始吗？",
+                    "suggestedOptions": ["按这个方向开始", "换一个方向"]
+                  }
+                }
+                """
+            )
+        if product is None:
+            return parse_tool_action(
+                """
+                {
+                  "tool": "work_product",
+                  "arguments": {
+                    "reason": "用户确认后写入第一版产品。",
+                    "operation": "create_product",
+                    "productId": null,
+                    "sourceArtifactIds": [],
+                    "productTitle": "用户确认后的小说方向",
+                    "artifactTitle": "确认方向样稿",
+                    "artifactKind": "draft",
+                    "content": "用户已确认按受其特质启发的方向开始。这里写入一段可继续扩展的样稿。",
+                    "summary": "完成确认方向样稿。"
+                  }
+                }
+                """
+            )
+        return parse_tool_action(
+            f"""
+            {{
+              "tool": "finish_mission",
+              "arguments": {{
+                "reason": "用户已确认方向，样稿已保存。",
+                "summary": "等待输入闭环已完成。",
+                "finalProductIds": ["{product["id"]}"],
+                "finalArtifactIds": ["{product["latestArtifactId"]}"]
+              }}
+            }}
+            """
+        )
+
+
+class SearchSmokeLeadClient:
+    """Deterministic Lead client for the V1 Web Search tool smoke."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self.saw_search_observation = False
+
+    def generate_action(self, context: dict[str, Any]):
+        self.calls += 1
+        product = (context.get("productManifest") or [None])[0]
+        observation = context.get("lastObservation") or {}
+        if product is not None:
+            return parse_tool_action(
+                f"""
+                {{
+                  "tool": "finish_mission",
+                  "arguments": {{
+                    "reason": "搜索来源摘要已保存。",
+                    "summary": "搜索工具闭环完成。",
+                    "finalProductIds": ["{product["id"]}"],
+                    "finalArtifactIds": ["{product["latestArtifactId"]}"]
+                  }}
+                }}
+                """
+            )
+        if observation.get("tool") == "web_search" and observation.get("status") == "ok":
+            self.saw_search_observation = True
+            url = observation["results"][0]["url"]
+            return parse_tool_action(
+                f"""
+                {{
+                  "tool": "work_product",
+                  "arguments": {{
+                    "reason": "把搜索结果整理成可读产物。",
+                    "operation": "create_product",
+                    "productId": null,
+                    "sourceArtifactIds": [],
+                    "productTitle": "搜索来源摘要",
+                    "artifactTitle": "来源摘要",
+                    "artifactKind": "report",
+                    "content": "已找到可引用来源：{url}",
+                    "summary": "完成搜索来源摘要。"
+                  }}
+                }}
+                """
+            )
+        return parse_tool_action(
+            """
+            {
+              "tool": "web_search",
+              "arguments": {
+                "reason": "需要查找外部来源。",
+                "query": "source backed reference",
+                "searchType": "reference",
+                "maxResults": 1,
+                "recencyDays": 30,
+                "allowedDomains": [],
+                "blockedDomains": []
+              }
+            }
+            """
+        )
+
+
+class FakeSearchProvider:
+    """Deterministic SearchProvider for Web Search smoke."""
+
+    def search(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "status": "ok",
+            "results": [
+                {
+                    "title": "Reference",
+                    "url": "https://example.com/reference",
+                    "source": "example.com",
+                    "snippet": "可引用资料摘要。",
+                    "publishedAt": "2026-05-01",
+                }
+            ],
+            "truncated": False,
+            "provider": "fake_search",
+        }
+
+
 def assert_full_acceptance(detail: dict[str, Any]) -> dict[str, Any]:
     """Assert the Work Mode V1 full smoke release contract."""
     event_types = [event["type"] for event in detail["events"]]
@@ -165,6 +310,19 @@ def assert_full_acceptance(detail: dict[str, Any]) -> dict[str, Any]:
     assert completed_event["payload"]["finalProductIds"]
     assert completed_event["payload"]["finalArtifactIds"]
     return {"finalArtifact": final_artifact, "finalCjk": final_cjk}
+
+
+def assert_search_acceptance(detail: dict[str, Any], lead_client: SearchSmokeLeadClient) -> dict[str, Any]:
+    """Assert the Work Mode Web Search tool smoke contract."""
+    event_types = [event["type"] for event in detail["events"]]
+    final_artifact = final_artifact_from_detail(detail)
+
+    assert detail["mission"]["status"] == "completed"
+    assert "WEB_SEARCH_COMPLETED" in event_types
+    assert "PRODUCT_UPDATED" in event_types
+    assert lead_client.saw_search_observation
+    assert "https://example.com/reference" in final_artifact["content"]
+    return {"finalArtifact": final_artifact}
 
 
 def final_artifact_from_detail(detail: dict[str, Any]) -> dict[str, Any]:
