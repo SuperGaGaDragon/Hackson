@@ -56,4 +56,41 @@ def _candidate_from_user_message(user_id: str, message: dict) -> MemoryCandidate
 
 def _looks_like_explicit_preference(content: str) -> bool:
     lowered = content.lower()
-    return any(marker in lowered for marker in ["我喜欢", "我偏好", "i like", "i prefer"])
+    direct_preference_markers = [
+        "我喜欢",
+        "我更喜欢",
+        "我偏好",
+        "我不喜欢",
+        "不喜欢",
+        "我讨厌",
+        "请记住",
+        "帮我记住",
+        "记住",
+        "i like",
+        "i prefer",
+        "i don't like",
+        "i do not like",
+        "please remember",
+        "remember that",
+        "remember:",
+    ]
+    response_preference_prefixes = [
+        "希望你",
+        "请你",
+        "以后你",
+        "你可以",
+        "你应该",
+        "不要先",
+        "不要总",
+        "别先",
+        "别总",
+        "直接指出",
+        "don't",
+        "do not",
+    ]
+    response_context_markers = ["回复", "回应", "反馈", "指出", "安慰", "解释", "reply", "respond", "feedback", "reassure"]
+    if any(marker in lowered for marker in direct_preference_markers):
+        return True
+    if any(marker in lowered for marker in response_preference_prefixes):
+        return any(marker in lowered for marker in response_context_markers)
+    return False

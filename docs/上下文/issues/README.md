@@ -26,6 +26,7 @@ Lst Modified by: Codex
 |-issue10-agent-origin-stories.md default Nora and Vale story depth and normalization rules
 |-issue11-account-agent-continuity.md account-level Agent continuity and shared memory contract
 |-issue12-idle-collaborative-convergence.md Idle agreement, meaningful disagreement, and stop condition protocol
+|-issue13-memory-preference-recall-comfort.md explicit preference recall and comfort gap
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Context Runtime architecture.
