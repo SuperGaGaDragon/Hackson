@@ -16,6 +16,7 @@ import {
   stopMission,
 } from "../../api/workMode";
 import { normalizeAgents } from "../../domain/agents";
+import ActivityStrip from "./components/ActivityStrip";
 import InspectorPanel from "./components/InspectorPanel";
 import MissionHeader from "./components/MissionHeader";
 import ProductPanel from "./components/ProductPanel";
@@ -289,6 +290,7 @@ function WorkPage({ agents = [] }) {
       <section className="mission-console">
         <MissionHeader busy={busy || loading} mission={selectedMission} onStart={start} onStop={stop} />
         <div className="mission-content">
+          <ActivityStrip events={events} mission={selectedMission} />
           <ProgressTimeline events={events} />
           <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
           <SummaryCard events={events} />

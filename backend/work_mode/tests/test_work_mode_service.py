@@ -504,6 +504,24 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(completed["workWindows"][0]["agentSlot"], "agent_2")
         self.assertEqual(completed["artifacts"][0]["metadata"]["workWindowId"], window["id"])
 
+    def test_service_marks_work_window_failed(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        window = self.service.create_work_window(
+            "user_1",
+            mission["id"],
+            run_id,
+            agent_slot="agent_2",
+            title="第一章草稿",
+            brief="写第一章。",
+        )
+
+        failed_window = self.service.mark_work_window_failed("user_1", window["id"], "model_timeout")
+
+        self.assertEqual(failed_window["status"], "failed")
+        self.assertEqual(failed_window["summary"], "model_timeout")
+
     def test_worker_marks_active_step_failed_when_runner_fails(self) -> None:
         mission = self._mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())

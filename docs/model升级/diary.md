@@ -98,6 +98,14 @@ Lst Modified by: Codex
   - `127.0.0.1:8145/health` 和 `https://hackson.catachess.com/health` 返回 `{"status":"ok"}`，公网首页返回 `200`。
   - Public deterministic full smoke 和 HTTP full smoke 均通过，`final_cjk=9936`。
   - Public 真实浏览器触发的 Codex Work V1 Mission `6a17978c519166b7a2582db0` 没有假完成，真实链路产生 `MISSION_PLAN_UPDATED`、`PRODUCT_UPDATED` 后按 timeout 进入 `paused_retryable model_timeout`，没有 orphan `codex exec`。
+- 定位并修复 Work V1 长模型轮次体验问题：
+  - 结论：`paused_retryable` 是正确安全底线，但正常长写作任务直接 pause 不是产品级体验。
+  - 补充 `docs/work_mode/issues/issue7-long-turn-progress.md`，明确当前 `docs/work_mode` 未完全完成，真实公网 8000 字 Codex smoke 未完成，且 V1.0 需要非 streaming 进度层。
+  - 后端新增安全 lifecycle events：`MODEL_TURN_STARTED`、`MODEL_TURN_HEARTBEAT`、`MODEL_TURN_COMPLETED`、`MODEL_TURN_RETRYING`、`MODEL_TURN_INVALID`、`TOOL_CALLED`、`WORK_WINDOW_FAILED`。
+  - Lead turn 对 retryable provider error 先做有限自动 retry，耗尽后才进入 `paused_retryable`。
+  - Delegate window 打开后若模型超时/失败，会标记窗口 `failed` 并发 `WORK_WINDOW_FAILED`，不再让 UI 看起来还在后台跑。
+  - 前端新增 `ActivityStrip`，展示最近一次安全运行状态，用户能看到 Thinking、Tool、Retry、Done 等进度。
+  - 本地验证通过：backend 全目录 unittest、Work Mode `51`、model_runtime `24`、interactions `21`、frontend build、in-process full smoke、HTTP full smoke、browser smoke，最终 `final_cjk=9936`。
 
 ### 当前工程判断
 - 先做最小闭环：`idle / companion_1 / companion_2 -> ContextBuilder -> HacksonOrchestrator -> model_runtime -> 保存消息`。
@@ -106,7 +114,7 @@ Lst Modified by: Codex
 - 目标机验证必须开新端口和新数据库，不暂停现有服务。
 - Work V0.5 只保证单次有界产物；完整 8000 字长文需要后续 V1 supervisor loop 拆成多步生成、续写、合并、验收。
 - Work V1 核心闭环已经成立：模型自己选工具，后端只管 schema、权限、持久化、状态机、UI 合同。
-- 真实 Codex CLI 可跑通 V1 loop，但长文本质量和时延仍不适合直接在 HTTP background task 里无限等待；产品化需要 durable queue、resume UI 和更强的长文验收策略。
+- 真实 Codex CLI 可跑通 V1 loop，但长文本质量和时延仍不适合直接在 HTTP background task 里无限等待；当前先用 lifecycle events、bounded retry、failed window cleanup 改善产品体验，后续仍需要 durable queue 和 native API/tool calling。
 
 ### 下一步
 - 继续观察 `codex_cli` 冷启动延迟；如需要，再做常驻 worker 或队列化。

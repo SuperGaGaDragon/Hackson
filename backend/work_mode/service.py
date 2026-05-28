@@ -575,6 +575,7 @@ class WorkModeService:
         mission_id: str,
         run_id: str,
         error: str,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         timestamp = now_utc()
         mission = self._update_mission(
@@ -596,7 +597,7 @@ class WorkModeService:
             event_type="MISSION_PAUSED_RETRYABLE",
             title="Paused",
             message=error,
-            payload={"error": error, "employee": _employee_payload(mission)},
+            payload={"error": error, "employee": _employee_payload(mission), **(metadata or {})},
         )
 
     def mark_work_window_blocked(
@@ -610,6 +611,22 @@ class WorkModeService:
             window_id,
             user_id,
             {"status": "blocked", "summary": summary, "updated_at": timestamp},
+        )
+        if window is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="work_window_not_found")
+        return public_work_window(window)
+
+    def mark_work_window_failed(
+        self,
+        user_id: str,
+        window_id: str,
+        summary: str,
+    ) -> dict[str, Any]:
+        timestamp = now_utc()
+        window = self.repository.update_work_window(
+            window_id,
+            user_id,
+            {"status": "failed", "summary": summary, "updated_at": timestamp},
         )
         if window is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="work_window_not_found")

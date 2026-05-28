@@ -22,6 +22,7 @@ Lst Modified by: Codex
 |-WorkspaceView.jsx workspace project list and new project form
 |-ProjectMissionRail.jsx project detail rail with user Agents and missions
 |-MissionHeader.jsx selected mission title, status, and controls
+|-ActivityStrip.jsx latest compact Mission activity row
 |-ProgressTimeline.jsx mission event timeline
 |-WorkWindowPanel.jsx delegate work window list
 |-SummaryCard.jsx summary event card

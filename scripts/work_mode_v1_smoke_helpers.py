@@ -150,6 +150,9 @@ def assert_full_acceptance(detail: dict[str, Any]) -> dict[str, Any]:
 
     assert detail["mission"]["status"] == "completed"
     assert "MISSION_PLAN_UPDATED" in event_types
+    assert "MODEL_TURN_STARTED" in event_types
+    assert "MODEL_TURN_COMPLETED" in event_types
+    assert "TOOL_CALLED" in event_types
     assert event_types.count("WORK_WINDOW_COMPLETED") >= 2
     assert len(detail["workWindows"]) >= 2
     assert len(detail["products"]) >= 1

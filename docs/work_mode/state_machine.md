@@ -213,6 +213,10 @@ V1.0 event types:
 MISSION_CREATED
 MISSION_STARTED
 MISSION_PLAN_UPDATED
+MODEL_TURN_STARTED
+MODEL_TURN_HEARTBEAT
+MODEL_TURN_COMPLETED
+MODEL_TURN_RETRYING
 MODEL_TURN_INVALID
 TOOL_CALLED
 PRODUCT_UPDATED
@@ -220,6 +224,7 @@ PRODUCT_INSPECTED
 WORK_WINDOW_OPENED
 WORK_WINDOW_COMPLETED
 WORK_WINDOW_BLOCKED
+WORK_WINDOW_FAILED
 USER_INPUT_REQUESTED
 USER_INPUT_RECEIVED
 MISSION_PAUSED_RETRYABLE
@@ -241,6 +246,12 @@ Resume from `paused_retryable`:
 - MUST keep existing Products and Artifacts.
 - MUST use the last successful tool observation as part of context.
 - MUST NOT replay already persisted tools.
+
+Retryable provider failures:
+
+- MAY emit `MODEL_TURN_RETRYING` before Mission pause when automatic retry budget remains.
+- MUST emit `MISSION_PAUSED_RETRYABLE` after automatic retry budget is exhausted.
+- MUST keep already persisted lifecycle events and Work Windows.
 
 Resume from `waiting_input`:
 

@@ -6,9 +6,15 @@ Last Modified by: Codex
 */
 function WarningCard({ events }) {
   const warnings = events.filter((event) =>
-    ["WARNING", "MISSION_FAILED", "MISSION_BLOCKED", "MISSION_PAUSED_RETRYABLE", "USER_INPUT_REQUESTED"].includes(
-      event.type,
-    ),
+    [
+      "WARNING",
+      "MISSION_FAILED",
+      "MISSION_BLOCKED",
+      "MISSION_PAUSED_RETRYABLE",
+      "MODEL_TURN_RETRYING",
+      "WORK_WINDOW_FAILED",
+      "USER_INPUT_REQUESTED",
+    ].includes(event.type),
   );
   return (
     <div className="work-card warning-panel">

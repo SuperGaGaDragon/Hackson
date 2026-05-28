@@ -12,6 +12,7 @@ Lst Modified by: Codex
   - Project detail owns the two user-edited Agents from `Me`, Missions, console, and Inspector.
   - Use `/api/work` Project, Mission, and Event APIs verified on the target machine.
   - Mission detail renders a single vertical console stream so Progress, Summary, Product, and Raw Log never overlap.
+  - `ActivityStrip` renders the latest safe runtime lifecycle event so long model turns do not look frozen.
   - Terminal mission actions must be truthful; a completed mission cannot present an enabled `Start` action.
   - Do not expose Work-only Employee or Team creation in the current product UI.
   - Do not expose autonomous tool execution before backend safety gates exist.
@@ -19,6 +20,7 @@ Lst Modified by: Codex
 ## folder structure
 |-README.md work feature guide
 |-WorkPage.jsx Work Mode Workspace and Project detail page
+|-components/ fixed Work UI components for Activity, Timeline, Windows, Product, and Inspector
 
 ## 代办
-- Add tool trace display after backend exposes a verified read API.
+- Add native streaming display after backend exposes a verified safe stream API.

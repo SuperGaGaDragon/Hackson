@@ -20,6 +20,7 @@ Lst Modified by: Codex
 |-issue4-retry-resume.md retryable failures, resume semantics, and persistence
 |-issue5-streaming.md future streaming and partial tool progress
 |-issue6-full-smoke.md full 8000 CJK character smoke acceptance
+|-issue7-long-turn-progress.md long model turn progress, bounded retry, and timeout UX
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

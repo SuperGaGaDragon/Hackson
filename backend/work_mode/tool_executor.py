@@ -10,6 +10,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from work_mode.action_client import ToolActionClientError
 from work_mode.context import build_delegate_context
 from work_mode.service import WorkModeService
 from work_mode.tool_protocol import (
@@ -270,7 +271,34 @@ class WorkModeToolExecutor:
             target_product=target_product,
             source_artifacts=source_artifacts,
         )
-        delegate_result = _parse_delegate_result(self.delegate_client.generate_delegate_result(delegate_context))
+        try:
+            delegate_result = _parse_delegate_result(self.delegate_client.generate_delegate_result(delegate_context))
+        except ToolActionClientError as exc:
+            failed_window = self.service.mark_work_window_failed(user_id, window["id"], exc.code)
+            self.service.append_event(
+                user_id,
+                mission,
+                run=run,
+                step=None,
+                event_type="WORK_WINDOW_FAILED",
+                title="Window failed",
+                message=exc.code,
+                payload={"windowId": failed_window["id"], "error": exc.code, "employee": lead},
+            )
+            raise
+        except ValueError as exc:
+            failed_window = self.service.mark_work_window_failed(user_id, window["id"], "delegate_result_invalid")
+            self.service.append_event(
+                user_id,
+                mission,
+                run=run,
+                step=None,
+                event_type="WORK_WINDOW_FAILED",
+                title="Window failed",
+                message="delegate_result_invalid",
+                payload={"windowId": failed_window["id"], "error": "delegate_result_invalid", "employee": lead},
+            )
+            raise ToolActionClientError("delegate_result_invalid", "delegate_result_invalid", retryable=False) from exc
         if delegate_result.status == "blocked":
             blocked_window = self.service.mark_work_window_blocked(user_id, window["id"], delegate_result.summary)
             self.service.append_event(

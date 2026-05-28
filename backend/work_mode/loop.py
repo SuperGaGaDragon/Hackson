@@ -5,6 +5,8 @@ Last Modified at: 2026-05-27
 Last Modified by: Codex
 """
 
+from concurrent.futures import ThreadPoolExecutor
+from time import monotonic, sleep
 from typing import Any, Protocol
 
 from work_mode.action_client import ToolActionClientError
@@ -27,12 +29,16 @@ class MissionLoopRunner:
         action_client: ActionClientProtocol,
         max_turns: int = 20,
         max_invalid_turns: int = 2,
+        max_retryable_turn_retries: int = 1,
+        heartbeat_seconds: float = 20.0,
         executor: WorkModeToolExecutor | None = None,
     ):
         self.service = service
         self.action_client = action_client
         self.max_turns = max(max_turns, 1)
         self.max_invalid_turns = max(max_invalid_turns, 0)
+        self.max_retryable_turn_retries = max(max_retryable_turn_retries, 0)
+        self.heartbeat_seconds = max(heartbeat_seconds, 0.0)
         self.executor = executor or WorkModeToolExecutor(service)
 
     def run(self, user_id: str, mission_id: str, run_id: str) -> dict[str, Any]:
@@ -44,13 +50,49 @@ class MissionLoopRunner:
                 return self.service.get_mission_detail(user_id, mission_id)
 
             context = self._build_context(user_id, mission_id, last_observation, turn_index)
+            self._append_model_turn_event(
+                user_id,
+                mission_id,
+                run_id,
+                "MODEL_TURN_STARTED",
+                "Thinking",
+                "Selecting next tool.",
+                {"turn": turn_index + 1, "maxTurns": self.max_turns},
+            )
+            retry_attempt = 0
             try:
-                action = self.action_client.generate_action(context)
+                action = self._generate_action_with_retry(
+                    user_id,
+                    mission_id,
+                    run_id,
+                    context,
+                    turn_index,
+                    retry_attempt,
+                )
             except ToolActionClientError as exc:
                 if exc.retryable:
-                    self.service.mark_mission_paused_retryable(user_id, mission_id, run_id, exc.code)
+                    self.service.mark_mission_paused_retryable(
+                        user_id,
+                        mission_id,
+                        run_id,
+                        exc.code,
+                        metadata={
+                            "turn": turn_index + 1,
+                            "retryAttempts": self.max_retryable_turn_retries,
+                            "retryBudgetExhausted": True,
+                        },
+                    )
                     return self.service.get_mission_detail(user_id, mission_id)
                 invalid_turns += 1
+                self._append_model_turn_event(
+                    user_id,
+                    mission_id,
+                    run_id,
+                    "MODEL_TURN_INVALID",
+                    "Invalid turn",
+                    exc.code,
+                    {"turn": turn_index + 1, "code": exc.code, "attempt": invalid_turns},
+                )
                 if invalid_turns > self.max_invalid_turns:
                     self.service.mark_mission_failed(user_id, mission_id, run_id, exc.code, step_id=None)
                     return self.service.get_mission_detail(user_id, mission_id)
@@ -63,7 +105,38 @@ class MissionLoopRunner:
                 }
                 continue
             invalid_turns = 0
-            result = self.executor.execute(user_id, mission_id, run_id, action)
+            self._append_model_turn_event(
+                user_id,
+                mission_id,
+                run_id,
+                "MODEL_TURN_COMPLETED",
+                "Tool selected",
+                action.tool,
+                {"turn": turn_index + 1, "tool": action.tool},
+            )
+            self._append_model_turn_event(
+                user_id,
+                mission_id,
+                run_id,
+                "TOOL_CALLED",
+                _tool_title(action.tool),
+                _tool_message(action),
+                {"turn": turn_index + 1, "tool": action.tool, "arguments": _tool_event_arguments(action)},
+            )
+            try:
+                result = self.executor.execute(user_id, mission_id, run_id, action)
+            except ToolActionClientError as exc:
+                if exc.retryable:
+                    self.service.mark_mission_paused_retryable(
+                        user_id,
+                        mission_id,
+                        run_id,
+                        exc.code,
+                        metadata={"turn": turn_index + 1, "tool": action.tool, "phase": "tool_execution"},
+                    )
+                    return self.service.get_mission_detail(user_id, mission_id)
+                self.service.mark_mission_failed(user_id, mission_id, run_id, exc.code, step_id=None)
+                return self.service.get_mission_detail(user_id, mission_id)
             last_observation = result.observation
             self._publish_test_visible_result(result)
             if result.terminal:
@@ -77,6 +150,90 @@ class MissionLoopRunner:
             step_id=None,
         )
         return self.service.get_mission_detail(user_id, mission_id)
+
+    def _generate_action_with_retry(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        context: dict[str, Any],
+        turn_index: int,
+        retry_attempt: int,
+    ) -> ToolAction:
+        try:
+            return self._call_action_client_with_heartbeat(user_id, mission_id, run_id, context, turn_index)
+        except ToolActionClientError as exc:
+            if not exc.retryable or retry_attempt >= self.max_retryable_turn_retries:
+                raise
+            next_attempt = retry_attempt + 1
+            self._append_model_turn_event(
+                user_id,
+                mission_id,
+                run_id,
+                "MODEL_TURN_RETRYING",
+                "Retrying",
+                exc.code,
+                {
+                    "turn": turn_index + 1,
+                    "error": exc.code,
+                    "attempt": next_attempt,
+                    "maxAttempts": self.max_retryable_turn_retries,
+                },
+            )
+            retry_context = {
+                **context,
+                "lastObservation": {
+                    "tool": "model_turn",
+                    "status": "retrying",
+                    "code": exc.code,
+                    "instruction": "Retry the same decision. Return exactly one valid JSON Action.",
+                },
+            }
+            return self._generate_action_with_retry(
+                user_id,
+                mission_id,
+                run_id,
+                retry_context,
+                turn_index,
+                next_attempt,
+            )
+
+    def _call_action_client_with_heartbeat(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        context: dict[str, Any],
+        turn_index: int,
+    ) -> ToolAction:
+        if self.heartbeat_seconds <= 0:
+            return self.action_client.generate_action(context)
+
+        started_at = monotonic()
+        next_heartbeat_at = started_at + self.heartbeat_seconds
+        heartbeat_count = 0
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(self.action_client.generate_action, context)
+            while not future.done():
+                now = monotonic()
+                if now >= next_heartbeat_at:
+                    heartbeat_count += 1
+                    self._append_model_turn_event(
+                        user_id,
+                        mission_id,
+                        run_id,
+                        "MODEL_TURN_HEARTBEAT",
+                        "Working",
+                        "Still selecting next tool.",
+                        {
+                            "turn": turn_index + 1,
+                            "heartbeat": heartbeat_count,
+                            "elapsedSeconds": int(now - started_at),
+                        },
+                    )
+                    next_heartbeat_at = now + self.heartbeat_seconds
+                sleep(min(0.25, max(self.heartbeat_seconds / 4, 0.01)))
+            return future.result()
 
     def _build_context(
         self,
@@ -106,6 +263,28 @@ class MissionLoopRunner:
         if result.artifact_id and hasattr(self.action_client, "last_artifact_id"):
             setattr(self.action_client, "last_artifact_id", result.artifact_id)
 
+    def _append_model_turn_event(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        event_type: str,
+        title: str,
+        message: str,
+        payload: dict[str, Any],
+    ) -> None:
+        mission = self.service._require_mission(user_id, mission_id)
+        self.service.append_event(
+            user_id,
+            mission,
+            run={"_id": run_id},
+            step=None,
+            event_type=event_type,
+            title=title,
+            message=message,
+            payload={**payload, "employee": _lead_agent(self.service.get_mission_detail(user_id, mission_id)["mission"])},
+        )
+
 
 def _lead_agent(mission: dict[str, Any]) -> dict[str, str]:
     return {
@@ -122,3 +301,29 @@ def _delegate_agent(mission: dict[str, Any]) -> dict[str, str]:
     if lead_id == "agent_2":
         return {"id": "agent_1", "name": "Agent 1", "role": "Delegate Agent"}
     return {"id": "agent_2", "name": "Agent 2", "role": "Delegate Agent"}
+
+
+def _tool_title(tool: str) -> str:
+    return {
+        "mission_plan": "Plan",
+        "work_product": "Product",
+        "inspect_product": "Inspect",
+        "delegate_agent": "Delegate",
+        "ask_user": "Ask",
+        "finish_mission": "Finish",
+        "block_mission": "Block",
+    }.get(tool, "Tool")
+
+
+def _tool_message(action: ToolAction) -> str:
+    reason = getattr(action.arguments, "reason", "")
+    return reason or action.tool
+
+
+def _tool_event_arguments(action: ToolAction) -> dict[str, Any]:
+    values = action.arguments.model_dump(by_alias=True)
+    if "content" in values:
+        values["contentPreview"] = str(values.pop("content"))[:320]
+    if "brief" in values:
+        values["briefPreview"] = str(values.pop("brief"))[:320]
+    return values

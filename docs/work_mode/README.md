@@ -26,4 +26,5 @@ Lst Modified by: Codex
 |-legacy/ archived Work Mode V0/V0.5 documents; not execution source
 
 ## 代办
-- Implement V1.0 Pure API Text Mission Loop after the documentation review is accepted.
+- Finish public V1.0 acceptance on a normal API runtime or a user-approved equivalent target.
+- Add V1.0 non-streaming progress and bounded retry from `issues/issue7-long-turn-progress.md`.

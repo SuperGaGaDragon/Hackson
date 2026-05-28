@@ -12,6 +12,7 @@ from work_mode.loop import MissionLoopRunner
 from work_mode.schemas import MissionCreateRequest, MissionStartRequest, ProjectCreateRequest
 from work_mode.service import WorkModeService
 from work_mode.tests.test_work_mode_service import FakeWorkModeRepository
+from work_mode.tool_executor import WorkModeToolExecutor
 from work_mode.tool_protocol import parse_tool_action
 
 
@@ -76,6 +77,9 @@ class WorkModeLoopTest(TestCase):
 
         self.assertEqual(completed["mission"]["status"], "completed")
         self.assertIn("MISSION_PLAN_UPDATED", event_types)
+        self.assertIn("MODEL_TURN_STARTED", event_types)
+        self.assertIn("MODEL_TURN_COMPLETED", event_types)
+        self.assertIn("TOOL_CALLED", event_types)
         self.assertIn("PRODUCT_UPDATED", event_types)
         self.assertEqual(event_types[-1], "MISSION_COMPLETED")
         self.assertEqual(len(completed["products"]), 1)
@@ -121,13 +125,80 @@ class WorkModeLoopTest(TestCase):
             ToolActionClientError("model_timeout", "model_timeout", retryable=True)
         )
 
-        MissionLoopRunner(self.service, action_client=action_client, max_turns=3).run("user_1", mission["id"], run_id)
+        MissionLoopRunner(self.service, action_client=action_client, max_turns=3, max_retryable_turn_retries=0).run(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
 
         paused = self.service.get_mission_detail("user_1", mission["id"])
 
         self.assertEqual(paused["mission"]["status"], "paused_retryable")
         self.assertEqual(paused["latestRun"]["status"], "paused_retryable")
         self.assertEqual(paused["events"][-1]["type"], "MISSION_PAUSED_RETRYABLE")
+
+    def test_loop_retries_retryable_provider_error_before_pausing(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        action_client = AlwaysFailingActionClient(
+            ToolActionClientError("model_timeout", "model_timeout", retryable=True)
+        )
+
+        MissionLoopRunner(self.service, action_client=action_client, max_turns=3, max_retryable_turn_retries=1).run(
+            "user_1",
+            mission["id"],
+            run_id,
+        )
+
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+        event_types = [event["type"] for event in paused["events"]]
+
+        self.assertEqual(paused["mission"]["status"], "paused_retryable")
+        self.assertIn("MODEL_TURN_RETRYING", event_types)
+        self.assertEqual(event_types[-1], "MISSION_PAUSED_RETRYABLE")
+
+    def test_loop_pauses_and_marks_delegate_window_failed_on_delegate_timeout(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        action_client = ScriptedActionClient(
+            [
+                """
+                {
+                  "tool": "delegate_agent",
+                  "arguments": {
+                    "reason": "让写作 Agent 起草第一章。",
+                    "agentSlot": "agent_2",
+                    "windowTitle": "第一章草稿",
+                    "brief": "写第一章。",
+                    "expectedOutput": "chapter",
+                    "targetProductId": null,
+                    "sourceArtifactIds": []
+                  }
+                }
+                """,
+            ]
+        )
+
+        MissionLoopRunner(
+            self.service,
+            action_client=action_client,
+            executor=WorkModeToolExecutor(
+                self.service,
+                delegate_client=FailingDelegateClient(
+                    ToolActionClientError("model_timeout", "model_timeout", retryable=True)
+                ),
+            ),
+            max_retryable_turn_retries=0,
+        ).run("user_1", mission["id"], run_id)
+
+        paused = self.service.get_mission_detail("user_1", mission["id"])
+        event_types = [event["type"] for event in paused["events"]]
+
+        self.assertEqual(paused["mission"]["status"], "paused_retryable")
+        self.assertEqual(paused["workWindows"][0]["status"], "failed")
+        self.assertIn("WORK_WINDOW_FAILED", event_types)
 
     def test_loop_resume_continues_from_persisted_product_manifest(self) -> None:
         mission = self._mission()
@@ -203,8 +274,18 @@ class FailingThenScriptedActionClient:
 class AlwaysFailingActionClient:
     def __init__(self, error: Exception):
         self.error = error
+        self.calls = 0
 
     def generate_action(self, context: dict):
+        self.calls += 1
+        raise self.error
+
+
+class FailingDelegateClient:
+    def __init__(self, error: Exception):
+        self.error = error
+
+    def generate_delegate_result(self, context: dict):
         raise self.error
 
 

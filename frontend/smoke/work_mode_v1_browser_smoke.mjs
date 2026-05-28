@@ -27,6 +27,7 @@ async function main() {
 
   await page.getByText("completed").first().waitFor({ timeout: 20000 });
   await assertVisible(page, "Progress");
+  await page.locator(".activity-strip").waitFor();
   await assertVisible(page, "Windows");
   await assertVisible(page, "Product");
   await assertVisible(page, "8000字小说计划");

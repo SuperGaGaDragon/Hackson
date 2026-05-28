@@ -49,6 +49,8 @@ def build_lead_context(
             "Do not create new tools.",
             "Do not emit React components.",
             "Do not use shell, file, browser, or computer-control tools.",
+            "For long writing goals, split work into Product Artifacts and Delegate windows instead of trying to finish all content in one Lead turn.",
+            "Use work_product whenever you need to show or persist natural-language output.",
         ],
         "productManifest": [_product_manifest(product) for product in products],
         "workWindowManifest": [_window_manifest(window) for window in work_windows],

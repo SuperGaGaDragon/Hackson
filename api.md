@@ -61,6 +61,7 @@ Last Modified by: Codex
 | Work V1 hardening smoke backend bind | `127.0.0.1:8160` |
 | Work V1 hardening smoke database | `hackson_work_v1_8160` |
 | Work V1 hardening smoke model provider | `codex_cli` through target-machine Codex CLI |
+| Work V1 progress hardening status | Local verified; target isolated smoke pending |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -87,6 +88,7 @@ Last Modified by: Codex
 - On 2026-05-27, `8150` was introduced as the isolated Work V1 model-driven loop smoke service. It is active and intentionally separate from public `8145`, Idle Auto `8147`, Work V0.5 `8148`, and legacy `8130`.
 - On 2026-05-27, `8160` was introduced as the isolated Work V1 hardening smoke service. It verified backend tests, frontend build, deterministic full smoke, authenticated HTTP full smoke, browser UI smoke, static frontend serving, and health check without stopping existing services.
 - On 2026-05-27, the Work V1 hardening build was promoted to public `8145` after target public-directory tests passed. Public health and static frontend checks passed, deterministic Work V1 full smoke and authenticated HTTP full smoke passed, and a real public browser-triggered Codex Mission entered `paused_retryable model_timeout` with persisted plan/product events and no orphan `codex exec` process.
+- On 2026-05-27, Work V1 long-turn progress hardening passed local verification. It added safe lifecycle events, bounded automatic retry before `paused_retryable`, failed-window cleanup for delegate provider errors, and a compact Work UI activity strip. Target isolated smoke is pending.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
 
@@ -377,3 +379,9 @@ V0.5 Work Mission generation is intentionally bounded to one model pass. Long re
   - Resume smoke verified the same paused Mission can be started again through `POST /api/work/missions/{missionId}/start` and complete; final event sequence included `MISSION_PAUSED_RETRYABLE`, second `MISSION_STARTED`, `MISSION_PLAN_UPDATED`, two `PRODUCT_UPDATED`, `PRODUCT_INSPECTED`, and `MISSION_COMPLETED`.
   - Codex CLI timeout cleanup verified no orphan `codex exec` process remained after timeout.
   - Existing public `8145`, Idle Auto `8147`, Work V0.5 `8148`, fake relay `18148`, and legacy `8130` services were not stopped.
+- Work V1 long-turn progress local verification:
+  - Added safe non-streaming lifecycle events: `MODEL_TURN_STARTED`, `MODEL_TURN_HEARTBEAT`, `MODEL_TURN_COMPLETED`, `MODEL_TURN_RETRYING`, `MODEL_TURN_INVALID`, `TOOL_CALLED`, and `WORK_WINDOW_FAILED`.
+  - Added bounded automatic retry for retryable Lead model errors before `paused_retryable`.
+  - Delegate model failures after `WORK_WINDOW_OPENED` now mark the Work Window `failed` and emit `WORK_WINDOW_FAILED` instead of leaving the window running.
+  - React Work UI now includes a compact latest-activity strip so long model turns do not look frozen while event polling continues.
+  - Local verification passed: all backend test directories, Work Mode `51`, model_runtime `24`, interactions `21`, frontend build, in-process full smoke `final_cjk=9936`, HTTP full smoke `final_cjk=9936`, and browser smoke `windows=2/final_cjk=9936`.

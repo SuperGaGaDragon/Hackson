@@ -256,3 +256,4 @@ Known risks:
 - Retry/resume behavior: `issues/issue4-retry-resume.md`
 - Streaming later without breaking tool contract: `issues/issue5-streaming.md`
 - Full smoke cost, duration, and deterministic validation: `issues/issue6-full-smoke.md`
+- Long model turn progress and timeout UX: `issues/issue7-long-turn-progress.md`

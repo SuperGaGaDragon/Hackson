@@ -1147,6 +1147,72 @@ input:disabled {
   gap: 8px;
 }
 
+.activity-strip {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  padding: 10px;
+  background: #0c1115;
+}
+
+.activity-strip.live {
+  border-color: rgba(57, 208, 196, 0.52);
+  background: #0d1d1c;
+}
+
+.activity-strip.retry {
+  border-color: rgba(232, 168, 75, 0.52);
+  background: #1c1710;
+}
+
+.activity-strip.done {
+  border-color: rgba(155, 229, 143, 0.52);
+  background: #101c13;
+}
+
+.activity-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #303941;
+  border-radius: 8px;
+  color: var(--teal);
+}
+
+.activity-strip.live .activity-icon svg {
+  animation: soft-spin 1.2s linear infinite;
+}
+
+.activity-strip.retry .activity-icon {
+  color: var(--amber);
+}
+
+.activity-strip.done .activity-icon {
+  color: var(--green);
+}
+
+.activity-strip p,
+.activity-strip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.activity-strip p {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.activity-strip span,
+.activity-strip small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .progress-row,
 .window-row {
   min-width: 0;
@@ -1239,6 +1305,12 @@ input:disabled {
 .progress-row small {
   color: var(--muted);
   font-size: 11px;
+}
+
+@keyframes soft-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .summary-block ul {

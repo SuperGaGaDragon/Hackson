@@ -121,12 +121,17 @@ If content exceeds display limit, UI MUST link to the Product/Artifact reader.
 | Event Type | UI Surface | Default Display |
 | --- | --- | --- |
 | `MISSION_PLAN_UPDATED` | Timeline | Expanded summary, steps visible |
+| `MODEL_TURN_STARTED` | Timeline + Control Panel | Compact active row |
+| `MODEL_TURN_HEARTBEAT` | Timeline + Control Panel | Compact active row |
+| `MODEL_TURN_COMPLETED` | Timeline | Compact completed row |
+| `MODEL_TURN_RETRYING` | Timeline + Control Panel | Retry visible |
 | `TOOL_CALLED` | Timeline | Collapsed reason and tool |
 | `PRODUCT_UPDATED` | Timeline + Product Panel | Timeline collapsed, Product full |
 | `PRODUCT_INSPECTED` | Timeline | Collapsed, expandable inspected excerpt |
 | `WORK_WINDOW_OPENED` | Timeline + Work Windows | Window card created |
 | `WORK_WINDOW_COMPLETED` | Timeline + Work Windows + Product Panel | Result linked |
 | `WORK_WINDOW_BLOCKED` | Timeline + Work Windows | Block reason visible |
+| `WORK_WINDOW_FAILED` | Timeline + Work Windows | Failed window visible |
 | `USER_INPUT_REQUESTED` | Timeline + Control Panel | Question visible |
 | `MISSION_PAUSED_RETRYABLE` | Timeline + Control Panel | Resume visible |
 | `MISSION_COMPLETED` | Timeline + Product Panel | Final Product highlighted |
