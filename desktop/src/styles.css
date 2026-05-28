@@ -47,6 +47,8 @@ button {
   max-width: 148px;
   padding: 9px 11px 9px 13px;
   color: #28211d;
+  text-align: left;
+  cursor: pointer;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 247, 241, 0.9)),
     rgba(255, 255, 255, 0.88);
@@ -59,6 +61,11 @@ button {
   transition:
     opacity 180ms ease,
     transform 180ms ease;
+}
+
+.bubble:focus-visible {
+  outline: 2px solid rgba(84, 151, 255, 0.62);
+  outline-offset: 3px;
 }
 
 .bubble::after {
@@ -99,6 +106,7 @@ button {
   display: grid;
   width: 8px;
   height: 8px;
+  flex: 0 0 auto;
   overflow: hidden;
   color: transparent;
   background: #98b68d;
@@ -106,9 +114,202 @@ button {
   box-shadow: 0 0 0 4px rgba(152, 182, 141, 0.18);
 }
 
+.bubble-chevron {
+  flex: 0 0 auto;
+  color: rgba(93, 76, 67, 0.58);
+  transition: transform 180ms ease;
+}
+
+.expanded .bubble {
+  max-width: 194px;
+}
+
+.expanded .bubble-chevron {
+  transform: rotate(180deg);
+}
+
 .walk .bubble small {
   background: #8aa7d8;
   box-shadow: 0 0 0 4px rgba(138, 167, 216, 0.18);
+}
+
+.siteActive .bubble small,
+.siteWaiting .bubble small,
+.sitePaused .bubble small,
+.siteOffline .bubble small {
+  background: #98b68d;
+}
+
+.progress-glance {
+  position: absolute;
+  top: 72px;
+  right: 18px;
+  left: 18px;
+  z-index: 3;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 8px;
+  max-height: 318px;
+  padding: 12px;
+  color: #28211d;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 245, 238, 0.9)),
+    rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(92, 69, 51, 0.16);
+  border-radius: 18px;
+  box-shadow:
+    0 18px 36px rgba(51, 38, 29, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.glance-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.glance-head div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.glance-head p {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  color: #8a776b;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.glance-head strong {
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glance-head button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #5b4c43;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(92, 69, 51, 0.14);
+  border-radius: 12px;
+  place-items: center;
+}
+
+.progress-glance h2 {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.18;
+  color: #332923;
+  letter-spacing: 0;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.glance-detail {
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  color: #725f54;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glance-list {
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+  max-height: 178px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.glance-list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.glance-list::-webkit-scrollbar-track {
+  background: rgba(111, 92, 82, 0.06);
+  border-radius: 999px;
+}
+
+.glance-list::-webkit-scrollbar-thumb {
+  background: rgba(111, 92, 82, 0.24);
+  border-radius: 999px;
+}
+
+.glance-empty {
+  margin: 0;
+  padding: 12px 10px;
+  font-size: 13px;
+  color: #74635a;
+  background: rgba(111, 92, 82, 0.08);
+  border: 1px solid rgba(92, 69, 51, 0.1);
+  border-radius: 12px;
+}
+
+.glance-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(92, 69, 51, 0.1);
+  border-radius: 12px;
+}
+
+.glance-row div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.glance-row strong {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.12;
+  color: #2f2722;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glance-row p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  color: #75645b;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.glance-row small {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  font-size: 10px;
+  line-height: 1.15;
+  color: #8b7b72;
 }
 
 .sleep .bubble small {
@@ -123,6 +324,10 @@ button {
   left: 4px;
   display: grid;
   place-items: end center;
+}
+
+.expanded .cat-stage {
+  bottom: 4px;
 }
 
 .halo {
@@ -148,6 +353,21 @@ button {
   pointer-events: none;
   filter: drop-shadow(0 18px 12px rgba(51, 38, 29, 0.22));
   transform-origin: 50% 94%;
+}
+
+.expanded .cat {
+  width: min(150px, 52vw);
+}
+
+.expanded .halo {
+  right: 76px;
+  bottom: 22px;
+  width: 132px;
+  height: 132px;
+}
+
+.expanded .ground {
+  width: 118px;
 }
 
 .ground {

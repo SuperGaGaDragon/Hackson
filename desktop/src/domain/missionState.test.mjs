@@ -10,6 +10,7 @@ import { test } from "node:test";
 import {
   chooseBestMission,
   deriveSitePetState,
+  deriveProgressSummary,
   isActiveMissionStatus,
   summarizeActiveMissions,
 } from "./missionState.js";
@@ -78,6 +79,96 @@ test("deriveSitePetState includes mission title and count for multiple active mi
   assert.equal(state.line, "[Launch plan] +1");
 });
 
+test("deriveSitePetState uses English system fallback copy", () => {
+  const cases = [
+    {
+      expected: "Site offline",
+      input: { authenticated: true, error: "Site offline", selectedMission: null },
+    },
+    {
+      expected: "Sign in",
+      input: { authenticated: false, selectedMission: null },
+    },
+    {
+      expected: "Task failed",
+      input: {
+        authenticated: true,
+        selectedMission: { id: "failed_1", status: "failed", title: "" },
+        missionDetail: { mission: { id: "failed_1", status: "failed", title: "" }, workWindows: [] },
+        events: [],
+      },
+    },
+    {
+      expected: "Needs you",
+      input: {
+        authenticated: true,
+        selectedMission: { id: "wait_1", status: "waiting_input", title: "" },
+        missionDetail: { mission: { id: "wait_1", status: "waiting_input", title: "" }, workWindows: [] },
+        events: [],
+      },
+    },
+    {
+      expected: "Task paused",
+      input: {
+        authenticated: true,
+        selectedMission: { id: "paused_1", status: "paused_retryable", title: "" },
+        missionDetail: { mission: { id: "paused_1", status: "paused_retryable", title: "" }, workWindows: [] },
+        events: [],
+      },
+    },
+    {
+      expected: "Running",
+      input: {
+        authenticated: true,
+        selectedMission: { id: "run_1", status: "running", title: "" },
+        missionDetail: { mission: { id: "run_1", status: "running", title: "" }, workWindows: [] },
+        events: [],
+      },
+    },
+  ];
+
+  for (const item of cases) {
+    assert.equal(deriveSitePetState(item.input).line, item.expected);
+  }
+});
+
+test("deriveProgressSummary shows current mission progress rows", () => {
+  const summary = deriveProgressSummary({
+    mission: { id: "run_1", status: "running", title: "Launch plan" },
+    state: { label: "Working", line: "[Launch plan]" },
+    events: [
+      event("e1", 1, "MISSION_CREATED", "Mission created", "Launch plan", "2026-05-28T10:00:00Z"),
+      event("e2", 2, "MODEL_TURN_STARTED", "Thinking", "Selecting next tool.", "2026-05-28T10:01:00Z"),
+      event("e3", 3, "TOOL_CALLED", "Delegate", "A1 started.", "2026-05-28T10:02:00Z"),
+      event("e4", 4, "PRODUCT_UPDATED", "Product", "Draft updated.", "2026-05-28T10:03:00Z"),
+    ],
+  });
+
+  assert.equal(summary.title, "Launch plan");
+  assert.equal(summary.status, "Working");
+  assert.equal(summary.detail, "[Launch plan]");
+  assert.deepEqual(
+    summary.rows.map((row) => row.title),
+    ["Product", "Delegate", "Thinking", "Mission created"],
+  );
+  assert.equal(summary.rows.length, 4);
+  assert.equal(summary.rows[0].sequence, "#4");
+  assert.equal(summary.rows[0].detail, "Draft updated.");
+});
+
+test("deriveProgressSummary has a quiet empty state", () => {
+  const summary = deriveProgressSummary({
+    mission: null,
+    state: { label: "No work", line: "No active work" },
+    events: [],
+  });
+
+  assert.equal(summary.title, "No active work");
+  assert.equal(summary.status, "No work");
+  assert.equal(summary.rows.length, 0);
+  assert.equal(summary.empty, "No progress yet");
+});
+
 test("isActiveMissionStatus only accepts active Work states", () => {
   assert.equal(isActiveMissionStatus("running"), true);
   assert.equal(isActiveMissionStatus("waiting_input"), true);
@@ -87,4 +178,16 @@ test("isActiveMissionStatus only accepts active Work states", () => {
 
 function row(id, status, title, updatedAt = "2026-05-28T08:00:00Z") {
   return { project, mission: { id, status, title, updatedAt } };
+}
+
+function event(id, sequence, type, title, message, createdAt) {
+  return {
+    id,
+    sequence,
+    type,
+    title,
+    message,
+    createdAt,
+    payload: {},
+  };
 }

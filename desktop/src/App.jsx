@@ -11,6 +11,7 @@ import { claimDesktopHandoff, getCurrentUser } from "./api/users";
 import { getMission, listMissionEvents, listProjectMissions, listProjects } from "./api/work";
 import {
   chooseBestMission,
+  deriveProgressSummary,
   deriveSitePetState,
   isActiveMissionStatus,
   latestSequence,
@@ -54,8 +55,12 @@ function App() {
     [activeSummary, error, events, handoffCode, missionDetail, selectedMission, user],
   );
   const displayState = handoffCode
-    ? { key: "linking", label: "Login", line: "浏览器登录。", tone: "waiting" }
+    ? { key: "linking", label: "Login", line: "Browser login", tone: "waiting" }
     : siteState;
+  const progressSummary = useMemo(
+    () => deriveProgressSummary({ mission: selectedMission, state: displayState, events }),
+    [displayState, events, selectedMission],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -316,7 +321,7 @@ function App() {
 
   return (
     <>
-      <PetWindow busy={busy} onOpenSite={openSite} siteState={displayState} />
+      <PetWindow busy={busy} onOpenSite={openSite} progressSummary={progressSummary} siteState={displayState} />
     </>
   );
 }

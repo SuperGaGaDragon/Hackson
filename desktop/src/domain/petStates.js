@@ -13,7 +13,7 @@ export const petStates = {
   stand: {
     label: "Stand",
     shortLabel: "Here",
-    line: "我在。",
+    line: "Here",
     frames: [catIdle1, catIdle2],
     frameCadenceMs: 820,
     nextAfterMs: 12000,
@@ -24,7 +24,7 @@ export const petStates = {
   walk: {
     label: "Walk",
     shortLabel: "Walk",
-    line: "巡逻中。",
+    line: "Walking",
     frames: [catWalk1],
     frameCadenceMs: 900,
     nextAfterMs: 6500,
@@ -35,7 +35,7 @@ export const petStates = {
   sleep: {
     label: "Sleep",
     shortLabel: "Nap",
-    line: "睡一会。",
+    line: "Napping",
     frames: [catSleep],
     frameCadenceMs: 1200,
     nextAfterMs: 14000,
@@ -46,7 +46,7 @@ export const petStates = {
   siteIdle: {
     label: "Ready",
     shortLabel: "Site",
-    line: "看网站。",
+    line: "Watching site",
     frames: [catIdle1, catIdle2],
     frameCadenceMs: 900,
     nextAfterMs: 16000,
@@ -57,7 +57,7 @@ export const petStates = {
   siteActive: {
     label: "Working",
     shortLabel: "Work",
-    line: "网站在跑。",
+    line: "Site working",
     frames: [catWalk1],
     frameCadenceMs: 800,
     nextAfterMs: 12000,
@@ -68,7 +68,7 @@ export const petStates = {
   siteWaiting: {
     label: "Waiting",
     shortLabel: "Wait",
-    line: "需要你。",
+    line: "Needs you",
     frames: [catIdle1, catIdle2],
     frameCadenceMs: 640,
     nextAfterMs: 12000,
@@ -79,7 +79,7 @@ export const petStates = {
   sitePaused: {
     label: "Paused",
     shortLabel: "Pause",
-    line: "暂停了。",
+    line: "Paused",
     frames: [catSleep],
     frameCadenceMs: 1200,
     nextAfterMs: 12000,
@@ -90,7 +90,7 @@ export const petStates = {
   siteDone: {
     label: "Done",
     shortLabel: "Done",
-    line: "完成了。",
+    line: "Done",
     frames: [catIdle2, catIdle1],
     frameCadenceMs: 700,
     nextAfterMs: 12000,
@@ -101,7 +101,7 @@ export const petStates = {
   siteFailed: {
     label: "Failed",
     shortLabel: "Fail",
-    line: "出错了。",
+    line: "Failed",
     frames: [catIdle1],
     frameCadenceMs: 1200,
     nextAfterMs: 12000,
@@ -112,7 +112,7 @@ export const petStates = {
   siteOffline: {
     label: "Offline",
     shortLabel: "Off",
-    line: "连不上。",
+    line: "Offline",
     frames: [catSleep],
     frameCadenceMs: 1400,
     nextAfterMs: 12000,
