@@ -131,20 +131,6 @@ def _compact_query(query: str) -> str:
 
 def _base_query(request: dict[str, Any]) -> str:
     return str(request.get("query") or "").strip()
-            return {
-                "status": "failed",
-                "code": "search_no_results",
-                "retryable": False,
-                "provider": "duckduckgo_lite",
-                "results": [],
-                "truncated": False,
-            }
-        return {
-            "status": "ok",
-            "results": results,
-            "truncated": len(results) >= int(request.get("maxResults") or 5),
-            "provider": "duckduckgo_lite",
-        }
 
 
 class _DuckDuckGoLiteParser(HTMLParser):
