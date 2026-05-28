@@ -252,6 +252,8 @@ def run_v1_mission_from_database(user_id: str, mission_id: str, run_id: str) -> 
         executor=executor,
         max_turns=_v1_max_turns(),
         max_invalid_turns=_v1_max_invalid_turns(),
+        max_retryable_turn_retries=_v1_max_retryable_turn_retries(),
+        heartbeat_seconds=_v1_heartbeat_seconds(),
     ).run(user_id, mission_id, run_id)
 
 
@@ -280,9 +282,33 @@ def _v1_max_invalid_turns() -> int:
     return _positive_int_env("HACKSON_WORK_MODE_V1_MAX_INVALID_TURNS", 2)
 
 
+def _v1_max_retryable_turn_retries() -> int:
+    return _nonnegative_int_env("HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES", 1)
+
+
+def _v1_heartbeat_seconds() -> float:
+    return _nonnegative_float_env("HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS", 20.0)
+
+
 def _positive_int_env(name: str, default: int) -> int:
     raw_value = os.getenv(name, str(default))
     try:
         return max(int(raw_value), 1)
+    except ValueError:
+        return default
+
+
+def _nonnegative_int_env(name: str, default: int) -> int:
+    raw_value = os.getenv(name, str(default))
+    try:
+        return max(int(raw_value), 0)
+    except ValueError:
+        return default
+
+
+def _nonnegative_float_env(name: str, default: float) -> float:
+    raw_value = os.getenv(name, str(default))
+    try:
+        return max(float(raw_value), 0.0)
     except ValueError:
         return default

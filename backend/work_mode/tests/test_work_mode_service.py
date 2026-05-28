@@ -22,7 +22,13 @@ from work_mode.schemas import (
     ProjectEmployeeAddRequest,
 )
 from work_mode.service import WorkModeService
-from work_mode.worker import MissionWorker, ModelMissionRunner, _event_delay_seconds
+from work_mode.worker import (
+    MissionWorker,
+    ModelMissionRunner,
+    _event_delay_seconds,
+    _v1_heartbeat_seconds,
+    _v1_max_retryable_turn_retries,
+)
 
 
 class FakeWorkModeRepository:
@@ -587,6 +593,24 @@ class WorkModeServiceTest(TestCase):
                 os.environ.pop("HACKSON_WORK_MODE_V0_EVENT_DELAY_SECONDS", None)
             else:
                 os.environ["HACKSON_WORK_MODE_V0_EVENT_DELAY_SECONDS"] = original
+
+    def test_v1_progress_env_invalid_values_fall_back(self) -> None:
+        original_retry = os.environ.get("HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES")
+        original_heartbeat = os.environ.get("HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS")
+        os.environ["HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES"] = "not-a-number"
+        os.environ["HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS"] = "not-a-number"
+        try:
+            self.assertEqual(_v1_max_retryable_turn_retries(), 1)
+            self.assertEqual(_v1_heartbeat_seconds(), 20.0)
+        finally:
+            if original_retry is None:
+                os.environ.pop("HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES", None)
+            else:
+                os.environ["HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES"] = original_retry
+            if original_heartbeat is None:
+                os.environ.pop("HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS", None)
+            else:
+                os.environ["HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS"] = original_heartbeat
 
     def test_model_mission_runner_supports_codex_cli_provider(self) -> None:
         codex_client = RecordingModelClient("codex_cli")

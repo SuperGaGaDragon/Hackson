@@ -16,6 +16,7 @@ Lst Modified by: Codex
   - V0.5 worker invokes the configured model runtime once, persists a bounded text Artifact, and emits a fixed `PRODUCT_UPDATED` event that points at that Artifact.
   - The worker delegates model execution to `model_runtime/`, including the configured target-machine Codex CLI provider when enabled.
   - V1.0 introduces a model-driven text Mission loop where the Lead Agent must choose exactly one validated tool per turn.
+  - V1.0 emits safe lifecycle events for long Lead turns and supports bounded retry for transient provider failures before pausing.
   - V1.0 tools are backend database actions only; shell, file, browser, and Codex CLI computer-control tools remain out of scope.
   - Routes expose `/api/work/*` while existing `/api/tasks` remains available until the Mission Runtime is verified.
 
@@ -65,6 +66,8 @@ Lst Modified by: Codex
 - Natural language belongs inside tool arguments only.
 - Backend validation owns tool schema, Product references, Artifact references, and Mission state compatibility.
 - First tool protocol implementation uses provider-agnostic JSON Action; provider-native tool calling is a later adapter over the same backend schema.
+- `HACKSON_WORK_MODE_V1_RETRYABLE_RETRIES` controls bounded automatic retry for retryable Lead turn provider errors; default is `1`.
+- `HACKSON_WORK_MODE_V1_HEARTBEAT_SECONDS` controls non-streaming heartbeat event cadence; default is `20`.
 
 ## 代办
 - Implement V1.0 Product, Artifact lineage, Work Window, context, and loop layers from `docs/work_mode/final_version.md`.
