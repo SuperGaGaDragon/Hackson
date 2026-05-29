@@ -5,6 +5,7 @@ Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
+import re
 from typing import Any, Protocol
 
 from fastapi import HTTPException, status
@@ -844,7 +845,7 @@ class WorkModeService:
             "metadata": product_metadata,
             "updated_at": now_utc(),
         }
-        if _artifact_is_deliverable(artifact):
+        if _artifact_is_deliverable(artifact) and not _would_regress_hard_count_requirement(mission, product, artifact):
             update_values["deliverable_artifact_id"] = artifact["id"]
             if product.get("delivery_status") != "verified_final":
                 update_values["delivery_status"] = "draft_candidate"
@@ -1307,11 +1308,45 @@ def _artifact_is_deliverable(artifact: dict[str, Any]) -> bool:
     return artifact.get("kind") in DELIVERABLE_ARTIFACT_KINDS
 
 
+def _would_regress_hard_count_requirement(
+    mission: dict[str, Any],
+    product: dict[str, Any],
+    artifact: dict[str, Any],
+) -> bool:
+    expected_words = _expected_word_count(f"{mission.get('title', '')} {mission.get('goal', '')}")
+    if expected_words is None:
+        return False
+    current_deliverable_id = product.get("deliverable_artifact_id")
+    if not current_deliverable_id:
+        return False
+    artifact_words = _english_word_count(artifact.get("content", ""))
+    if artifact_words >= expected_words:
+        return False
+    manifest = (product.get("metadata") or {}).get("artifactManifest") or []
+    current_manifest = next(
+        (item for item in reversed(manifest) if str(item.get("id")) == str(current_deliverable_id)),
+        None,
+    )
+    current_words = None
+    if isinstance(current_manifest, dict):
+        current_words = current_manifest.get("wordCount") or current_manifest.get("bodyWordCount")
+    if current_words is None:
+        return False
+    try:
+        current_words_int = int(current_words)
+    except (TypeError, ValueError):
+        return False
+    if current_words_int < expected_words:
+        return False
+    return artifact_words < int(current_words_int * 0.9)
+
+
 def _product_metadata_with_artifact_manifest(
     metadata: dict[str, Any],
     artifact: dict[str, Any],
     summary: str,
 ) -> dict[str, Any]:
+    word_count = _english_word_count(artifact.get("content", ""))
     values = dict(metadata or {})
     manifest = list(values.get("artifactManifest") or [])
     manifest.append(
@@ -1322,11 +1357,24 @@ def _product_metadata_with_artifact_manifest(
             "artifactRole": artifact.get("metadata", {}).get("artifactRole"),
             "summary": summary,
             "deliverable": _artifact_is_deliverable(artifact),
+            "wordCount": word_count,
             "createdAt": artifact.get("createdAt"),
         }
     )
     values["artifactManifest"] = manifest[-100:]
     return values
+
+
+def _expected_word_count(text: str) -> int | None:
+    matches = re.findall(r"\b([1-9]\d{2,5})\s*(?:-?\s*)?(?:words?|word|词)\b", text or "", flags=re.IGNORECASE)
+    if not matches:
+        return None
+    expected = max(int(match) for match in matches)
+    return expected if expected >= 100 else None
+
+
+def _english_word_count(text: str) -> int:
+    return len(re.findall(r"[A-Za-z]+(?:[-'][A-Za-z]+)?", text or ""))
 
 
 def _dedupe_artifacts(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -42,7 +42,7 @@ ISSUE_WEIGHTS = {
     "evaluation_limitation": 5,
     "mission_incomplete": 25,
 }
-EVALUATOR_VERSION = "2026-05-29.target-bound-gate.v1"
+EVALUATOR_VERSION = "2026-05-29.anti-gaming-gate.v1"
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9&.-]*")
 URL_RE = re.compile(r"https?://[^\s)\]>\"']+")
 SENTENCE_RE = re.compile(r"(?<=[.!?。！？])\s+|\n+")
@@ -50,6 +50,10 @@ CHINESE_CHAR_RE = re.compile(r"[\u4e00-\u9fff]")
 ENTITY_RE = re.compile(r"\b(?:[A-Z][A-Za-z0-9&.-]+(?:\s+|$)){1,4}(?:AI|Labs|Systems|Technologies|Tech|Inc|Corp|Company|Cohere|Layer|Vector)?")
 REFERENCE_HEADING_RE = re.compile(
     r"^\s{0,3}(?:#{1,6}\s*)?(references|reference list|works cited|bibliography|sources|source list|参考文献|引用)\s*:?\s*$",
+    re.IGNORECASE,
+)
+EVIDENCE_LEDGER_HEADING_RE = re.compile(
+    r"^\s{0,3}(?:#{1,6}\s*)?(evidence ledger|evidence log|source ledger|证据台账|证据列表)\s*:?\s*$",
     re.IGNORECASE,
 )
 APA_REFERENCE_RE = re.compile(r"^\s*[A-Z][A-Za-z'.-]+,\s+[A-Z](?:\.\s*[A-Z])?\.?.*\(\d{4}[a-z]?\)\.")
@@ -353,6 +357,7 @@ def _requirements(
     final_entities = _entities(final_text)
     url_count = len(URL_RE.findall(final_text))
     paper_like = is_research_paper_like_goal(requirement_text)
+    long_form_expected_sources = _expected_long_form_source_count(requirement_text, expected_words, paper_like)
     if paper_like:
         has_final_draft = artifact_is_research_paper_final_draft(final_artifact)
         requirements.append(
@@ -380,6 +385,53 @@ def _requirements(
                 evidence=f"Detected {actual_words} body words before references; expected at least {expected_words}.",
                 expectedCount=expected_words,
                 fieldName="word count",
+            )
+        )
+    if long_form_expected_sources is not None:
+        source_count = _unique_evidence_url_count(evidence)
+        requirements.append(
+            RequirementItem(
+                id=f"R{len(requirements) + 1}",
+                requirement=f"Use at least {long_form_expected_sources} trace-backed sources for the requested long-form review",
+                type="count",
+                status=_count_requirement_status(source_count, long_form_expected_sources),
+                evidence=(
+                    f"Detected {source_count} unique trace-backed source URLs; "
+                    f"expected at least {long_form_expected_sources} for this long-form review scale."
+                ),
+                expectedCount=long_form_expected_sources,
+                fieldName="source depth",
+            )
+        )
+        expected_domains = _expected_long_form_domain_count(long_form_expected_sources)
+        domain_count = _unique_evidence_domain_count(evidence)
+        requirements.append(
+            RequirementItem(
+                id=f"R{len(requirements) + 1}",
+                requirement=f"Use sources from at least {expected_domains} distinct domains or publishers",
+                type="count",
+                status=_count_requirement_status(domain_count, expected_domains),
+                evidence=(
+                    f"Detected {domain_count} unique trace-backed source domains; "
+                    f"expected at least {expected_domains} so the review is not built from one narrow source family."
+                ),
+                expectedCount=expected_domains,
+                fieldName="source diversity",
+            )
+        )
+        body_source_markers = _body_source_marker_count(final_text)
+        requirements.append(
+            RequirementItem(
+                id=f"R{len(requirements) + 1}",
+                requirement=f"Distribute at least {long_form_expected_sources} source/citation markers through the deliverable body",
+                type="field",
+                status=_count_requirement_status(body_source_markers, long_form_expected_sources),
+                evidence=(
+                    f"Detected {body_source_markers} body source or citation markers before references/evidence ledger; "
+                    f"expected at least {long_form_expected_sources}."
+                ),
+                expectedCount=long_form_expected_sources,
+                fieldName="source density",
             )
         )
     if _requires_english(requirement_text):
@@ -1224,6 +1276,41 @@ def _count_requirement_status(actual: int, expected: int) -> str:
     return "missing"
 
 
+def _expected_long_form_source_count(
+    requirement_text: str,
+    expected_words: int | None,
+    paper_like: bool,
+) -> int | None:
+    if not paper_like or expected_words is None or expected_words < 1500:
+        return None
+    lowered = requirement_text.lower()
+    if "literature review" in lowered or "文献综述" in lowered or "historiograph" in lowered:
+        return max(6, min(16, expected_words // 1000))
+    return max(4, min(10, expected_words // 1500))
+
+
+def _expected_long_form_domain_count(expected_sources: int) -> int:
+    return max(3, min(6, (expected_sources + 1) // 2))
+
+
+def _unique_evidence_url_count(evidence: list[EvidenceItem]) -> int:
+    urls = {item.url.strip().lower().rstrip("/.") for item in evidence if item.url.strip()}
+    return len(urls)
+
+
+def _unique_evidence_domain_count(evidence: list[EvidenceItem]) -> int:
+    domains = {_source_from_url(item.url).lower().removeprefix("www.") for item in evidence if item.url.strip()}
+    return len({domain for domain in domains if domain})
+
+
+def _body_source_marker_count(text: str) -> int:
+    body = _claim_body_text(text)
+    urls = URL_RE.findall(body)
+    author_year = re.findall(r"\([A-Z][A-Za-z& .'-]{1,80},\s*(?:n\.d\.|\d{4}[a-z]?)\)", body)
+    bracketed_numbers = re.findall(r"\[(?:\d{1,3}|[A-Za-z][A-Za-z0-9_-]{1,30})\]", body)
+    return len(urls) + len(author_year) + len(bracketed_numbers)
+
+
 def _requires_english(text: str) -> bool:
     lowered = text.lower()
     return any(term in lowered for term in ("english", "英文", "英语"))
@@ -1283,7 +1370,7 @@ def _sentences(text: str) -> list[str]:
 def _claim_body_text(text: str) -> str:
     body_lines: list[str] = []
     for line in text.splitlines():
-        if REFERENCE_HEADING_RE.match(line):
+        if REFERENCE_HEADING_RE.match(line) or EVIDENCE_LEDGER_HEADING_RE.match(line):
             break
         body_lines.append(line)
     return "\n".join(body_lines)
@@ -1295,6 +1382,8 @@ def _is_reference_like_sentence(sentence: str) -> bool:
     if not stripped:
         return True
     if REFERENCE_HEADING_RE.match(stripped):
+        return True
+    if EVIDENCE_LEDGER_HEADING_RE.match(stripped):
         return True
     if APA_REFERENCE_RE.match(stripped):
         return True
@@ -1491,6 +1580,12 @@ def _requirement_fix(requirement: RequirementItem) -> str:
         return "Add one trace-backed source link for each researched entity."
     if requirement.field_name == "word count":
         return f"Expand the deliverable body to at least {requirement.expected_count} words before references."
+    if requirement.field_name == "source depth":
+        return f"Search, read, and cite at least {requirement.expected_count} trace-backed sources before re-evaluating."
+    if requirement.field_name == "source diversity":
+        return f"Add sources from at least {requirement.expected_count} distinct credible domains or publishers."
+    if requirement.field_name == "source density":
+        return f"Distribute at least {requirement.expected_count} source or citation markers through the body prose, not only in an Evidence Ledger."
     if requirement.field_name == "language":
         return "Rewrite the deliverable in the requested language."
     if requirement.field_name == "APA format":

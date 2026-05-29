@@ -12,6 +12,7 @@ function MissionHeader({
   onEvaluate,
   onOpenInfo,
   onPause,
+  syncNotice = "",
 }) {
   const running = mission?.status === "running";
   const stopping = mission?.status === "stopping";
@@ -35,6 +36,7 @@ function MissionHeader({
               </button>
             </div>
           )}
+          {syncNotice && <p className="mission-sync-notice">{syncNotice}</p>}
         </div>
         <div className="panel-actions">
           <span className="chip">{mission?.status || "empty"}</span>

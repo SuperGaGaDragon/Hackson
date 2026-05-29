@@ -152,6 +152,39 @@ Constraints:
 - Event MAY expose inspected excerpts behind expand.
 - Full unbounded content MUST remain in Product/Artifact storage, not event payload.
 
+## 7A. Tool: compose_artifacts
+
+Purpose:
+
+- Compose already-persisted section Artifacts into one user-visible draft, revision, or final Artifact.
+- Avoid forcing the Lead Agent to regenerate an entire long-form deliverable inside a single JSON tool turn.
+
+Schema:
+
+```json
+{
+  "reason": "string",
+  "productId": "string",
+  "sourceArtifactIds": ["string"],
+  "productTitle": "string",
+  "artifactTitle": "string",
+  "artifactKind": "draft|revision|final",
+  "intro": "string",
+  "conclusion": "string",
+  "summary": "string"
+}
+```
+
+Constraints:
+
+- `productId` MUST reference an existing Product in the current Mission.
+- `sourceArtifactIds` MUST be non-empty and ordered in the desired final reading sequence.
+- Source Artifacts with `artifactRole=review`, `reliability_report`, `discussion`, or `search_summary` MUST be rejected.
+- Search Summary Artifacts remain evidence, not final prose.
+- The composed output MUST be persisted as a new immutable Artifact with source lineage.
+- `artifactKind=final` MUST make the composed Artifact the Product deliverable candidate.
+- The observation MUST include the new Artifact id, source count, and word count.
+
 ## 8. Tool: delegate_agent
 
 Purpose:
@@ -571,6 +604,10 @@ Constraints:
     "afterEditing": {
       "tool": "evaluate_product",
       "artifactIds": ["new_artifact_id"]
+    },
+    "ifLongForm": {
+      "tool": "compose_artifacts",
+      "instruction": "Write or expand bounded section Artifacts first, then compose them into one final candidate before re-evaluating."
     },
     "finishOnlyAfter": "gateStatus pass and report hashes match finalArtifactIds"
   }

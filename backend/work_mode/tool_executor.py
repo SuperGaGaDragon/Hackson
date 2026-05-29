@@ -24,6 +24,7 @@ from work_mode.service import WorkModeService
 from work_mode.tool_protocol import (
     AskUserArguments,
     BlockMissionArguments,
+    ComposeArtifactsArguments,
     DelegateAgentArguments,
     DiscussWithDelegateArguments,
     EvaluateProductArguments,
@@ -133,6 +134,8 @@ class WorkModeToolExecutor:
             return self._mission_plan(user_id, mission_id, run_id, action.arguments)
         if action.tool == "work_product":
             return self._work_product(user_id, mission_id, run_id, action.arguments)
+        if action.tool == "compose_artifacts":
+            return self._compose_artifacts(user_id, mission_id, run_id, action.arguments)
         if action.tool == "inspect_product":
             return self._inspect_product(user_id, mission_id, run_id, action.arguments)
         if action.tool == "delegate_agent":
@@ -236,6 +239,79 @@ class WorkModeToolExecutor:
         )
         return ToolExecutionResult(
             {"tool": "work_product", "status": "ok", "productId": product_id, "artifactId": artifact["id"]},
+            product_id=product_id,
+            artifact_id=artifact["id"],
+        )
+
+    def _compose_artifacts(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        arguments: ComposeArtifactsArguments,
+    ) -> ToolExecutionResult:
+        mission = self.service._require_mission(user_id, mission_id)
+        detail = self.service.get_mission_detail(user_id, mission_id)
+        product_id = _require_optional_product(detail["products"], arguments.product_id)
+        source_ids = _require_public_artifacts_by_ids(detail["artifacts"], arguments.source_artifact_ids)
+        sources = _ordered_artifacts(detail["artifacts"], source_ids)
+        blocked_roles = _non_composable_source_roles(sources)
+        if blocked_roles:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="source_artifact_not_composable")
+        content = _composed_artifact_content(arguments.intro, sources, arguments.conclusion)
+        word_count = _english_word_count(content)
+        artifact = self.service.create_product_artifact(
+            user_id,
+            mission_id,
+            run_id,
+            product_id or "",
+            kind=arguments.artifact_kind,
+            title=arguments.artifact_title,
+            content=content,
+            summary=arguments.summary,
+            created_by=_employee_payload(mission),
+            source_artifact_ids=source_ids,
+            work_window_id=None,
+            metadata={
+                "summary": arguments.summary,
+                "operation": "compose_artifacts",
+                "composedFromArtifactIds": source_ids,
+                "composedSourceCount": len(sources),
+                "bodyWordCount": word_count,
+            },
+        )
+        self.service.append_event(
+            user_id,
+            mission,
+            run={"_id": run_id},
+            step=None,
+            event_type="PRODUCT_COMPOSED",
+            title=arguments.artifact_title,
+            message=arguments.summary,
+            payload={
+                "reason": arguments.reason,
+                "productId": product_id,
+                "artifactId": artifact["id"],
+                "kind": arguments.artifact_kind,
+                "sourceArtifactIds": source_ids,
+                "sourceCount": len(sources),
+                "wordCount": word_count,
+                "summary": arguments.summary,
+                "employee": _employee_payload(mission),
+            },
+        )
+        return ToolExecutionResult(
+            {
+                "tool": "compose_artifacts",
+                "status": "ok",
+                "productId": product_id,
+                "artifactId": artifact["id"],
+                "sourceArtifactIds": source_ids,
+                "sourceCount": len(sources),
+                "wordCount": word_count,
+            },
             product_id=product_id,
             artifact_id=artifact["id"],
         )
@@ -1207,6 +1283,42 @@ def _find_public_artifacts(artifacts: list[dict[str, Any]], artifact_ids: list[s
     return [artifact for artifact in artifacts if artifact["id"] in wanted]
 
 
+def _ordered_artifacts(artifacts: list[dict[str, Any]], artifact_ids: list[str]) -> list[dict[str, Any]]:
+    by_id = {artifact["id"]: artifact for artifact in artifacts}
+    return [by_id[artifact_id] for artifact_id in artifact_ids if artifact_id in by_id]
+
+
+def _non_composable_source_roles(artifacts: list[dict[str, Any]]) -> list[str]:
+    blocked = {"review", "reliability_report", "discussion", "search_summary"}
+    roles = [
+        str(artifact.get("metadata", {}).get("artifactRole") or "")
+        for artifact in artifacts
+        if artifact.get("metadata", {}).get("artifactRole") in blocked
+    ]
+    return roles
+
+
+def _composed_artifact_content(intro: str, artifacts: list[dict[str, Any]], conclusion: str) -> str:
+    parts: list[str] = []
+    if intro.strip():
+        parts.append(intro.strip())
+    for artifact in artifacts:
+        content = str(artifact.get("content") or "").strip()
+        if not content:
+            continue
+        parts.append(content)
+    if conclusion.strip():
+        parts.append(conclusion.strip())
+    return "\n\n".join(parts).strip()
+
+
+def _english_word_count(text: str) -> int:
+    import re
+
+    body = re.sub(r"https?://\\S+", " ", text or "")
+    return len(re.findall(r"[A-Za-z]+(?:[-'][A-Za-z]+)?", body))
+
+
 def _require_public_products(products: list[dict[str, Any]], product_ids: list[str]) -> list[str]:
     available = {product["id"] for product in products}
     missing = [product_id for product_id in product_ids if product_id not in available]
@@ -1418,6 +1530,10 @@ def _next_reliability_action_contract(report: dict[str, Any]) -> dict[str, Any]:
             "tool": "evaluate_product",
             "artifactIds": ["new_artifact_id"],
             "productIds": list(report.get("evaluatedProductIds") or []),
+        },
+        "ifLongForm": {
+            "tool": "compose_artifacts",
+            "instruction": "For word-count repairs, write or expand bounded section Artifacts first, then compose them into one final candidate before re-evaluating.",
         },
         "finishOnlyAfter": "gateStatus pass and report hashes match finalArtifactIds",
         "blockingIssueIds": [issue["id"] for issue in blocking_issues if issue.get("id")],

@@ -12,6 +12,7 @@ from work_mode.tool_protocol import ToolName
 AVAILABLE_V1_TOOLS: tuple[ToolName, ...] = (
     "mission_plan",
     "work_product",
+    "compose_artifacts",
     "inspect_product",
     "delegate_agent",
     "ask_user",
@@ -58,7 +59,9 @@ def build_lead_context(
             "Do not emit React components.",
             "Do not use shell, file, browser, or computer-control tools.",
             "For long writing goals, split work into Product Artifacts and Delegate windows instead of trying to finish all content in one Lead turn.",
+            "For long-form research or paper goals, write bounded section Artifacts, then use compose_artifacts to assemble the final candidate.",
             "Use work_product whenever you need to show or persist natural-language output.",
+            "Use compose_artifacts to concatenate existing section Artifacts into one draft, revision, or final Artifact without re-generating the whole document.",
             "Use review_product to persist a bounded quality review before revising or finishing when needed.",
             "Use discuss_with_delegate for a short scoped discussion about a Product, Artifact, or Work Window.",
             "Use web_search only for bounded external references; use work_product later to write user-visible output.",
@@ -205,6 +208,19 @@ def _tool_schemas() -> dict[str, Any]:
                 "summary": "string",
             }
         },
+        "compose_artifacts": {
+            "arguments": {
+                "reason": "string <=240",
+                "productId": "existing product id",
+                "sourceArtifactIds": ["deliverable section artifact ids in desired order"],
+                "productTitle": "string",
+                "artifactTitle": "string",
+                "artifactKind": "draft|revision|final",
+                "intro": "optional string",
+                "conclusion": "optional string",
+                "summary": "string",
+            }
+        },
         "inspect_product": {
             "arguments": {
                 "reason": "string <=240",
@@ -321,6 +337,20 @@ def _tool_examples() -> dict[str, Any]:
                 "summary": "完成大纲。",
             },
         },
+        "composeArtifactsExample": {
+            "tool": "compose_artifacts",
+            "arguments": {
+                "reason": "把分段正文组合成最终候选稿。",
+                "productId": "product_id_from_productManifest",
+                "sourceArtifactIds": ["section_artifact_1", "section_artifact_2"],
+                "productTitle": "French Revolution Literature Review",
+                "artifactTitle": "Composed Final Draft",
+                "artifactKind": "final",
+                "intro": "# Title\n\nIntroductory bridge.",
+                "conclusion": "Concluding synthesis.",
+                "summary": "Composed section artifacts into a final candidate.",
+            },
+        },
         "finishMissionExample": {
             "tool": "finish_mission",
             "arguments": {
@@ -340,6 +370,8 @@ def _tool_use_guidance() -> list[str]:
         "Prefer review_product before finish_mission when the Mission has a substantive deliverable and no recent review exists for the final candidate.",
         "Prefer discuss_with_delegate after a review with critical or major findings, after conflicting evidence, or when a second Agent can improve structure, quality, or tradeoff decisions.",
         "Prefer evaluate_product after a research or paper final candidate exists and before finish_mission; if it reports missing evidence, run web_search or revise before finishing.",
+        "For long-form research, prefer section-level work_product or delegate_agent outputs, then compose_artifacts before evaluate_product.",
+        "When Reliability reports a word-count gap, add or expand section Artifacts first; use compose_artifacts once the source sections are ready.",
         "Prefer ask_user when a missing requirement would materially change the deliverable; otherwise choose a strong default and continue.",
         "Prefer work_product after web_search, review_product, or discuss_with_delegate when the observation should become user-visible deliverable content.",
         "After web_search, use the returned summaryArtifactId as research evidence only; write a separate deliverable Artifact before finish_mission.",

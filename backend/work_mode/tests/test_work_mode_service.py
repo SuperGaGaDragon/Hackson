@@ -922,6 +922,113 @@ class WorkModeServiceTest(TestCase):
         self.assertEqual(product_detail["metadata"]["artifactManifest"][-1]["artifactRole"], "review")
         self.assertFalse(product_detail["metadata"]["artifactManifest"][-1]["deliverable"])
 
+    def test_short_revision_does_not_replace_hard_word_count_candidate(self) -> None:
+        project = self.service.create_project("user_1", ProjectCreateRequest(name="Research"))
+        mission = self.service.create_mission(
+            "user_1",
+            MissionCreateRequest(
+                projectId=project["id"],
+                title="French Revolution literature review 8000 words",
+                goal="Write an 8000-word English literature review.",
+            ),
+        )
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="Essay",
+            summary="Essay product.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        long_candidate = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="final",
+            title="Long final candidate",
+            content="revolution " * 8200,
+            summary="Long final candidate.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+        short_revision = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Source-aware but short revision",
+            content="revolution " * 4300,
+            summary="Short revision.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[long_candidate["id"]],
+            work_window_id=None,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        product_detail = completed["products"][0]
+
+        self.assertEqual(product_detail["latestArtifactId"], short_revision["id"])
+        self.assertEqual(product_detail["deliverableArtifactId"], long_candidate["id"])
+        self.assertEqual(product_detail["deliveryStatus"], "draft_candidate")
+        self.assertEqual(product_detail["metadata"]["artifactManifest"][0]["wordCount"], 8200)
+        self.assertEqual(product_detail["metadata"]["artifactManifest"][-1]["wordCount"], 4300)
+
+    def test_long_revision_can_replace_hard_word_count_candidate(self) -> None:
+        project = self.service.create_project("user_1", ProjectCreateRequest(name="Research"))
+        mission = self.service.create_mission(
+            "user_1",
+            MissionCreateRequest(
+                projectId=project["id"],
+                title="French Revolution literature review 8000 words",
+                goal="Write an 8000-word English literature review.",
+            ),
+        )
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="Essay",
+            summary="Essay product.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        long_candidate = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="final",
+            title="Long final candidate",
+            content="revolution " * 8200,
+            summary="Long final candidate.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+        long_revision = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Long source-aware revision",
+            content="revolution " * 8100,
+            summary="Long revision.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[long_candidate["id"]],
+            work_window_id=None,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        product_detail = completed["products"][0]
+
+        self.assertEqual(product_detail["latestArtifactId"], long_revision["id"])
+        self.assertEqual(product_detail["deliverableArtifactId"], long_revision["id"])
+
     def test_blocked_mission_marks_current_deliverable_as_blocked_candidate(self) -> None:
         mission = self._mission()
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())

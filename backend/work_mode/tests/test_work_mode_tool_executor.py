@@ -222,6 +222,140 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertEqual(inspect_event["payload"]["artifactIds"], [artifact["id"]])
         self.assertIn("看第一章", inspect_event["message"])
 
+    def test_compose_artifacts_creates_final_candidate_from_sections(self) -> None:
+        mission, run_id = self._started_agent_mission(
+            title="French Revolution literature review",
+            goal="Write an English literature review about the French Revolution.",
+        )
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="French Revolution Literature Review",
+            summary="Research paper.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        section_one = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="draft",
+            title="Section One",
+            content="Introduction body paragraph one. " * 40,
+            summary="First section.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+        section_two = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="draft",
+            title="Section Two",
+            content="Historiography body paragraph two. " * 40,
+            summary="Second section.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+
+        result = self.executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "compose_artifacts",
+                  "arguments": {{
+                    "reason": "把分段论文组合成最终候选稿。",
+                    "productId": "{product["id"]}",
+                    "sourceArtifactIds": ["{section_one["id"]}", "{section_two["id"]}"],
+                    "productTitle": "French Revolution Literature Review",
+                    "artifactTitle": "Composed Final Draft",
+                    "artifactKind": "final",
+                    "intro": "# The French Revolution in Historiography",
+                    "conclusion": "The conclusion synthesizes the major debates.",
+                    "summary": "组合两个正文 section 为最终候选稿。"
+                  }}
+                }}
+                """
+            ),
+        )
+
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        composed = next(item for item in detail["artifacts"] if item["id"] == result.artifact_id)
+        composed_event = next(event for event in detail["events"] if event["type"] == "PRODUCT_COMPOSED")
+        product_detail = next(item for item in detail["products"] if item["id"] == product["id"])
+
+        self.assertFalse(result.terminal)
+        self.assertEqual(composed["kind"], "final")
+        self.assertIn("Introduction body paragraph one", composed["content"])
+        self.assertIn("Historiography body paragraph two", composed["content"])
+        self.assertEqual(composed["metadata"]["operation"], "compose_artifacts")
+        self.assertEqual(composed["metadata"]["composedFromArtifactIds"], [section_one["id"], section_two["id"]])
+        self.assertEqual(product_detail["deliverableArtifactId"], composed["id"])
+        self.assertEqual(product_detail["deliveryStatus"], "draft_candidate")
+        self.assertEqual(composed_event["payload"]["artifactId"], composed["id"])
+        self.assertGreater(result.observation["wordCount"], 100)
+
+    def test_compose_artifacts_rejects_search_summary_sources(self) -> None:
+        mission, run_id = self._started_agent_mission(
+            title="French Revolution literature review",
+            goal="Write an English literature review about the French Revolution.",
+        )
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="French Revolution Literature Review",
+            summary="Research paper.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        search_summary = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="notes",
+            title="Search Notes",
+            content="Snippet evidence.",
+            summary="Search notes.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+            metadata={"artifactRole": "search_summary"},
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.executor.execute(
+                "user_1",
+                mission["id"],
+                run_id,
+                parse_tool_action(
+                    f"""
+                    {{
+                      "tool": "compose_artifacts",
+                      "arguments": {{
+                        "reason": "错误地把搜索摘要当正文组合。",
+                        "productId": "{product["id"]}",
+                        "sourceArtifactIds": ["{search_summary["id"]}"],
+                        "productTitle": "French Revolution Literature Review",
+                        "artifactTitle": "Bad Final Draft",
+                        "artifactKind": "final",
+                        "intro": "",
+                        "conclusion": "",
+                        "summary": "错误组合。"
+                      }}
+                    }}
+                    """
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(error.exception.detail, "source_artifact_not_composable")
+
     def test_ask_user_and_block_mission_create_terminal_states(self) -> None:
         mission, run_id = self._started_agent_mission()
 

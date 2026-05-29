@@ -88,6 +88,7 @@ export function eventView(event) {
         detail: event.message || tool || "",
       };
     case "PRODUCT_UPDATED":
+    case "PRODUCT_COMPOSED":
       return { ...common, icon: FileText, tone: "product", title: event.title || "Product" };
     case "PRODUCT_INSPECTED":
       return { ...common, icon: Search, tone: "product", title: event.title || "Inspect" };

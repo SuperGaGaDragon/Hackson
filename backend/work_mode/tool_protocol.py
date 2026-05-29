@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 ToolName = Literal[
     "mission_plan",
     "work_product",
+    "compose_artifacts",
     "inspect_product",
     "delegate_agent",
     "ask_user",
@@ -70,6 +71,20 @@ class WorkProductArguments(BaseModel):
         if self.operation != "create_product" and not self.product_id:
             raise ValueError("product_id_required_for_existing_product_operation")
         return self
+
+
+class ComposeArtifactsArguments(BaseModel):
+    reason: str = Field(min_length=1, max_length=240)
+    product_id: str = Field(min_length=1, alias="productId")
+    source_artifact_ids: list[str] = Field(min_length=1, max_length=40, alias="sourceArtifactIds")
+    product_title: str = Field(min_length=1, max_length=200, alias="productTitle")
+    artifact_title: str = Field(min_length=1, max_length=200, alias="artifactTitle")
+    artifact_kind: Literal["draft", "revision", "final"] = Field(alias="artifactKind")
+    intro: str = Field(default="", max_length=6000)
+    conclusion: str = Field(default="", max_length=6000)
+    summary: str = Field(min_length=1, max_length=1000)
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class InspectProductArguments(BaseModel):
@@ -209,6 +224,7 @@ class EvaluateProductArguments(BaseModel):
 ToolArguments = (
     MissionPlanArguments
     | WorkProductArguments
+    | ComposeArtifactsArguments
     | InspectProductArguments
     | DelegateAgentArguments
     | AskUserArguments
@@ -266,6 +282,7 @@ def _argument_model(tool: ToolName) -> type[ToolArguments]:
     return {
         "mission_plan": MissionPlanArguments,
         "work_product": WorkProductArguments,
+        "compose_artifacts": ComposeArtifactsArguments,
         "inspect_product": InspectProductArguments,
         "delegate_agent": DelegateAgentArguments,
         "ask_user": AskUserArguments,

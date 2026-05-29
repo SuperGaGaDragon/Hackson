@@ -386,6 +386,7 @@ def _tool_title(tool: str) -> str:
     return {
         "mission_plan": "Plan",
         "work_product": "Product",
+        "compose_artifacts": "Compose",
         "inspect_product": "Inspect",
         "delegate_agent": "Delegate",
         "ask_user": "Ask",
@@ -409,6 +410,10 @@ def _tool_event_arguments(action: ToolAction) -> dict[str, Any]:
         values["contentPreview"] = str(values.pop("content"))[:320]
     if "brief" in values:
         values["briefPreview"] = str(values.pop("brief"))[:320]
+    if "intro" in values:
+        values["introPreview"] = str(values.pop("intro"))[:320]
+    if "conclusion" in values:
+        values["conclusionPreview"] = str(values.pop("conclusion"))[:320]
     return values
 
 

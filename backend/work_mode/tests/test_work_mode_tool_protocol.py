@@ -121,6 +121,55 @@ class WorkModeToolProtocolTest(TestCase):
         self.assertEqual(action.arguments.agent_slot, "agent_2")
         self.assertEqual(action.arguments.source_artifact_ids, ["artifact_1"])
 
+    def test_parses_valid_compose_artifacts_action(self) -> None:
+        action = parse_tool_action(
+            """
+            {
+              "tool": "compose_artifacts",
+              "arguments": {
+                "reason": "组合分段正文。",
+                "productId": "product_1",
+                "sourceArtifactIds": ["artifact_1", "artifact_2"],
+                "productTitle": "French Revolution Literature Review",
+                "artifactTitle": "Composed Final Draft",
+                "artifactKind": "final",
+                "intro": "# Title",
+                "conclusion": "Conclusion.",
+                "summary": "组合为最终候选稿。"
+              }
+            }
+            """
+        )
+
+        self.assertEqual(action.tool, "compose_artifacts")
+        self.assertEqual(action.arguments.product_id, "product_1")
+        self.assertEqual(action.arguments.source_artifact_ids, ["artifact_1", "artifact_2"])
+        self.assertEqual(action.arguments.artifact_kind, "final")
+
+    def test_compose_artifacts_requires_sources(self) -> None:
+        with self.assertRaises(ToolActionValidationError) as error:
+            parse_tool_action(
+                """
+                {
+                  "tool": "compose_artifacts",
+                  "arguments": {
+                    "reason": "组合分段正文。",
+                    "productId": "product_1",
+                    "sourceArtifactIds": [],
+                    "productTitle": "French Revolution Literature Review",
+                    "artifactTitle": "Composed Final Draft",
+                    "artifactKind": "final",
+                    "intro": "",
+                    "conclusion": "",
+                    "summary": "组合为最终候选稿。"
+                  }
+                }
+                """
+            )
+
+        self.assertEqual(error.exception.code, "tool_action_schema_invalid")
+        self.assertIn("sourceArtifactIds", error.exception.detail)
+
     def test_parses_valid_inspect_ask_and_block_actions(self) -> None:
         inspect_action = parse_tool_action(
             """

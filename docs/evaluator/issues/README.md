@@ -23,6 +23,7 @@ Last Modified by: Codex
 |-issue8-v1-compliance-closure.md V1.0 document-to-code closure rules for replay, lifecycle events, report fields, and UI
 |-issue9-latest-report-history-and-score-calibration.md latest Reliability report selection, collapsed history, and root-cause-aware scoring caps
 |-issue10-score-is-not-objective-truth.md Reliability score is deterministic risk triage, not objective proof
+|-issue11-quality-gaming-resistance.md anti-gaming gates for short source-looking artifacts that fail long-form deliverable requirements
 
 ## 代办
 - Add new issue notes only when a decision would otherwise be surprising to future implementers.

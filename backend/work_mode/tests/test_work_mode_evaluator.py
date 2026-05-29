@@ -345,6 +345,87 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertLess(report.score, 85)
         self.assertNotEqual(report.status, "ship_ready")
 
+    def test_short_source_shaped_answer_cannot_game_long_form_literature_review_gate(self) -> None:
+        mission, run_id, product, artifact = self._paper_mission(
+            kind="revision",
+            title="Tax Inequality, Bread Shortages, and the French Revolution",
+            content=(
+                "Tax Inequality, Bread Shortages, and the French Revolution\n\n"
+                "The French Revolution can be explained in part through the link between unequal burdens and daily "
+                "hardship. Britannica describes the taille as the most important direct tax of pre-revolutionary "
+                "France and says its unequal distribution, with clergy and nobles exempt, made it one of the hated "
+                "institutions of the ancien regime. Source: https://www.britannica.com/topic/taille\n\n"
+                "Britannica also describes the French Revolution as a movement that shook France between 1787 and "
+                "1799 and reached its first climax in 1789. Source: https://www.britannica.com/event/French-Revolution\n\n"
+                "History adds that the Revolution was caused by many grievances more complicated than the price of "
+                "bread, while bread shortages still played a role in stoking anger toward the monarchy. "
+                "Source: https://www.history.com/articles/bread-french-revolution-marie-antoinette\n\n"
+                "## Evidence Ledger\n"
+                "- Claim: Unequal taxation was a major source of resentment under the ancien regime.\n"
+                "- Source: https://www.britannica.com/topic/taille\n"
+                "- Claim: Bread shortages contributed to anger toward the monarchy, but they were not the only cause.\n"
+                "- Source: https://www.history.com/articles/bread-french-revolution-marie-antoinette\n"
+            ),
+            mission_title="French Revolution literature review 8000 words English",
+            mission_goal="Write an 8000-word English literature review of French Revolution historiography.",
+        )
+        mission_document = self.service._require_mission("user_1", mission["id"])
+        self.service.append_event(
+            "user_1",
+            mission_document,
+            run={"_id": run_id},
+            step=None,
+            event_type="WEB_SEARCH_COMPLETED",
+            title="Search",
+            message="French Revolution causes",
+            payload={
+                "tool": "web_search",
+                "status": "ok",
+                "query": "French Revolution causes taxation bread shortage",
+                "provider": "fake",
+                "results": [
+                    {
+                        "title": "Taille",
+                        "url": "https://www.britannica.com/topic/taille",
+                        "source": "britannica.com",
+                        "snippet": "The taille was an important direct tax whose unequal distribution made it hated.",
+                        "publishedAt": None,
+                    },
+                    {
+                        "title": "French Revolution",
+                        "url": "https://www.britannica.com/event/French-Revolution",
+                        "source": "britannica.com",
+                        "snippet": "The French Revolution shook France between 1787 and 1799.",
+                        "publishedAt": None,
+                    },
+                    {
+                        "title": "Bread and the French Revolution",
+                        "url": "https://www.history.com/articles/bread-french-revolution-marie-antoinette",
+                        "source": "history.com",
+                        "snippet": "Bread shortages helped stoke anger, but grievances were broader than bread prices.",
+                        "publishedAt": None,
+                    },
+                ],
+            },
+        )
+
+        report = build_reliability_report(
+            self.service.get_mission_evaluation_detail("user_1", mission["id"]),
+            artifact_ids=[artifact["id"]],
+            product_ids=[product["id"]],
+        )
+        requirement_by_field = {requirement.field_name: requirement for requirement in report.requirements}
+        issue_types = {issue.type for issue in report.issues}
+
+        self.assertEqual(requirement_by_field["word count"].status, "missing")
+        self.assertIn(requirement_by_field["source depth"].status, {"missing", "partially_met"})
+        self.assertIn(requirement_by_field["source diversity"].status, {"missing", "partially_met"})
+        self.assertIn(requirement_by_field["source density"].status, {"missing", "partially_met"})
+        self.assertIn("missing_requirement", issue_types)
+        self.assertEqual(report.gate_status, "repair_required")
+        self.assertNotEqual(report.status, "ship_ready")
+        self.assertLess(report.score, 85)
+
     def test_evaluator_does_not_duplicate_current_report_without_new_trace(self) -> None:
         mission, run_id, product, final_artifact = self._research_mission()
         self.service.mark_product_final("user_1", product["id"])

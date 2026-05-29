@@ -69,20 +69,33 @@ export async function apiRequest(path, options = {}) {
   }
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = parseResponseBody(text);
 
   if (!response.ok) {
-    throw new ApiError(resolveErrorMessage(data), response.status);
+    throw new ApiError(resolveErrorMessage(data, response.status), response.status);
   }
 
   return data;
 }
 
-function resolveErrorMessage(data) {
+function parseResponseBody(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (_err) {
+    return { message: text };
+  }
+}
+
+function resolveErrorMessage(data, status = 0) {
+  if (status === 502 || status === 503 || status === 504) {
+    return "Service temporarily unavailable. Try again shortly.";
+  }
   if (!data) return "Request failed";
   if (typeof data.detail === "string") return KNOWN_ERROR_MESSAGES[data.detail] || data.detail;
   if (Array.isArray(data.detail)) return data.detail[0]?.msg || "Request failed";
-  return data.message || "Request failed";
+  if (typeof data.message === "string" && !data.message.trim().startsWith("<")) return data.message;
+  return "Request failed";
 }
 
 const KNOWN_ERROR_MESSAGES = {

@@ -1929,6 +1929,13 @@ input:disabled {
   color: var(--text);
 }
 
+.mission-sync-notice {
+  margin: 8px 0 0;
+  color: #f4c766;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .rail-directory {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);

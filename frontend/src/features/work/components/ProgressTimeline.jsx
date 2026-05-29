@@ -21,6 +21,7 @@ const timelineTypes = new Set([
   "MODEL_TURN_INVALID",
   "TOOL_CALLED",
   "PRODUCT_UPDATED",
+  "PRODUCT_COMPOSED",
   "PRODUCT_INSPECTED",
   "PRODUCT_REVIEWED",
   "WEB_SEARCH_COMPLETED",
@@ -68,7 +69,7 @@ const allFilterId = "all";
 const filterTypes = {
   thinking: new Set(["MODEL_TURN_STARTED", "MODEL_TURN_HEARTBEAT", "MODEL_TURN_COMPLETED", "MODEL_TURN_RETRYING", "MODEL_TURN_INVALID", "TOOL_CALLED"]),
   reliability: new Set(["EVALUATION_STARTED", "RELIABILITY_REPORTED", "EVALUATION_FAILED"]),
-  products: new Set(["PRODUCT_UPDATED", "PRODUCT_INSPECTED", "PRODUCT_REVIEWED"]),
+  products: new Set(["PRODUCT_UPDATED", "PRODUCT_COMPOSED", "PRODUCT_INSPECTED", "PRODUCT_REVIEWED"]),
   windows: new Set([
     "WORK_WINDOW_OPENED",
     "WORK_WINDOW_COMPLETED",
@@ -289,14 +290,29 @@ function progressDetails(event) {
         .join("\n"),
     });
   }
+  if (event.type === "PRODUCT_COMPOSED") {
+    details.push({
+      label: "Composition",
+      value: [
+        payload.sourceCount != null ? `Sources: ${payload.sourceCount}` : "",
+        payload.wordCount != null ? `Words: ${payload.wordCount}` : "",
+        Array.isArray(payload.sourceArtifactIds) ? `Source artifacts: ${payload.sourceArtifactIds.join(", ")}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+  }
   if (payload.arguments) {
     const args = payload.arguments;
     const value = [
       args.productTitle ? `Product: ${args.productTitle}` : "",
       args.artifactTitle ? `Artifact: ${args.artifactTitle}` : "",
       args.artifactKind ? `Kind: ${args.artifactKind}` : "",
+      args.sourceArtifactIds?.length ? `Sources: ${args.sourceArtifactIds.length}` : "",
       args.contentPreview ? `Excerpt: ${args.contentPreview}` : "",
       args.briefPreview ? `Brief: ${args.briefPreview}` : "",
+      args.introPreview ? `Intro: ${args.introPreview}` : "",
+      args.conclusionPreview ? `Conclusion: ${args.conclusionPreview}` : "",
     ]
       .filter(Boolean)
       .join("\n");

@@ -37,6 +37,8 @@ import WorkWindowPanel from "./components/WorkWindowPanel";
 import WorkspaceView from "./components/WorkspaceView";
 
 const terminalStatuses = new Set(["completed", "failed", "stopped", "blocked", "paused", "paused_retryable", "waiting_input"]);
+const missionSyncIntervalMs = 1500;
+const missionSyncMaxDelayMs = 30000;
 
 function WorkPage({ agents = [], initialRoute = {} }) {
   const workAgents = useMemo(() => normalizeAgents(agents).slice(0, 2), [agents]);
@@ -63,6 +65,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [syncNotice, setSyncNotice] = useState("");
   const sectionRefs = {
     activity: useRef(null),
     diagnostics: useRef(null),
@@ -131,10 +134,17 @@ function WorkPage({ agents = [], initialRoute = {} }) {
   }, [defaultLeadId, missionLeadId, workAgents]);
 
   useEffect(() => {
-    if (!selectedMission || terminalStatuses.has(selectedMission.status)) return undefined;
-    if (!["running", "stopping"].includes(selectedMission.status)) return undefined;
+    if (!selectedMission || terminalStatuses.has(selectedMission.status)) {
+      setSyncNotice("");
+      return undefined;
+    }
+    if (!["running", "stopping"].includes(selectedMission.status)) {
+      setSyncNotice("");
+      return undefined;
+    }
     let stopped = false;
-    let pollingTimer = null;
+    let reconnectTimer = null;
+    let failureCount = 0;
     const controller = new AbortController();
 
     async function refreshWithEvents(nextEvents) {
@@ -147,16 +157,29 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       applyMissionDetail(detail);
     }
 
-    function startPollingFallback() {
-      if (pollingTimer !== null) return;
-      pollingTimer = window.setInterval(async () => {
+    function markConnected() {
+      failureCount = 0;
+      setSyncNotice("");
+    }
+
+    function schedulePollingFallback(delayMs = missionSyncIntervalMs) {
+      if (stopped || reconnectTimer !== null) return;
+      reconnectTimer = window.setTimeout(async () => {
+        reconnectTimer = null;
         try {
           const nextEvents = await listMissionEvents(selectedMission.id, afterSequenceRef.current);
           await refreshWithEvents(nextEvents);
+          markConnected();
+          schedulePollingFallback(missionSyncIntervalMs);
         } catch (err) {
-          if (!stopped) setError(err.message || "Poll failed");
+          if (!stopped) {
+            failureCount += 1;
+            const nextDelayMs = reconnectDelayMs(failureCount);
+            setSyncNotice(`Reconnecting to mission updates. Retrying in ${Math.round(nextDelayMs / 1000)}s.`);
+            schedulePollingFallback(nextDelayMs);
+          }
         }
-      }, 1500);
+      }, delayMs);
     }
 
     async function startStream() {
@@ -164,6 +187,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
         await streamMissionEvents(selectedMission.id, afterSequenceRef.current, {
           signal: controller.signal,
           onEvent: async (event) => {
+            markConnected();
             await refreshWithEvents([event]);
           },
         });
@@ -175,12 +199,15 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           setEvents(detail.events || []);
           applyMissionDetail(detail);
           if (["running", "stopping"].includes(detail.mission?.status)) {
-            startPollingFallback();
+            schedulePollingFallback(missionSyncIntervalMs);
           }
         }
       } catch (err) {
         if (!stopped && err.name !== "AbortError") {
-          startPollingFallback();
+          failureCount += 1;
+          const nextDelayMs = reconnectDelayMs(failureCount);
+          setSyncNotice(`Reconnecting to mission updates. Retrying in ${Math.round(nextDelayMs / 1000)}s.`);
+          schedulePollingFallback(nextDelayMs);
         }
       }
     }
@@ -189,7 +216,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     return () => {
       stopped = true;
       controller.abort();
-      if (pollingTimer !== null) window.clearInterval(pollingTimer);
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
     };
   }, [selectedMission?.id, selectedMission?.status]);
 
@@ -562,6 +589,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           onEvaluate={evaluate}
           onOpenInfo={() => setShowMissionInfo(true)}
           onPause={pause}
+          syncNotice={syncNotice}
         />
         <div className="mission-content">
           <section ref={sectionRefs.activity}>
@@ -618,6 +646,10 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       )}
     </div>
   );
+}
+
+function reconnectDelayMs(failureCount) {
+  return Math.min(missionSyncMaxDelayMs, missionSyncIntervalMs * 2 ** Math.max(0, failureCount - 1));
 }
 
 function Modal({ children, onClose, title }) {

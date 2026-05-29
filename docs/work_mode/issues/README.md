@@ -52,6 +52,8 @@ Last Modified by: Codex
 |-issue38-reliability-revision-loop.md Reliability repair loop diagnosis and convergence fix
 |-issue39-work-console-navigation-and-quality-modal.md Work Console right rail becomes section navigation, Inspector becomes Info modal, and Quality opens in a focused modal
 |-issue40-work-console-reading-polish.md Work Console reading polish, complete Product/Quality history access, ET timestamps, and warning state
+|-issue41-long-form-compose-flow.md deterministic Artifact composition flow for long-form research deliverables
+|-issue42-transient-origin-reconnect.md frontend reconnect UX and deployment discipline for transient public origin 502s
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

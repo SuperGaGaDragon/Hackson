@@ -326,6 +326,9 @@ Caps:
 - Any `mission_incomplete` issue caps status at `needs_human_review`.
 - An empty Evidence Ledger under `research_reliability_v1` caps status at `needs_human_review`.
 - A paper-like Mission with only outline/plan content caps status at `needs_human_review`.
+- A long-form paper/literature-review Mission with source-looking formatting but missing length, source depth, or source
+  density remains `repair_required` or `human_review`; an `Evidence Ledger` section is not a substitute for a real
+  deliverable body.
 
 Status bands:
 
@@ -402,6 +405,9 @@ Deterministic checks should run before model-assisted checks:
 
 - Required source field present.
 - Required count met.
+- Required body length met when a word-count target is present.
+- Long-form paper/review source count, unique domain count, and citation/source density are sufficient for the requested
+  scale.
 - Tool failure events exist.
 - Final Product exists.
 - Final source URLs appear in Evidence Ledger.
