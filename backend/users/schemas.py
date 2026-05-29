@@ -76,6 +76,7 @@ class UserResponse(BaseModel):
     personality: str = ""
     story: str = ""
     agent_profiles: list[UserAgentProfile] = Field(default_factory=list, alias="agentProfiles")
+    is_temporary: bool = Field(default=False, alias="isTemporary")
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
 

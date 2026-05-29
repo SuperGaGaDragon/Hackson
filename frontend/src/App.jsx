@@ -7,7 +7,7 @@ Last Modified by: Codex
 import { Activity, BriefcaseBusiness, Download, MessageSquare, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listAgents } from "./api/agents";
-import { getToken } from "./api/client";
+import { clearToken, getToken, hasSessionToken } from "./api/client";
 import { bindDesktopHandoff, getCurrentUser } from "./api/users";
 import { FALLBACK_AGENTS, normalizeAgents } from "./domain/agents";
 import AuthPage from "./features/auth/AuthPage";
@@ -36,6 +36,7 @@ function App() {
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState("");
   const [authMode, setAuthMode] = useState("landing");
+  const [sessionScoped, setSessionScoped] = useState(() => hasSessionToken());
   const desktopAuthCode = getDesktopAuthCode();
 
   useEffect(() => {
@@ -61,6 +62,7 @@ function App() {
         const currentUser = await getCurrentUser();
         if (!mounted) return;
         setUser(currentUser);
+        setSessionScoped(hasSessionToken());
         if (desktopAuthCode) await completeDesktopHandoff(desktopAuthCode, setError);
         try {
           setAgents(await loadAgentProfiles());
@@ -97,6 +99,7 @@ function App() {
     const handleAuth = (nextUser) => handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode);
     const handleQuickAuth = async (nextUser) => {
       await handleAuth(nextUser);
+      setSessionScoped(hasSessionToken());
       navigateTo("work", setView, setRouteParams);
     };
     if (authMode === "landing") {
@@ -111,7 +114,12 @@ function App() {
     <main className="app-shell">
       <Sidebar setRouteParams={setRouteParams} setView={setView} user={user} view={view} />
       <section className="workspace">
-        <Topbar error={error} view={view} />
+        <Topbar
+          error={error}
+          onBackToIntro={() => endTemporarySession(setUser, setAgents, setError, setSessionScoped, setView, setRouteParams)}
+          showBackToIntro={Boolean(user.isTemporary || sessionScoped)}
+          view={view}
+        />
         {view === "idle" && <IdlePage agents={visibleAgents} user={user} />}
         {view === "chat" && <ChatPage agents={visibleAgents} user={user} />}
         {view === "work" && <WorkPage agents={visibleAgents} initialRoute={routeParams} />}
@@ -119,6 +127,7 @@ function App() {
           <MePage
             onLogout={() => {
               setUser(null);
+              setSessionScoped(false);
               navigateTo("idle", setView, setRouteParams);
             }}
             onUserUpdate={setUser}
@@ -143,6 +152,15 @@ async function handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthC
     setAgents(FALLBACK_AGENTS);
     setError(err.message || "Agents failed");
   }
+}
+
+function endTemporarySession(setUser, setAgents, setError, setSessionScoped, setView, setRouteParams) {
+  clearToken();
+  setUser(null);
+  setAgents(FALLBACK_AGENTS);
+  setError("");
+  setSessionScoped(false);
+  navigateTo("idle", setView, setRouteParams);
 }
 
 function getDesktopAuthCode() {
@@ -236,7 +254,7 @@ function Sidebar({ setRouteParams, setView, user, view }) {
   );
 }
 
-function Topbar({ error, view }) {
+function Topbar({ error, onBackToIntro, showBackToIntro = false, view }) {
   const title =
     view === "idle" ? "Live timeline" : view === "chat" ? "Companion" : view === "work" ? "Work" : "Settings";
 
@@ -247,6 +265,11 @@ function Topbar({ error, view }) {
         <h1>{title}</h1>
       </div>
       <div className="topbar-actions">
+        {showBackToIntro && (
+          <button className="secondary-button topbar-intro-button" onClick={onBackToIntro} type="button">
+            Back to intro
+          </button>
+        )}
         <span className="chip">{view}</span>
         {error && <span className="chip error-chip">{error}</span>}
       </div>

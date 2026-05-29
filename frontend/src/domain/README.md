@@ -10,6 +10,7 @@ Lst Modified by: Codex
 - 架构思路
   - Backend owns fixed MVP Agent slots before Agent persistence exists.
   - Frontend keeps fallback display and editable Agent story data for loading and degraded states.
+  - Frontend fallback persona text must match backend English defaults so Me and prompt-visible fields do not regress to mixed-language scaffolding.
   - Message display mapping belongs here so product features stay simple.
   - Pending outgoing user-message construction belongs here so Chat and companion_1 continuation use the same optimistic turn shape.
   - Client-only ids must work on the target-machine HTTP production URL, not only on secure local contexts.

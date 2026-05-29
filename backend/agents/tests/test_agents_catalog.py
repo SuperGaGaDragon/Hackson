@@ -66,31 +66,47 @@ class AgentCatalogTest(TestCase):
         )
 
         self.assertEqual([profile["slot"] for profile in profiles], ["agent_1", "agent_2"])
+        self.assertEqual(
+            profiles[0]["personality"],
+            "Calm, precise, and philosophically minded; Nora protects depth by asking the question underneath the question.",
+        )
+        self.assertEqual(
+            profiles[1]["personality"],
+            "Practical, direct, and action-oriented; Vale turns vague intent into owned next steps and working plans.",
+        )
         self.assertEqual(profiles[0]["story"], NORA_DEFAULT_STORY)
         self.assertEqual(profiles[1]["story"], VALE_DEFAULT_STORY)
         self.assertEqual([snapshot.name for snapshot in snapshots], ["Mira", "Rook"])
         self.assertEqual(snapshots[0].core_persona, "Custom careful skeptic.")
 
-    def test_empty_and_demo_placeholder_stories_normalize_to_origin_stories(self) -> None:
+    def test_empty_demo_stories_and_old_default_personas_normalize_to_current_defaults(self) -> None:
         profiles = normalize_user_agent_profiles(
             [
                 {
                     "slot": "agent_1",
                     "name": "Nora",
                     "voice": "precise",
-                    "personality": "Careful.",
+                    "personality": "冷静、会追问概念的哲学型 Agent。",
                     "story": "正在帮助 Hackson 跑通 V1 demo。",
                 },
                 {
                     "slot": "agent_2",
                     "name": "Vale",
                     "voice": "sharp",
-                    "personality": "Direct.",
+                    "personality": "务实、直接、擅长把想法变成计划的 Agent。",
                     "story": "",
                 },
             ]
         )
 
+        self.assertEqual(
+            profiles[0]["personality"],
+            "Calm, precise, and philosophically minded; Nora protects depth by asking the question underneath the question.",
+        )
+        self.assertEqual(
+            profiles[1]["personality"],
+            "Practical, direct, and action-oriented; Vale turns vague intent into owned next steps and working plans.",
+        )
         self.assertEqual(profiles[0]["story"], NORA_DEFAULT_STORY)
         self.assertEqual(profiles[1]["story"], VALE_DEFAULT_STORY)
 

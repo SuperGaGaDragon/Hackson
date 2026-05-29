@@ -29,6 +29,7 @@ def public_user(document: dict[str, Any]) -> dict[str, Any]:
         "personality": document.get("personality", ""),
         "story": document.get("story", ""),
         "agentProfiles": normalize_user_agent_profiles(document.get("agent_profiles")),
+        "isTemporary": bool(document.get("is_temporary", False)),
         "createdAt": document["created_at"],
         "updatedAt": document["updated_at"],
     }

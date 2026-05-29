@@ -21,6 +21,7 @@ Lst Modified by: Codex
 - Users own the Background Idle setting used by future server-owned idle cadence.
 - Users can list and delete retained prompt logs from Me, but cannot edit historical prompt text.
 - Browser-to-desktop auth handoff lets the web login authorize Desktop Pet without exposing passwords in the desktop window.
+- Quick Try creates a temporary real user with English default profile text and a session-scoped token.
 
 ## folder structure
 |-README.md users module guide

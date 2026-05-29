@@ -21,6 +21,10 @@ export function getToken() {
   return sessionStorage.getItem(SESSION_TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 }
 
+export function hasSessionToken() {
+  return Boolean(sessionStorage.getItem(SESSION_TOKEN_KEY));
+}
+
 export function setToken(token) {
   localStorage.setItem(TOKEN_KEY, token);
   sessionStorage.removeItem(SESSION_TOKEN_KEY);

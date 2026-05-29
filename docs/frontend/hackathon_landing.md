@@ -38,6 +38,13 @@ Question: Should temporary progress be recoverable?
 Decision: Not in V1. The CTA copy must be explicit: Quick Try is fast, temporary, and not recoverable if the browser
 session is closed or the user switches accounts.
 
+Question: Should Quick Try users have a way back to the landing page?
+
+Decision: Yes. Because Quick Try uses a real session token, authenticated root navigation would otherwise skip the
+landing page. The app shell should expose a clear `Back to intro` action only for temporary Quick Try users. Clicking it
+ends the temporary browser session by clearing the session token and returns to `/`. It must not imply that temporary
+work is saved or recoverable.
+
 Question: Should registration still exist?
 
 Decision: Yes, but it becomes the secondary path. Normal account creation is for people who want to keep progress.
@@ -114,6 +121,8 @@ Unauthenticated root page:
 Authenticated root behavior:
 
 - Existing app behavior remains. Authenticated users enter the app shell, whose visible brand label should be `Parallex`.
+- Temporary Quick Try users see a top-bar `Back to intro` action that clears the temporary session and returns to the
+  landing page.
 
 Quick Try backend:
 
@@ -189,3 +198,4 @@ Forbidden copy:
 - Landing does not overclaim unshipped Idle Summary Card, Promote to Work Mission, or Companion Work-context attachment.
 - Landing and auth-entry user-visible brand says `Parallex`, while internal route/API names may remain unchanged.
 - Landing does not render `/assets/companion-cat-preview.png`.
+- Quick Try users can return to landing through an explicit temporary-session exit action.

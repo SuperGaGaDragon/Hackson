@@ -39,9 +39,14 @@ async function main() {
   await page.locator(".work-workspace-view").waitFor();
   await page.getByText("Workspace", { exact: true }).first().waitFor();
   await page.getByLabel("Project name").waitFor();
+  await page.getByRole("button", { name: "Back to intro" }).waitFor();
   const tokenStored = await page.evaluate(() => Boolean(window.sessionStorage.getItem("hackson_quick_access_token")));
   if (!tokenStored) throw new Error("quick_try_token_not_session_scoped");
   await assertNoHorizontalOverflow(page, "desktop_work");
+  await page.getByRole("button", { name: "Back to intro" }).click();
+  await page.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
+  const tokenCleared = await page.evaluate(() => !window.sessionStorage.getItem("hackson_quick_access_token"));
+  if (!tokenCleared) throw new Error("quick_try_back_to_intro_should_clear_session");
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
   mobile.setDefaultTimeout(15000);

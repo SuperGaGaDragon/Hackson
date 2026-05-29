@@ -14,6 +14,7 @@ Lst Modified by: Codex
   - Components should call feature hooks, not raw API paths.
   - Work Mode streaming uses `fetch` + `ReadableStream`, not native `EventSource`, so existing Bearer auth headers remain valid.
   - Desktop Pet handoff APIs live in `users.js` because the browser must bind the current authenticated user to a short-lived desktop code.
+  - Quick Try uses the session-scoped token helper so temporary users can end the trial and return to the public intro without clearing persistent accounts by accident.
   - Idle `Say` must use the interaction API because it records the user interjection and the immediate Agent reply as one product turn.
 
 ## folder structure

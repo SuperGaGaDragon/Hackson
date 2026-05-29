@@ -81,8 +81,10 @@ class UserServiceTest(TestCase):
         self.assertTrue(user["idleOn"])
         self.assertFalse(user["backgroundIdleOn"])
         self.assertTrue(user["fullPromptLoggingOn"])
+        self.assertEqual(user["languagePreference"], "en")
         self.assertEqual(user["personality"], "")
         self.assertEqual(user["story"], "")
+        self.assertFalse(user["isTemporary"])
         self.assertEqual([agent["slot"] for agent in user["agentProfiles"]], ["agent_1", "agent_2"])
         self.assertEqual([agent["name"] for agent in user["agentProfiles"]], ["Nora", "Vale"])
         self.assertEqual(user["agentProfiles"][0]["story"], NORA_DEFAULT_STORY)
@@ -102,7 +104,14 @@ class UserServiceTest(TestCase):
         self.assertTrue(user["username"].startswith("quick_"))
         self.assertEqual(user["displayName"], "Quick Try")
         self.assertFalse(user["fullPromptLoggingOn"])
+        self.assertEqual(user["languagePreference"], "en")
+        self.assertEqual(user["personality"], "I am trying Parallex from the TMLS Agentic Hackathon landing page.")
+        self.assertTrue(user["isTemporary"])
         self.assertEqual(user["agentProfiles"][0]["name"], "Nora")
+        self.assertEqual(
+            user["agentProfiles"][0]["personality"],
+            "Calm, precise, and philosophically minded; Nora protects depth by asking the question underneath the question.",
+        )
         self.assertTrue(stored["is_temporary"])
         self.assertEqual(stored["temporary_source"], "hackathon")
         self.assertTrue(stored["password_hash"])

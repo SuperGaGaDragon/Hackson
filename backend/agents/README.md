@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 
 ## brief intro
@@ -15,6 +15,7 @@ Last Modified by: Codex
 
 ## responsibilities
 - Store default Agent name, color, short label, voice label, core persona, speaking style, and detailed editable origin story.
+- Keep default prompt-visible persona fields in English; user-authored edits can use any language.
 - Provide stable Agent records to conversations and context.
 - Provide frontend-safe display profiles without exposing hidden prompt-only fields.
 - Seed and normalize user-owned Agent profiles without allowing extra slots.

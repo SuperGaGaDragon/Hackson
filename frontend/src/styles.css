@@ -177,7 +177,18 @@ h2 {
 }
 
 .topbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
+}
+
+.topbar-intro-button {
+  min-height: 32px;
+  padding: 0 11px;
+  color: #d7e3e8;
+  font-size: 12px;
 }
 
 .chip,
