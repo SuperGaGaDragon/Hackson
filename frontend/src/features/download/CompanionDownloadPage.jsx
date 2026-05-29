@@ -14,7 +14,7 @@ function CompanionDownloadPage({ onOpenApp }) {
       <header className="download-nav">
         <div className="download-brand">
           <Sparkles size={18} />
-          <span>Hackson</span>
+          <span>Parallex</span>
         </div>
         <button className="secondary-button download-nav-button" onClick={onOpenApp} type="button">
           <ExternalLink size={16} />
@@ -26,7 +26,7 @@ function CompanionDownloadPage({ onOpenApp }) {
           <p className="eyebrow">Mac alpha</p>
           <h1>Desktop Companion</h1>
           <p>
-            A small cat that lives on your desktop and mirrors Hackson Work progress: active Missions, pauses,
+            A small cat that lives on your desktop and mirrors Parallex Work progress: active Missions, pauses,
             waiting input, and recent Progress events.
           </p>
           <div className="download-actions">
@@ -50,7 +50,7 @@ function CompanionDownloadPage({ onOpenApp }) {
         </div>
       </section>
       <section className="download-grid" aria-label="Setup">
-        <GuideCard icon={Download} title="Install" text="Download the zip, unzip it, then move Hackson Pet to Applications." />
+        <GuideCard icon={Download} title="Install" text="Download the zip, unzip it, then move Parallex Pet to Applications." />
         <GuideCard icon={ShieldCheck} title="Login" text="Double-click the cat and sign in through the website. The app never asks for your password." />
         <GuideCard icon={Monitor} title="Watch" text="Start a Work Mission. The cat follows the active Mission and expands into current Progress." />
       </section>

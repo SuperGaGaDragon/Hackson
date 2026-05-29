@@ -9,6 +9,7 @@ Lst Modified by: Codex
   - Own public Desktop Companion download surfaces.
 - 架构思路
   - Keep download pages public and separate from authenticated product workspaces.
+  - Show the current public brand as Parallex while preserving existing signed/static artifact filenames.
   - State platform limits clearly before users download.
   - Reuse static artifacts served from the production `/assets` mount.
 

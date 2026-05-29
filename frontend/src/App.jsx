@@ -209,7 +209,7 @@ function Sidebar({ setRouteParams, setView, user, view }) {
     <aside className="sidebar">
       <div className="brand">
         <Sparkles size={18} />
-        <span>Hackson</span>
+        <span>Parallex</span>
       </div>
       <nav className="nav-list" aria-label="Main">
         {navItems.map((item) => {
@@ -243,7 +243,7 @@ function Topbar({ error, view }) {
   return (
     <header className="topbar">
       <div>
-        <p className="eyebrow">Hackson</p>
+        <p className="eyebrow">Parallex</p>
         <h1>{title}</h1>
       </div>
       <div className="topbar-actions">

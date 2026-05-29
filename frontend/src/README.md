@@ -6,7 +6,7 @@ Lst Modified by: Codex
 
 ## brief intro
 - goal for this folder.
-  - Store React application source for the Hackson frontend.
+  - Store React application source for the Parallex frontend.
 - 架构思路
   - `App.jsx` owns top-level authenticated routing and app shell.
   - `main.jsx` mounts the React app.
@@ -17,6 +17,7 @@ Lst Modified by: Codex
   - `Me` owns editable settings, prompt logs, and memory controls.
   - `shared/` owns reusable UI components.
   - Browser-to-desktop handoff is completed in `App.jsx` after normal auth so Desktop Pet can authorize without a desktop password form.
+  - User-facing brand labels should say Parallex; legacy Hackson names may remain in internal API keys, filenames, and deployment docs until a separate migration.
   - Keep copy short and keep mode boundaries visible.
 
 ## folder structure

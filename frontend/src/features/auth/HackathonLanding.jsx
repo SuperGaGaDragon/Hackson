@@ -4,7 +4,16 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { ArrowRight, Brain, BriefcaseBusiness, Cat, MessageSquare, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
+import {
+  ArrowRight,
+  Brain,
+  BriefcaseBusiness,
+  CircleDot,
+  Layers3,
+  MessageSquare,
+  ShieldCheck,
+  UserPlus,
+} from "lucide-react";
 import { useState } from "react";
 import { quickTryUser } from "../../api/users";
 import StatusLine from "../../shared/components/StatusLine";
@@ -30,8 +39,8 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
     <main className="hackathon-shell">
       <header className="hackathon-nav">
         <div className="hackathon-brand">
-          <Sparkles size={18} />
-          <span>Hackson</span>
+          <span className="hackathon-brand-mark">P</span>
+          <span>Parallex</span>
         </div>
         <div className="hackathon-nav-actions">
           <button className="secondary-button" onClick={() => onOpenAuth("login")} type="button">
@@ -46,13 +55,12 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
       <section className="hackathon-hero">
         <div className="hackathon-copy">
           <p className="eyebrow">TMLS Agentic Hackathon</p>
-          <h1>Meet Hackson.</h1>
+          <h1>Agentic work, made inspectable.</h1>
           <p className="hackathon-lede">
-            A supervised workspace for two long-lived agents.
+            Parallex turns rough intent into missions, product history, and reliability checks.
           </p>
           <p className="hackathon-subcopy">
-            Explore rough ideas, run them as Missions, keep every Product version readable, and check delivery
-            risk before it ships.
+            Two persistent agents can brainstorm, delegate, revise, and leave a trail you can actually read.
           </p>
           <div className="hackathon-actions">
             <button className="hackathon-primary" disabled={loading} onClick={startQuickTry} type="button">
@@ -68,20 +76,26 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
           <StatusLine error={error} />
         </div>
 
-        <div className="hackathon-visual" aria-label="Hackson desktop pet preview">
-          <div className="hackathon-bubble primary">
-            <strong>Working</strong>
-            <span>Lead is planning a Mission.</span>
+        <div className="parallex-preview" aria-label="Parallex mission runtime preview">
+          <div className="parallex-preview-head">
+            <span>Mission Runtime</span>
+            <strong>live trace</strong>
           </div>
-          <img alt="" src="/assets/companion-cat-preview.png" />
-          <div className="hackathon-bubble secondary">
-            <strong>Quality</strong>
-            <span>Risk checked before delivery.</span>
+          <div className="parallex-thread">
+            <PreviewStep detail="rough brief" icon={CircleDot} label="Intent" />
+            <PreviewStep active detail="delegate + revise" icon={BriefcaseBusiness} label="Mission" />
+            <PreviewStep detail="versioned draft" icon={Layers3} label="Product" />
+            <PreviewStep accent detail="82 / review" icon={ShieldCheck} label="Reliability" />
+          </div>
+          <div className="parallex-product-strip">
+            <span>Current product</span>
+            <strong>Source-backed essay</strong>
+            <p>Readable deliverable. Auditable trace.</p>
           </div>
         </div>
       </section>
 
-      <section className="hackathon-loop" aria-label="Hackson work loop">
+      <section className="hackathon-loop" aria-label="Parallex work loop">
         <LoopStep label="Brainstorm" />
         <LoopStep label="Mission" />
         <LoopStep label="Product" />
@@ -91,7 +105,7 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
 
       <section className="hackathon-section-head">
         <p className="eyebrow">Core runtime</p>
-        <h2>Agentic work needs more than a chat box.</h2>
+        <h2>The runtime behind the agents.</h2>
       </section>
 
       <section className="hackathon-pillars" aria-label="Core runtime">
@@ -109,13 +123,13 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
       <section className="hackathon-pillars hackathon-entry" aria-label="Entry surfaces">
         <Pillar icon={MessageSquare} title="Idle" text="A low-friction brainstorm room where Nora and Vale explore a topic before Work." />
         <Pillar icon={Brain} title="Companion" text="A conversational surface for the same editable agents and approved memory." />
-        <Pillar icon={Cat} title="Desktop pet" text="The cat turns background Mission state into visible presence." />
+        <Pillar icon={BriefcaseBusiness} title="Work" text="A supervised Mission loop for products that need structure, review, and delivery." />
       </section>
 
       <section className="hackathon-explain" aria-label="How it works">
         <div>
           <p className="eyebrow">Why it matters</p>
-          <h2>The product is the runtime, not the chat.</h2>
+          <h2>The product is the trace.</h2>
         </div>
         <div className="hackathon-flow">
           <FlowStep icon={Brain} label="Memory governance" text="Useful context is retained with boundaries; raw Work trace does not leak everywhere." />
@@ -123,13 +137,6 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
           <FlowStep icon={ShieldCheck} label="Supervision" text="AgentLens makes risk visible without pretending the score is absolute truth." />
         </div>
       </section>
-
-      <div className="hackathon-sticky">
-        <span>Try Hackson live</span>
-        <button disabled={loading} onClick={startQuickTry} type="button">
-          Quick Try
-        </button>
-      </div>
     </main>
   );
 }
@@ -149,6 +156,19 @@ function Pillar({ icon: Icon, text, title }) {
       <h2>{title}</h2>
       <p>{text}</p>
     </article>
+  );
+}
+
+function PreviewStep({ active = false, accent = false, detail, icon: Icon, label }) {
+  const className = active ? "parallex-step active" : accent ? "parallex-step accent" : "parallex-step";
+  return (
+    <div className={className}>
+      <Icon size={17} />
+      <div>
+        <strong>{label}</strong>
+        <span>{detail}</span>
+      </div>
+    </div>
   );
 }
 

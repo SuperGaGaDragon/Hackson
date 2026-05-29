@@ -1,12 +1,12 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 
 ## brief intro
 - goal for this folder.
-  - React + Vite frontend for Hackson verified backend flows.
+  - React + Vite frontend for Parallex verified backend flows.
 - 架构思路
   - Build only the surfaces backed by verified APIs in root `api.md`.
   - Current product surfaces are Auth, Idle, Chat, Work, and Me.
@@ -17,6 +17,7 @@ Last Modified by: Codex
   - `src/api/` owns HTTP calls.
   - `src/domain/` owns fixed MVP Agent slot and message mapping.
   - `src/features/` owns product flows.
+  - Public browser title and visible brand labels say Parallex; legacy Hackson names may remain in backend deployment details until a separate migration.
   - Follow `docs/frontend/intro.md` for the current integration blueprint.
   - Do not expose model endpoint, provider, API key, or local model path settings in user UI.
 

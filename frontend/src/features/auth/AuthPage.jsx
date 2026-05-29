@@ -48,7 +48,7 @@ function AuthPage({ initialMode = "login", onAuthed, onBack }) {
   return (
     <main className="auth-shell">
       <section className="auth-panel">
-        <p className="eyebrow">Hackson</p>
+        <p className="eyebrow">Parallex</p>
         <h1>{mode === "register" ? "Create Account" : "Login"}</h1>
         {onBack && (
           <button className="auth-back" onClick={onBack} type="button">

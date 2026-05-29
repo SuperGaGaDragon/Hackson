@@ -9,8 +9,9 @@ Lst Modified by: Codex
   - Own login and register UI backed by verified user APIs.
 - 架构思路
   - Store token through the shared API client.
-  - Unauthenticated root traffic first sees the Hackathon landing; the form is opened from Create Account or Login.
+  - Unauthenticated root traffic first sees the Parallex Hackathon landing; the form is opened from Create Account or Login.
   - Quick Try uses a backend-created temporary user and session storage, not a frontend-only fake account.
+  - Public brand copy says Parallex even while the existing deployment domain and internal token keys keep Hackson names.
   - Keep copy short and expose only fields supported by the backend.
 
 ## folder structure
