@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 
 ## brief intro
@@ -18,6 +18,7 @@ Last Modified by: Codex
 ## responsibilities
 - Run idle tick generation.
 - Run idle user interjection generation in the same idle transcript.
+- Build a user-facing Idle Brainstorm Card from visible Idle transcript messages.
 - Decide the next idle speaking Agent from the saved transcript.
 - Run companion_1 user-joins-idle generation.
 - Run companion_1 continuation turns after the join-created child conversation exists.
@@ -51,6 +52,7 @@ Last Modified by: Codex
 |-__init__.py Python package marker
 |-routes.py FastAPI interaction routes
 |-schemas.py interaction request and response schemas
+|-brainstorm.py deterministic Idle Brainstorm Card builder
 |-service.py interaction orchestration logic
 |-locks.py idle turn lock repository and service
 |-idle_cadence.py Background Idle eligibility policy and runner-state repository
@@ -58,6 +60,7 @@ Last Modified by: Codex
 
 ## route plan
 |-POST /api/idle/{conversation_id}/tick generate one idle Agent reply; accepts optional `discussionDirection`; backend chooses the next speaker from transcript
+|-GET /api/idle/{conversation_id}/brainstorm-card build a source-backed Idle Brainstorm Card for user-confirmed Work promotion
 |-POST /api/idle/{conversation_id}/messages generate against the user interjection, then save user and Agent messages in the same idle conversation only after generation succeeds
 |-POST /api/idle/{conversation_id}/join create companion_1 turn from idle
 |-POST /api/companion/{conversation_id}/messages append a companion_1 or companion_2 user message and generate Agent reply

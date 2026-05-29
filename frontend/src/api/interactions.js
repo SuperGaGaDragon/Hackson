@@ -20,6 +20,10 @@ export function sendIdleMessage(conversationId, payload) {
   });
 }
 
+export function getIdleBrainstormCard(conversationId) {
+  return apiRequest(`/api/idle/${conversationId}/brainstorm-card`);
+}
+
 export function joinIdle(conversationId, payload) {
   return apiRequest(`/api/idle/${conversationId}/join`, {
     method: "POST",

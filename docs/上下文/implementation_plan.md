@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 # Context Runtime Implementation Plan
@@ -252,3 +252,27 @@ Exit criteria:
 
 - Keep Loop 1 as the first implementation step.
 - Add exact API shapes to `api.md` only after verified implementation exists.
+
+## 15. Loop 12: Idle Brainstorm Card To Work Mission
+
+Required behavior:
+
+- Backend exposes an Idle Brainstorm Card endpoint built from visible raw Idle messages.
+- Card response includes topic, key ideas, disagreements, decision, open questions, suggested Mission title/goal, generated time, source message count, and source message ids.
+- Backend rejects non-Idle conversations.
+- Frontend Idle right rail can build and refresh the card.
+- Frontend promotion modal lets the user choose an existing Project or create a new Project.
+- Frontend lets the user edit Mission title, Mission goal, and Lead Agent.
+- Promotion calls the existing Work Mission create API and stores Idle provenance metadata.
+- Created Mission remains draft until the user starts it in Work.
+
+Required tests:
+
+- Interaction route or service test covers card generation and source ids.
+- Interaction route or service test rejects non-Idle conversation.
+- Frontend build passes.
+- Target-machine API smoke creates an Idle conversation, builds a card, creates/promotes a draft Mission on a non-public port, and confirms Mission metadata.
+
+Exit criteria:
+
+- A user can discuss in Idle, convert the discussion into a concise brief, edit the Work draft, create a Mission, and jump to Work without copying text manually.

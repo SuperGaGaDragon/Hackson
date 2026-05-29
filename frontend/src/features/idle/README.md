@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 ## brief intro
@@ -17,10 +17,12 @@ Lst Modified by: Codex
   - Pin the transcript to the latest child turn without waiting for smooth-scroll timing.
   - Send `Topic` as `discussionDirection`; never render it as a transcript message unless the backend returns it as one.
   - Treat `Say` as an idle transcript message and `Join` as the only mode transition into companion_1.
+  - Build a user-requested Brainstorm Card from the selected Idle transcript and promote it only through an editable Work Mission confirmation modal.
 
 ## folder structure
 |-README.md idle feature guide
-|-IdlePage.jsx idle history, new topic modal, timeline, auto cadence, tick, say, join, and status UI
+|-IdlePage.jsx idle history, new topic modal, timeline, auto cadence, tick, say, join, Brainstorm Card promotion, and status UI
 
 ## 代办
 - Move Auto to a backend-owned runner only if Idle must continue after the browser closes.
+- Replace deterministic Brainstorm Card wording with a model-backed card only after the source-id contract and user edit step remain intact.

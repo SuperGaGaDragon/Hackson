@@ -89,6 +89,90 @@ class InteractionRoutesTest(TestCase):
         )
         self.assertEqual([message["senderType"] for message in messages["messages"]], ["agent"])
 
+    def test_idle_brainstorm_card_route_returns_source_backed_card(self) -> None:
+        idle = self.conversation_service.create_conversation(
+            TEST_USER_ID,
+            ConversationCreateRequest(
+                mode="idle",
+                title="Idle",
+                metadata={"topicDirection": "Design a hackathon demo flow"},
+            ),
+        )
+        first = self.conversation_service.append_message(
+            TEST_USER_ID,
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_1",
+                role="assistant",
+                content="We should turn the brainstorm into a clean mission brief.",
+            ),
+        )
+        second = self.conversation_service.append_message(
+            TEST_USER_ID,
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="agent",
+                sender_slot="agent_2",
+                role="assistant",
+                content="But the risk is creating a Work mission before the user edits the goal.",
+            ),
+        )
+        third = self.conversation_service.append_message(
+            TEST_USER_ID,
+            idle["id"],
+            MessageAppendRequest(
+                sender_type="user",
+                sender_id=TEST_USER_ID,
+                role="user",
+                content="Can we make it editable first?",
+            ),
+        )
+
+        response = self.client.get(f"/api/idle/{idle['id']}/brainstorm-card")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["conversationId"], idle["id"])
+        self.assertEqual(body["topic"], "Design a hackathon demo flow")
+        self.assertEqual(body["sourceMessageIds"], [first["id"], second["id"], third["id"]])
+        self.assertEqual(body["sourceMessageCount"], 3)
+        self.assertIn("suggestedMission", body)
+        self.assertTrue(body["suggestedMission"]["title"])
+        self.assertIn("Work result", body["suggestedMission"]["goal"])
+        self.assertTrue(body["keyIdeas"])
+        self.assertTrue(body["disagreements"])
+        self.assertTrue(body["openQuestions"])
+
+    def test_idle_brainstorm_card_route_rejects_non_idle_conversation(self) -> None:
+        companion = self.conversation_service.create_conversation(
+            TEST_USER_ID,
+            ConversationCreateRequest(mode="companion_2", title="Chat"),
+        )
+        self.conversation_service.append_message(
+            TEST_USER_ID,
+            companion["id"],
+            MessageAppendRequest(
+                sender_type="user",
+                sender_id=TEST_USER_ID,
+                role="user",
+                content="This is not idle.",
+            ),
+        )
+
+        response = self.client.get(f"/api/idle/{companion['id']}/brainstorm-card")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["detail"], "conversation_must_be_idle")
+
+    def test_idle_brainstorm_card_route_requires_visible_messages(self) -> None:
+        idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)
+
+        response = self.client.get(f"/api/idle/{idle['id']}/brainstorm-card")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["detail"], "idle_brainstorm_requires_messages")
+
     def test_idle_message_route_saves_interjection_and_agent_reply(self) -> None:
         idle = self.conversation_service.get_or_create_active_idle(TEST_USER_ID)
         self.conversation_service.append_message(

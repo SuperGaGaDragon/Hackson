@@ -23,6 +23,7 @@ from context.schemas import (
     UserProfileSnapshot,
 )
 from agents.catalog import DEFAULT_TARGET_AGENT_ID, default_agent_snapshots, ensure_agent_id, user_agent_snapshots
+from interactions.brainstorm import MAX_SOURCE_MESSAGES, build_idle_brainstorm_card
 from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionUserMessageRequest
 from interactions.locks import IdleTurnLockService
 from model_runtime.errors import ModelRuntimeError
@@ -135,6 +136,38 @@ class InteractionService:
             self.idle_turn_locks.complete(lock["_id"], response)
             return response
         return self._run_idle_tick_locked(user_id, conversation_id, payload, conversation)
+
+    def build_idle_brainstorm_card(self, user_id: str, conversation_id: str) -> dict:
+        conversation = self.conversation_service.get_conversation(user_id, conversation_id)
+        if conversation["mode"] != "idle":
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="conversation_must_be_idle",
+            )
+        after_sequence = max((conversation.get("messageCount") or 0) - MAX_SOURCE_MESSAGES, 0)
+        page = self.conversation_service.list_messages(
+            user_id,
+            conversation_id,
+            after_sequence=after_sequence,
+            created_after=None,
+            created_before=None,
+            limit=MAX_SOURCE_MESSAGES,
+        )
+        messages = [
+            message
+            for message in page["messages"]
+            if message.get("senderType") in {"user", "agent"} and (message.get("content") or "").strip()
+        ]
+        if not messages:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="idle_brainstorm_requires_messages",
+            )
+        return build_idle_brainstorm_card(conversation, messages)
 
     def _run_idle_tick_locked(
         self,

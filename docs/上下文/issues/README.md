@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 ## brief intro
@@ -27,6 +27,7 @@ Lst Modified by: Codex
 |-issue11-account-agent-continuity.md account-level Agent continuity and shared memory contract
 |-issue12-idle-collaborative-convergence.md Idle agreement, meaningful disagreement, and stop condition protocol
 |-issue13-memory-preference-recall-comfort.md explicit preference recall and comfort gap
+|-issue14-idle-brainstorm-to-work-mission.md Idle Brainstorm Card and user-confirmed Work Mission promotion
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Context Runtime architecture.

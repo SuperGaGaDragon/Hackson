@@ -4,7 +4,7 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { Send } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Check, ChevronDown, RefreshCw, Send } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   createConversation,
@@ -12,7 +12,8 @@ import {
   getIdleConversation,
   listConversations,
 } from "../../api/conversations";
-import { joinIdle, sendCompanionMessage, sendIdleMessage, tickIdle } from "../../api/interactions";
+import { getIdleBrainstormCard, joinIdle, sendCompanionMessage, sendIdleMessage, tickIdle } from "../../api/interactions";
+import { createMission, createProject, getMission, listProjects } from "../../api/workMode";
 import { FALLBACK_AGENTS, nextAgentSlot, normalizeAgents } from "../../domain/agents";
 import {
   makeClientId,
@@ -44,6 +45,18 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
   const [queuedIdleMessage, setQueuedIdleMessage] = useState(null);
   const [autoIdle, setAutoIdle] = useState(false);
   const [error, setError] = useState("");
+  const [brainstormCard, setBrainstormCard] = useState(null);
+  const [brainstormOpen, setBrainstormOpen] = useState(false);
+  const [brainstormLoading, setBrainstormLoading] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [newProjectName, setNewProjectName] = useState("");
+  const [missionTitle, setMissionTitle] = useState("");
+  const [missionGoal, setMissionGoal] = useState("");
+  const [missionLeadId, setMissionLeadId] = useState("agent_1");
+  const [promoteBusy, setPromoteBusy] = useState(false);
+  const [createdMission, setCreatedMission] = useState(null);
   const timelineRef = useRef(null);
   const isIdle = mode === "idle";
   const timelineMessages = isIdle ? idleMessages : [...idleMessages, ...companionMessages];
@@ -65,6 +78,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
         setTopic(topicFromConversation(idle));
         setIdleMessages(sortMessages(history.messages || []));
         setCompanionMessages([]);
+        resetBrainstormState();
       } catch (err) {
         if (mounted) setError(err.message || "Load failed");
       } finally {
@@ -140,6 +154,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
       setConversation(idle);
       setIdleMessages([]);
       setCompanionMessages([]);
+      resetBrainstormState();
       setTopic(direction);
       setDraft("");
       setMode("idle");
@@ -167,6 +182,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
       setConversation(nextConversation);
       setIdleMessages(sortMessages(history.messages || []));
       setCompanionMessages([]);
+      resetBrainstormState();
       setTopic(topicFromConversation(nextConversation));
       setDraft("");
       setMode("idle");
@@ -312,6 +328,99 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
     });
   }
 
+  async function refreshBrainstormCard() {
+    if (!idleConversation || brainstormLoading) return;
+    setBrainstormLoading(true);
+    setError("");
+    try {
+      const card = await getIdleBrainstormCard(idleConversation.id);
+      setBrainstormCard(card);
+      setBrainstormOpen(true);
+      setMissionTitle(card.suggestedMission?.title || "");
+      setMissionGoal(card.suggestedMission?.goal || "");
+      setMissionLeadId(targetAgentId || "agent_1");
+      setCreatedMission(null);
+    } catch (err) {
+      setError(err.message || "Brief failed");
+    } finally {
+      setBrainstormLoading(false);
+    }
+  }
+
+  async function openPromoteMission() {
+    if (!brainstormCard) return;
+    setPromoteBusy(true);
+    setError("");
+    try {
+      const rows = await listProjects();
+      setProjects(rows || []);
+      setSelectedProjectId(rows?.[0]?.id || "");
+      setNewProjectName("");
+      setMissionTitle(brainstormCard.suggestedMission?.title || "");
+      setMissionGoal(brainstormCard.suggestedMission?.goal || "");
+      setMissionLeadId(targetAgentId || "agent_1");
+      setCreatedMission(null);
+      setPromoteOpen(true);
+    } catch (err) {
+      setError(err.message || "Projects failed");
+    } finally {
+      setPromoteBusy(false);
+    }
+  }
+
+  async function promoteBrainstorm() {
+    if (!brainstormCard || promoteBusy || !missionTitle.trim() || !missionGoal.trim()) return;
+    if (!selectedProjectId && !newProjectName.trim()) return;
+    setPromoteBusy(true);
+    setError("");
+    try {
+      let projectId = selectedProjectId;
+      if (!projectId) {
+        const project = await createProject({
+          name: newProjectName.trim(),
+          metadata: {
+            source: "idle_brainstorm",
+            idleConversationId: idleConversation?.id,
+          },
+        });
+        projectId = project.id;
+        setProjects((current) => [project, ...current]);
+        setSelectedProjectId(project.id);
+      }
+      const mission = await createMission({
+        projectId,
+        title: missionTitle.trim(),
+        goal: missionGoal.trim(),
+        leadEmployeeId: missionLeadId,
+        metadata: {
+          source: "idle_brainstorm",
+          idleConversationId: idleConversation?.id,
+          sourceMessageIds: brainstormCard.sourceMessageIds,
+          sourceMessageCount: brainstormCard.sourceMessageCount,
+          brainstormGeneratedAt: brainstormCard.generatedAt,
+          brainstormTopic: brainstormCard.topic,
+        },
+      });
+      const detail = await getMission(mission.id);
+      setCreatedMission(detail.mission || mission);
+    } catch (err) {
+      setError(err.message || "Promote failed");
+    } finally {
+      setPromoteBusy(false);
+    }
+  }
+
+  function resetBrainstormState() {
+    setBrainstormCard(null);
+    setBrainstormOpen(false);
+    setPromoteOpen(false);
+    setCreatedMission(null);
+    setSelectedProjectId("");
+    setNewProjectName("");
+    setMissionTitle("");
+    setMissionGoal("");
+  }
+
   function applyIdleTurn(data) {
     applyIdleConversation(data.conversation);
     setIdleMessages((current) => uniqueMessages([...current, data.agentMessage]));
@@ -451,8 +560,57 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
           <span>Auto</span>
           <p>{autoIdle ? "on" : "off"}</p>
         </section>
+        <section className="idle-brief-panel">
+          <div className="idle-brief-head">
+            <div>
+              <span>Brainstorm</span>
+              <strong>{brainstormCard ? "Ready" : "Work brief"}</strong>
+            </div>
+            <button
+              className="icon-button"
+              disabled={loading || brainstormLoading || idleMessages.length === 0}
+              onClick={refreshBrainstormCard}
+              title="Refresh brief"
+              type="button"
+            >
+              <RefreshCw size={15} />
+            </button>
+          </div>
+          {brainstormCard ? (
+            <IdleBrainstormCard
+              card={brainstormCard}
+              open={brainstormOpen}
+              onPromote={openPromoteMission}
+              onToggle={() => setBrainstormOpen((current) => !current)}
+              promoteBusy={promoteBusy}
+            />
+          ) : (
+            <p className="muted">Turn this discussion into a draft Mission.</p>
+          )}
+        </section>
         <StatusLine error={error} loading={loading} text={busy ? "Working" : ""} />
       </aside>
+      {promoteOpen && brainstormCard && (
+        <PromoteMissionModal
+          agents={agentProfiles}
+          busy={promoteBusy}
+          createdMission={createdMission}
+          missionGoal={missionGoal}
+          missionLeadId={missionLeadId}
+          missionTitle={missionTitle}
+          newProjectName={newProjectName}
+          onClose={() => setPromoteOpen(false)}
+          onMissionGoalChange={setMissionGoal}
+          onMissionLeadChange={setMissionLeadId}
+          onMissionTitleChange={setMissionTitle}
+          onNewProjectNameChange={setNewProjectName}
+          onPromote={promoteBrainstorm}
+          onSelectedProjectChange={setSelectedProjectId}
+          projects={projects}
+          selectedProjectId={selectedProjectId}
+          sourceCount={brainstormCard.sourceMessageCount}
+        />
+      )}
       {showNewTopic && (
         <div className="modal-layer" role="presentation">
           <form className="topic-modal" onSubmit={startNewIdle}>
@@ -483,6 +641,188 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
           </form>
         </div>
       )}
+    </div>
+  );
+}
+
+function IdleBrainstormCard({ card, onPromote, onToggle, open, promoteBusy }) {
+  return (
+    <div className="idle-brief-card">
+      <button className="idle-brief-toggle" onClick={onToggle} type="button">
+        <span>{card.suggestedMission?.title || card.topic}</span>
+        <ChevronDown className={open ? "rotated" : ""} size={15} />
+      </button>
+      {open && (
+        <div className="idle-brief-body">
+          <BriefList label="Key ideas" rows={card.keyIdeas} />
+          <BriefList label="Disagreements" rows={card.disagreements} empty="No material disagreement." />
+          <section>
+            <span>Decision</span>
+            <p>{card.decision}</p>
+          </section>
+          <BriefList label="Open questions" rows={card.openQuestions} empty="No open questions captured." />
+          <section>
+            <span>Sources</span>
+            <p>{card.sourceMessageCount} messages</p>
+            <details className="brief-source-details">
+              <summary>IDs</summary>
+              <code>{card.sourceMessageIds.join(", ")}</code>
+            </details>
+          </section>
+        </div>
+      )}
+      <button className="primary-button idle-brief-promote" disabled={promoteBusy} onClick={onPromote} type="button">
+        <BriefcaseBusiness size={15} />
+        <span>Promote</span>
+      </button>
+    </div>
+  );
+}
+
+function BriefList({ empty = "Nothing captured.", label, rows }) {
+  return (
+    <section>
+      <span>{label}</span>
+      {rows?.length ? (
+        <ul>
+          {rows.map((row, index) => (
+            <li key={`${index}-${row}`}>{row}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{empty}</p>
+      )}
+    </section>
+  );
+}
+
+function PromoteMissionModal({
+  agents,
+  busy,
+  createdMission,
+  missionGoal,
+  missionLeadId,
+  missionTitle,
+  newProjectName,
+  onClose,
+  onMissionGoalChange,
+  onMissionLeadChange,
+  onMissionTitleChange,
+  onNewProjectNameChange,
+  onPromote,
+  onSelectedProjectChange,
+  projects,
+  selectedProjectId,
+  sourceCount,
+}) {
+  const canCreate = Boolean(missionTitle.trim() && missionGoal.trim() && (selectedProjectId || newProjectName.trim()));
+  return (
+    <div className="modal-layer" role="presentation">
+      <div aria-modal="true" className="topic-modal promote-modal" role="dialog">
+        <div className="panel-head compact">
+          <div>
+            <p className="eyebrow">Promote</p>
+            <h2>Draft Mission</h2>
+          </div>
+          <span className="chip">{sourceCount} sources</span>
+        </div>
+        {createdMission ? (
+          <div className="promote-success">
+            <Check size={18} />
+            <strong>{createdMission.title}</strong>
+            <p>Draft Mission created.</p>
+            <div className="modal-actions">
+              <button className="secondary-button" onClick={onClose} type="button">
+                Stay
+              </button>
+              <button
+                className="primary-button"
+                onClick={() => {
+                  window.history.pushState({}, "", `/work_mission/${encodeURIComponent(createdMission.id)}`);
+                  window.dispatchEvent(new Event("popstate"));
+                }}
+                type="button"
+              >
+                <ArrowRight size={16} />
+                <span>Open</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="work-create">
+            <label>
+              <span>Project</span>
+              <select
+                aria-label="Project"
+                disabled={busy}
+                onChange={(event) => onSelectedProjectChange(event.target.value)}
+                value={selectedProjectId}
+              >
+                <option value="">New project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!selectedProjectId && (
+              <label>
+                <span>New project</span>
+                <input
+                  aria-label="New project"
+                  disabled={busy}
+                  onChange={(event) => onNewProjectNameChange(event.target.value)}
+                  placeholder="Project"
+                  value={newProjectName}
+                />
+              </label>
+            )}
+            <label>
+              <span>Title</span>
+              <input
+                aria-label="Mission title"
+                disabled={busy}
+                onChange={(event) => onMissionTitleChange(event.target.value)}
+                value={missionTitle}
+              />
+            </label>
+            <label>
+              <span>Goal</span>
+              <textarea
+                aria-label="Mission goal"
+                disabled={busy}
+                onChange={(event) => onMissionGoalChange(event.target.value)}
+                value={missionGoal}
+              />
+            </label>
+            <label>
+              <span>Lead</span>
+              <select
+                aria-label="Lead"
+                disabled={busy}
+                onChange={(event) => onMissionLeadChange(event.target.value)}
+                value={missionLeadId}
+              >
+                {agents.map((agent) => (
+                  <option key={agent.slot} value={agent.slot}>
+                    {agent.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="modal-actions">
+              <button className="secondary-button" disabled={busy} onClick={onClose} type="button">
+                Cancel
+              </button>
+              <button className="primary-button" disabled={busy || !canCreate} onClick={onPromote} type="button">
+                <BriefcaseBusiness size={16} />
+                <span>Create</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

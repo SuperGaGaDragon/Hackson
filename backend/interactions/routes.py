@@ -14,7 +14,13 @@ from context.service import ContextPackageService
 from conversations.repository import ConversationRepository
 from conversations.service import ConversationService
 from core.database import get_database
-from interactions.schemas import IdleTickRequest, IdleUserMessageRequest, InteractionResponse, InteractionUserMessageRequest
+from interactions.schemas import (
+    IdleBrainstormCardResponse,
+    IdleTickRequest,
+    IdleUserMessageRequest,
+    InteractionResponse,
+    InteractionUserMessageRequest,
+)
 from interactions.locks import IdleTurnLockRepository, IdleTurnLockService
 from interactions.service import InteractionService
 from memory.repository import MemoryRepository
@@ -71,6 +77,18 @@ def idle_tick(
     service: InteractionService = Depends(get_interaction_service),
 ) -> dict:
     return service.run_idle_tick(current_user_id, conversation_id, payload)
+
+
+@idle_router.get(
+    "/{conversation_id}/brainstorm-card",
+    response_model=IdleBrainstormCardResponse,
+)
+def idle_brainstorm_card(
+    conversation_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    service: InteractionService = Depends(get_interaction_service),
+) -> dict:
+    return service.build_idle_brainstorm_card(current_user_id, conversation_id)
 
 
 @idle_router.post(

@@ -88,5 +88,7 @@ function resolveErrorMessage(data) {
 const KNOWN_ERROR_MESSAGES = {
   model_rate_limited: "Model busy",
   model_unavailable: "Model unavailable",
+  conversation_must_be_idle: "Select an Idle discussion first.",
+  idle_brainstorm_requires_messages: "Add a few Idle messages first.",
   mission_instruction_unavailable: "Command is updating. Refresh or retry shortly.",
 };

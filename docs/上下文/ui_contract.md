@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 # Context Runtime UI Contract
@@ -22,12 +22,14 @@ Idle SHOULD show:
 - visible transcript.
 - model failure state.
 - queued user interjection while an Agent is generating.
+- Brainstorm Card when the user asks to summarize Idle into a Work-ready brief.
 
 Idle SHOULD NOT show:
 
 - hidden prompt text.
 - raw chain-of-thought.
 - internal memory candidates.
+- one-click Work Mission creation without an editable confirmation step.
 
 Idle composer rules:
 
@@ -36,6 +38,15 @@ Idle composer rules:
 - Auto must pause while a queued user interjection is waiting.
 - Tick and Join controls may remain disabled during generation; composer must not.
 - The queued line must be sent before the next Auto tick.
+
+Idle Brainstorm Card rules:
+
+- The card belongs in the right rail as a compact action surface, not inside the transcript.
+- The card sections are `Topic`, `Key ideas`, `Disagreements`, `Decision`, `Open questions`, and `Suggested Mission`.
+- Source message ids should be available behind a compact disclosure surface.
+- The suggested Mission title and goal must be editable before Work Mission creation.
+- The user must choose an existing Work Project or create a new Project before promotion.
+- Promotion creates a draft Mission and does not start execution.
 
 ### Background Idle
 

@@ -19,6 +19,7 @@ Last Modified by: Codex
 - The `8164` rows describe the isolated Work V1 Product reader regression service. It is not the public product service.
 - The `8165` rows describe the isolated Work V1.0.1-6 quality smoke service. It is not the public product service.
 - The `8166` rows describe the isolated Context Runtime V1.0-V1.6 smoke service. It is not the public product service.
+- The `8167` rows describe the isolated Idle Brainstorm Card to Work Mission smoke service. It is not the public product service.
 
 ## current environment
 | Item | Value |
@@ -34,7 +35,7 @@ Last Modified by: Codex
 | Public backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
 | Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, explicit Product Deliverable contract, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, retryable empty-output handling, JSON-safe model-call context serialization, role-specific Lead/Delegate timeouts, waiting-input answer/resume, completed-Mission follow-up runs, running user instruction events, bounded Requirement Grill through `ask_user`, daemon worker launch, startup restart recovery for interrupted Missions, failed-window cleanup, Delegate result tolerance, review/discussion tools, controlled `web_search`, model-visible `evaluate_product`, research/paper final-draft gates, no-evidence Reliability human-review cap, side-rail Quality status with collapsed Reliability details, soft tool-use guidance, SSE event streaming with polling fallback, AgentLens Reliability evaluator, Activity -> Product -> Windows -> Progress -> Diagnostics UI, Directory + Composer Work rail, Progress category filters, final lineage validation, and Product Deliverable + History reader with fixed-rhythm Artifact Navigator |
-| Public Context Runtime | V1.6+ with context package persistence, prompt-log controls, memory controls, Background Idle permission, idle turn idempotency locks, Idle Working input queue, relationship-aware idle dialogue prompt contract, product-grade Me information architecture, account-level Agent continuity across Idle/Companion/Work, evidence-backed relationship memory, and derived-worker freshness lane |
+| Public Context Runtime | V1.7 with context package persistence, prompt-log controls, memory controls, Background Idle permission, idle turn idempotency locks, Idle Working input queue, relationship-aware idle dialogue prompt contract, product-grade Me information architecture, account-level Agent continuity across Idle/Companion/Work, evidence-backed relationship memory, derived-worker freshness lane, and source-backed Idle Brainstorm Card promotion into draft Work Missions |
 | Public model provider | `codex_cli` through target-machine Codex CLI |
 | Public model | `gpt-5.4` |
 | Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
@@ -144,6 +145,14 @@ Last Modified by: Codex
 | Context Runtime fake model bind | `127.0.0.1:18166` |
 | Context Runtime V1.0-V1.6 smoke database | `hackson_context_runtime_8166` |
 | Context Runtime V1.0-V1.6 smoke model provider | OpenAI-compatible fake relay on `127.0.0.1:18166` |
+| Idle Brainstorm smoke source path | `~/hackson_idle_brainstorm_8167` |
+| Idle Brainstorm smoke backend path | `~/hackson_idle_brainstorm_8167/backend` |
+| Idle Brainstorm smoke frontend build path | `~/hackson_idle_brainstorm_8167/frontend/dist` |
+| Idle Brainstorm smoke service | `hackson-idle-brainstorm-8167.service`, user-level systemd, active |
+| Idle Brainstorm smoke backend bind | `127.0.0.1:8167` |
+| Idle Brainstorm smoke database | `hackson_idle_brainstorm_8167` |
+| Idle Brainstorm smoke frontend assets | `/assets/index-CPuWRddH.js`, `/assets/index-BFd_mbUZ.css` |
+| Public frontend assets after Idle Brainstorm promotion | `/assets/index-CPuWRddH.js`, `/assets/index-BFd_mbUZ.css` |
 | Legacy Tailscale URL | `http://100.70.248.39:8130/` |
 | Legacy production service | `hackson-production.service`, user-level systemd, enabled and active |
 | Legacy production path | `~/hackson_production` |
@@ -166,6 +175,7 @@ Last Modified by: Codex
 | 8165 | Hackson Work V1.0.1-6 quality FastAPI + React app | `127.0.0.1` | Active as `hackson-work-quality-8165.service` | Isolated verification for expandable Progress details, New Mission modal, deterministic long-novel quality gates, Review/Discussion tool schema, controlled `web_search`, model-visible `evaluate_product`, research/paper final-draft gates, revision lineage, final Product reader, fixed-rhythm Product Artifact Navigator, `MODEL_TURN_INVALID` event polling, and real Codex 8000字 browser smoke |
 | 8166 | Hackson Context Runtime V1.0-V1.6 smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-context-runtime-8166.service` | Isolated verification for context package persistence, Full Prompt Logging, Background Idle setting, prompt-log delete, Me controls, idle tick/idlesay idempotency, worker-derived summaries/account memory, persisted summary selection, memory controls, Idle Working input queue, relationship-aware idle prompt contract, account-level Agent continuity, and deterministic context eval gate |
 | 18166 | Context Runtime fake OpenAI-compatible model relay | `127.0.0.1` | Active as `hackson-context-runtime-fake-model-18166.service` | Test-only model relay for deterministic Context Runtime success smoke; not a product API |
+| 8167 | Hackson Idle Brainstorm smoke FastAPI + React app | `127.0.0.1` | Active as `hackson-idle-brainstorm-8167.service` | Isolated verification for source-backed Idle Brainstorm Card generation and user-confirmed draft Work Mission promotion |
 | 8130 | Legacy Hackson production FastAPI + React app | `0.0.0.0` | Active as `hackson-production.service` | Retained legacy Tailscale production URL until explicitly retired |
 
 ## cleanup record
@@ -226,6 +236,8 @@ Last Modified by: Codex
 - On 2026-05-28, public `8145` was updated with the Parallex workflow-memory landing polish. The stable first hero copy and four capability rows were kept, the redundant feature-panel header was removed, and the lower landing now explains the concrete visual workflow `Brainstorm -> Assign -> Watch -> Deliver -> Evaluate` plus the universal memory model for the same two persistent agents across Idle, Companion, and Work. Local frontend build, local desktop/mobile Playwright screenshots, and targeted `git diff --check` passed. Target public-directory frontend build passed with Node `20.19.6` by forcing the Node 20 binary into `PATH` after a first attempt used system Node 18. After confirming `running_missions=0` and `running_runs=0`, `hackson-domain-8145.service` was restarted. Public root served `/assets/index-D3i-OEZL.js` and `/assets/index-n7oh3Jzg.css`; public Hackathon landing smoke passed on desktop/mobile with Quick Try Back-to-intro session clearing verified, production logs showed no traceback/500/errors, and Mongo checks showed `failed_recent=0`.
 - On 2026-05-29, public `8145` static frontend assets were updated with Work Mission Map navigation, on-demand Mission Info, and on-demand Quality details. The permanent Inspector right rail was removed; the right rail now navigates Activity, Product, Windows, Progress, and Diagnostics, while Quality opens the current Reliability report in a focused modal. The previous public `frontend/dist` was backed up, only `frontend/dist` was replaced, and `hackson-domain-8145.service` was not restarted. Local verification passed with frontend build, Work Command Rail Playwright smoke, Product Reader Playwright smoke, and targeted `git diff --check`. Public root served `/assets/index-BSK8jMVG.js` and `/assets/index-Oy1RP9X9.css`; public Command Rail and Product Reader Playwright smokes passed with desktop/mobile screenshots in `scripts/artifacts/`; production logs showed no traceback or 500, services `hackson-domain-8145.service` and `hackson-cloudflared.service` remained active, and Mongo checks showed `running_missions=0`, `running_runs=0`, `active_windows=0`, `failed_recent=0`.
 - On 2026-05-29, public `8145` static frontend assets were updated with Parallex landing density polish. The header-to-hero empty band was reduced, lower workflow copy was compressed into readable short steps, Universal Memory was reframed as `Permanent agents` with compact readable chips, and Quick Try now navigates to Work before mounting authenticated content so Idle does not briefly start background reads. The previous public `frontend/dist` was backed up, only `frontend/dist` was replaced, and `hackson-domain-8145.service` was not restarted. Local frontend build, local landing Playwright smoke with Quick Try mocks, and targeted `git diff --check` passed. Public root served `/assets/index-DD16WV4J.js` and `/assets/index-Bh5JOroX.css`; public landing Playwright smoke passed with real Quick Try, desktop/mobile screenshots `scripts/artifacts/hackathon_landing_public_tight*.png`, no horizontal overflow, and session-clearing `Back to intro`. Production logs showed no traceback, 500, or new Quick Try 401 noise after the App mount-order fix, services remained active, and Mongo checks showed `running_missions=0`, `running_runs=0`, `active_windows=0`, `failed_recent=0`.
+- On 2026-05-29, `8167` was introduced as the isolated Idle Brainstorm Card smoke service. It verified `GET /api/idle/{conversationId}/brainstorm-card`, source message ids, deterministic card sections, frontend assets `/assets/index-CPuWRddH.js` and `/assets/index-BFd_mbUZ.css`, and draft Work Mission promotion metadata without touching existing smoke services.
+- On 2026-05-29, public `8145` was updated with Idle Brainstorm Card to draft Work Mission promotion. Local verification passed with `interactions + work_mode + model_runtime` `206` tests, frontend build, and `git diff --check`. Isolated `8167` verification passed with targeted backend `49` tests, frontend build, health/static checks, and `scripts/idle_brainstorm_smoke.py` creating a draft Mission with `source=idle_brainstorm` and Idle source message ids. Public-directory backend `206` tests passed before restart. Public restart waited until the active real Mission completed and no `codex exec` process remained; two historical waiting-input runs belonged to a blocked old Mission and were not active execution. A deployment sync accidentally removed public `backend/.env`; it was restored from `~/hackson_domain_8145_backups/pre_idle_brainstorm_20260529_012917/backend/.env`, after which `hackson-domain-8145.service` and `hackson-cloudflared.service` were active. Public local API smoke passed against `http://127.0.0.1:8145` with a source-backed Brainstorm Card and draft Work Mission `6a1925f8846adbe6e051cd8e`; root served `/assets/index-CPuWRddH.js` and `/assets/index-BFd_mbUZ.css`; success-window logs showed no traceback, 500, error, exception, or failed start after recovery.
 - On 2026-05-29, public `8145` static frontend assets were updated with Parallex minimal landing copy polish. The logged-out root no longer shows the visible hero label `TMLS Agentic Hackathon`, the subtitle `Intent to product, with the trace intact.`, the temporary-session warning line, or the repeated top-left `P / Parallex` brand mark. Public memory copy now says `Your two agents` instead of `Nora / Vale` so renamed Agent profiles do not make the landing stale. The previous public `frontend/dist` was backed up, only `frontend/dist` was replaced, and `hackson-domain-8145.service` was not restarted. Local frontend build, local landing Playwright smoke with Quick Try mocks, public landing Playwright smoke, and targeted `git diff --check` passed. Public root served `/assets/index-CPuWRddH.js` and `/assets/index-BFd_mbUZ.css`; screenshots were saved to `scripts/artifacts/hackathon_landing_public_minimal.png` and `scripts/artifacts/hackathon_landing_public_minimal_mobile.png`. Public health stayed `200`, services remained active, logs showed no traceback/500/401 from the landing smoke, and Mongo later showed an active user-created Work Mission, so no backend restart was attempted.
 - Non-Hackson services on the target machine were not touched.
 - Do not restart old smoke ports for normal product use. Use the public domain service for verification unless a new isolated smoke port is explicitly needed.
@@ -261,6 +273,7 @@ Model-backed public rows were additionally verified on the target machine agains
 | GET | `/api/idle/conversation` | Bearer JWT | `backend/conversations/` | Get or create the active idle conversation |
 | POST | `/api/idle/{conversationId}/tick` | Bearer JWT | `backend/interactions/` | Generate one idle Agent reply |
 | POST | `/api/idle/{conversationId}/messages` | Bearer JWT | `backend/interactions/` | Add a visible user line to idle and generate the next Agent reply; accepts optional `idempotencyKey` for queued/interrupted turns |
+| GET | `/api/idle/{conversationId}/brainstorm-card` | Bearer JWT | `backend/interactions/` | Build a source-backed Idle Brainstorm Card from visible Idle messages for user-confirmed Work Mission promotion. Verified on isolated `8167` and public `8145` on 2026-05-29. |
 | POST | `/api/idle/{conversationId}/join` | Bearer JWT | `backend/interactions/` | Create a `companion_1` child from idle and reply |
 | POST | `/api/companion/{conversationId}/messages` | Bearer JWT | `backend/interactions/` | Continue a companion conversation |
 | POST | `/api/tasks` | Bearer JWT | `backend/tasks/` | Create the legacy minimal Work task and its conversation |
@@ -539,6 +552,33 @@ POST /api/idle/{conversationId}/messages
 Returns both the saved user message and the generated Agent message. The frontend may call this after a currently running idle tick finishes when the user typed during `Working`.
 
 `idempotencyKey` protects retries for queued user lines. A completed retry returns the same saved user message, Agent message, and context response; a concurrent different key on the same transcript returns `423 idle_turn_locked`.
+
+### Idle Brainstorm Card
+```http
+GET /api/idle/{conversationId}/brainstorm-card
+```
+
+Response shape:
+
+```json
+{
+  "conversationId": "<idle-conversation-id>",
+  "topic": "Design a hackathon demo flow",
+  "keyIdeas": ["Turn the brainstorm into a clean mission brief."],
+  "disagreements": ["Creating a Work mission before user edits is risky."],
+  "decision": "No firm decision yet.",
+  "openQuestions": ["Can we make it editable first?"],
+  "suggestedMission": {
+    "title": "Design a hackathon demo flow",
+    "goal": "Turn the Idle discussion into a concrete Work result."
+  },
+  "sourceMessageIds": ["<message-id-1>", "<message-id-2>"],
+  "sourceMessageCount": 2,
+  "generatedAt": "2026-05-29T00:00:00Z"
+}
+```
+
+The card is deterministic and built from visible raw Idle messages only. It does not expose hidden prompts, chain-of-thought, or internal memory candidates. The frontend must let the user edit title/goal and choose or create a Work Project before creating the draft Mission.
 
 ### Work project
 ```http

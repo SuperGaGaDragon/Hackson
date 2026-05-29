@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 # Context Runtime Final Version Roadmap
@@ -31,6 +31,7 @@ Current issue notes:
 - `issues/issue7-idle-human-relationship-dialogue.md`
 - `issues/issue11-account-agent-continuity.md`
 - `issues/issue12-idle-collaborative-convergence.md`
+- `issues/issue14-idle-brainstorm-to-work-mission.md`
 
 ## 2. Product North Star
 
@@ -81,6 +82,7 @@ User action or idle cadence
 | V1.4 | Relationship And Diary Layer | Idle produces durable Agent relationship state and user-visible diary artifacts without destabilizing chat. | Relationship worker, diary worker, evidence references, low-priority background jobs. | Idle relationship memory improves continuity but cannot rewrite core persona. |
 | V1.5 | Context Evaluation Gate | Context changes are scored before release. | Fixed eval set for mode fit, speaker boundary, topic adherence, repetition, memory use, latency. | CI or smoke command reports pass/fail against the fixed context eval set. |
 | V1.6 | Human Idle Interaction | User can interrupt while Agents generate, and Idle replies use relationship-aware turn intent plus convergence rules. | Idle Say lock/idempotency, queued interjection UI, relationship stance, turn intent, collaborative convergence, anti-advice eval. | User input during generation is accepted and the next turn responds to it; eval catches advice-list and endless-disagreement regressions. |
+| V1.7 | Idle Brainstorm To Mission | Idle can turn visible discussion into an editable Brainstorm Card and user-confirmed draft Work Mission. | Deterministic Idle card endpoint with source message ids; frontend promotion flow through existing Work Mission API. | A user can build a card, edit title/goal, choose or create a Project, and create a draft Mission with Idle source provenance. |
 
 ## 5. V1.0 Auditable Context Package
 
@@ -230,7 +232,23 @@ Required behavior:
 
 See `issues/issue6-idle-interruption-queue.md`, `issues/issue7-idle-human-relationship-dialogue.md`, and `issues/issue12-idle-collaborative-convergence.md`.
 
-## 11. Implementation Decisions
+## 11. V1.7 Idle Brainstorm To Mission
+
+Idle should not end as a loose transcript when the discussion has become actionable.
+
+Decision:
+
+- Add an Idle Brainstorm Card that is separate from context summaries.
+- Build the first card from visible raw Idle messages, not hidden prompt material.
+- Require source message ids for traceability.
+- Treat the suggested Mission as editable draft material.
+- Let the user choose an existing Work Project or create a new one before promotion.
+- Create a draft Work Mission through the existing Work API.
+- Store Idle provenance in Mission metadata.
+
+See `issues/issue14-idle-brainstorm-to-work-mission.md`.
+
+## 12. Implementation Decisions
 
 - `ContextRuntime` is a facade around existing `ContextBuilder`, source loaders, package persistence, and budget policy.
 - `context_packages` should be an independent persistence collection, not embedded only in message metadata.

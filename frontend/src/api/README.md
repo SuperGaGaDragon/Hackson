@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 ## brief intro
@@ -29,3 +29,4 @@ Lst Modified by: Codex
 
 ## 代办
 - Add refresh-token support only if the backend implements it.
+- Keep Idle Brainstorm Card calls in `interactions.js` because the card is built from the Idle transcript before Work promotion.
