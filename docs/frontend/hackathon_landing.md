@@ -153,7 +153,7 @@ labels:
 - `Watch`: `live progress`
 - `Deliver`: `drafts to final`
 - `Evaluate`: `evidence gaps`
-- `Permanent agents`: `Nora / Vale`
+- `Permanent agents`: `Your two agents`
 - `Universal memory`: `approved context`
 - `Controlled context`: `only what matters`
 
@@ -165,19 +165,32 @@ Decision: No. Compact does not mean hard to read. Lower-section labels should us
 tiny microcopy. Eyebrows can remain small as section labels, but the actual user-facing content must be comfortable to
 scan.
 
+Question: Should the landing keep the small hackathon label, subtitle, and temporary-session warning in the hero?
+
+Decision: No. The QR landing must make one strong first impression. Remove `TMLS Agentic Hackathon`, `Intent to
+product, with the trace intact.`, and `Temporary session...` from the visible hero. Keep the product title, the main
+positioning line, and the two entry actions.
+
+Question: Should the top-left header repeat `P / Parallex` when the hero already says `Parallex`?
+
+Decision: No. The brand repeat adds noise and makes the first viewport feel less deliberate. The header should only
+carry the entry actions.
+
+Question: Should the memory section mention default names such as Nora and Vale?
+
+Decision: No. The two Agent profiles are editable, so name-specific landing copy can become stale or confusing. Use
+`Your two agents` and describe the capability, not the default names.
+
 ## Required Experience
 
 Unauthenticated root page:
 
 - Brand label: `Parallex`.
-- Hackathon label: `TMLS Agentic Hackathon`.
 - Hero title: `Parallex`.
 - Support line: `Agentic work, made inspectable.`
-- Short line: `Intent to product, with the trace intact.`
 - CSS-built feature index showing Idle Mode, Work Mode, Evaluator, and Product History.
 - Primary CTA: `Quick Try`.
 - Secondary CTA: `Create Account`.
-- Clear temporary-session note near Quick Try.
 - A compact lower section explaining the visual workflow.
 - A compact lower section explaining universal memory across the user's two agents.
 - No cat image.
@@ -210,17 +223,10 @@ Hero support:
 Agentic work, made inspectable.
 ```
 
-Short explanation:
-
-```text
-Intent to product, with the trace intact.
-```
-
 CTA copy:
 
 - `Quick Try`
 - `Create Account`
-- `Temporary session. Close this browser session and the work may be gone.`
 
 Product capability labels:
 
@@ -244,6 +250,10 @@ Forbidden copy:
 - `AI chatbot`
 - `Autonomous employee`
 - `Meet Hackson`
+- `TMLS Agentic Hackathon` in the visible hero
+- `Intent to product, with the trace intact.`
+- `Temporary session. Close this browser session and the work may be gone.`
+- `Nora / Vale` in public landing memory copy
 - Cat-led or pet-led first-viewport positioning.
 - Claims that Companion can inspect Work artifacts by default.
 - Claims that Idle already has one-click mission promotion.
@@ -261,6 +271,8 @@ Forbidden copy:
 - Landing first viewport does not create a large empty band between nav and hero.
 - Lower workflow and memory sections use compact label chips instead of paragraph-heavy cards.
 - Lower-section chip text is readable at a glance; do not rely on tiny uppercase explanatory text.
+- Landing hero does not show the hackathon label, subtitle, temporary-session note, or duplicated top-left brand mark.
+- Universal Memory copy avoids default Agent names because users can rename both Agents.
 - Public `https://hackson.catachess.com/` serves the landing after deployment.
 - Landing copy clearly separates core runtime from entry surfaces.
 - Landing does not overclaim unshipped Idle Summary Card, Promote to Work Mission, or Companion Work-context attachment.

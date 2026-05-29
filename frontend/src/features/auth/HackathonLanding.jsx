@@ -36,10 +36,6 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
   return (
     <main className="hackathon-shell">
       <header className="hackathon-nav">
-        <div className="hackathon-brand">
-          <span className="hackathon-brand-mark">P</span>
-          <span>Parallex</span>
-        </div>
         <div className="hackathon-nav-actions">
           <button className="secondary-button" onClick={() => onOpenAuth("login")} type="button">
             Login
@@ -52,10 +48,8 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
 
       <section className="hackathon-hero">
         <div className="hackathon-copy">
-          <p className="eyebrow">TMLS Agentic Hackathon</p>
           <h1>Parallex</h1>
           <p className="hackathon-lede">Agentic work, made inspectable.</p>
-          <p className="hackathon-subcopy">Intent to product, with the trace intact.</p>
           <div className="hackathon-actions">
             <button className="hackathon-primary" disabled={loading} onClick={startQuickTry} type="button">
               <span>{loading ? "Starting" : "Quick Try"}</span>
@@ -66,7 +60,6 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
               <span>Create Account</span>
             </button>
           </div>
-          <p className="hackathon-note">Temporary session. Close this browser session and the work may be gone.</p>
           <StatusLine error={error} />
         </div>
 
@@ -120,7 +113,7 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
           <h2>Universal memory.</h2>
         </div>
         <div className="memory-grid">
-          <MemoryPoint label="Nora / Vale" text="Same two agents" />
+          <MemoryPoint label="Your two agents" text="Same team" />
           <MemoryPoint label="Approved memory" text="Context you allow" />
           <MemoryPoint label="Controlled context" text="Only what matters" />
         </div>

@@ -19,10 +19,8 @@ async function main() {
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   const pageTitle = await page.title();
   if (pageTitle !== "Parallex") throw new Error(`unexpected_title:${pageTitle}`);
-  await page.getByText("TMLS Agentic Hackathon", { exact: false }).waitFor();
   await page.getByText("Parallex", { exact: true }).first().waitFor();
   await page.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
-  await page.getByText("Intent to product, with the trace intact.", { exact: true }).waitFor();
   await page.getByText("Idle Mode", { exact: true }).waitFor();
   await page.getByText("Brainstorm with multiple AI agents.", { exact: true }).waitFor();
   await page.getByText("Work Mode", { exact: true }).waitFor();
@@ -33,8 +31,13 @@ async function main() {
   await page.getByText("Brainstorm to final, visibly.", { exact: true }).waitFor();
   await page.getByText("Universal memory.", { exact: true }).waitFor();
   await page.getByText("Permanent agents", { exact: true }).waitFor();
+  await page.getByText("Your two agents", { exact: true }).waitFor();
   await page.getByText("Approved memory", { exact: true }).waitFor();
   await page.getByText("Context you allow", { exact: true }).waitFor();
+  await assertAbsent(page, "TMLS Agentic Hackathon");
+  await assertAbsent(page, "Intent to product, with the trace intact.");
+  await assertAbsent(page, "Temporary session. Close this browser session and the work may be gone.");
+  await assertAbsent(page, "Nora / Vale");
   const catImageCount = await page.locator('img[src="/assets/companion-cat-preview.png"]').count();
   if (catImageCount !== 0) throw new Error("landing_cat_image_should_not_render");
   await assertNoHorizontalOverflow(page, "desktop_landing");
@@ -60,7 +63,6 @@ async function main() {
   mobile.setDefaultTimeout(15000);
   await installLocalMocks(mobile);
   await mobile.goto(baseUrl, { waitUntil: "networkidle" });
-  await mobile.getByText("TMLS Agentic Hackathon", { exact: false }).waitFor();
   await mobile.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
   await mobile.getByText("Brainstorm to final, visibly.", { exact: true }).waitFor();
   await mobile.getByText("Quick Try", { exact: true }).first().waitFor();
@@ -69,6 +71,11 @@ async function main() {
 
   await browser.close();
   console.log(`hackathon_landing_public_smoke=ok screenshot=${screenshot} mobile=${mobileScreenshot}`);
+}
+
+async function assertAbsent(page, text) {
+  const count = await page.getByText(text, { exact: true }).count();
+  if (count !== 0) throw new Error(`landing_text_should_be_absent:${text}`);
 }
 
 async function installLocalMocks(page) {

@@ -441,7 +441,6 @@ input:disabled {
 }
 
 .hackathon-nav,
-.hackathon-brand,
 .hackathon-nav-actions,
 .hackathon-actions,
 .parallex-feature-item,
@@ -452,28 +451,10 @@ input:disabled {
 }
 
 .hackathon-nav {
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   max-width: 1180px;
   margin: 0 auto;
-}
-
-.hackathon-brand {
-  gap: 10px;
-  color: var(--text);
-  font-weight: 900;
-}
-
-.hackathon-brand-mark {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid rgba(57, 208, 196, 0.46);
-  border-radius: 8px;
-  background: rgba(57, 208, 196, 0.1);
-  color: #c9fffa;
-  font-size: 13px;
 }
 
 .hackathon-nav-actions {
@@ -512,13 +493,6 @@ input:disabled {
   line-height: 1.08;
 }
 
-.hackathon-subcopy {
-  max-width: 470px;
-  color: #b4bec7;
-  font-size: 16px;
-  line-height: 1.5;
-}
-
 .hackathon-actions {
   flex-wrap: wrap;
   gap: 10px;
@@ -546,11 +520,6 @@ input:disabled {
 .hackathon-secondary {
   border: 1px solid #344047;
   background: #11171b;
-}
-
-.hackathon-note {
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .parallex-feature-panel {
@@ -3657,10 +3626,6 @@ input:disabled {
 
   .hackathon-lede {
     font-size: 25px;
-  }
-
-  .hackathon-subcopy {
-    font-size: 15px;
   }
 
   .hackathon-actions {
