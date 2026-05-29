@@ -7,11 +7,11 @@ Last Modified by: Codex
 import {
   ArrowRight,
   BriefcaseBusiness,
-  CheckCircle2,
   FileText,
-  ScanLine,
+  MessageSquareText,
   ShieldCheck,
   UserPlus,
+  Workflow,
 } from "lucide-react";
 import { useState } from "react";
 import { quickTryUser } from "../../api/users";
@@ -71,31 +71,36 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
           <StatusLine error={error} />
         </div>
 
-        <div className="parallex-stage" aria-label="Parallex mission runtime preview">
-          <div className="parallex-stage-head">
-            <span>Mission 042</span>
-            <strong>Inspectable</strong>
+        <div className="parallex-feature-panel" aria-label="Parallex product capabilities">
+          <div className="parallex-feature-head">
+            <span>What judges can try</span>
+            <strong>Live product</strong>
           </div>
-          <div className="parallex-stage-body">
-            <div className="parallex-stage-kpi">
-              <span>Trace</span>
-              <strong>27</strong>
-            </div>
-            <div className="parallex-stage-product">
-              <span>Product</span>
-              <strong>Research brief</strong>
-              <p>outline, sources, draft, review</p>
-            </div>
-            <div className="parallex-stage-kpi amber">
-              <span>Risk</span>
-              <strong>82</strong>
-            </div>
-          </div>
-          <div className="parallex-stage-rail">
-            <RuntimeDot label="Intent" />
-            <RuntimeDot active label="Mission" />
-            <RuntimeDot label="Product" />
-            <RuntimeDot label="Review" />
+          <div className="parallex-feature-list">
+            <FeatureItem
+              accent="teal"
+              icon={MessageSquareText}
+              kicker="Idle Mode"
+              title="Brainstorm with multiple AI agents."
+            />
+            <FeatureItem
+              accent="green"
+              icon={Workflow}
+              kicker="Work Mode"
+              title="Visualize missions, progress, windows, and products."
+            />
+            <FeatureItem
+              accent="amber"
+              icon={ShieldCheck}
+              kicker="Evaluator"
+              title="Reduce hallucination risk with evidence-gap checks."
+            />
+            <FeatureItem
+              accent="slate"
+              icon={FileText}
+              kicker="Product History"
+              title="Keep drafts, reviews, revisions, and finals readable."
+            />
           </div>
         </div>
       </section>
@@ -120,7 +125,7 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
       </section>
 
       <section className="hackathon-signal" aria-label="Parallex runtime signals">
-        <Signal icon={ScanLine} label="Context" text="The model sees a curated, auditable package." />
+        <Signal icon={Workflow} label="Context" text="The model sees a curated, auditable package." />
         <Signal icon={BriefcaseBusiness} label="Mission" text="Work moves through selected tools, not hidden vibes." />
         <Signal icon={FileText} label="Lineage" text="Drafts, reviews, and final products stay readable." />
         <Signal icon={ShieldCheck} label="Review" text="AgentLens marks evidence gaps and delivery risk." />
@@ -137,12 +142,15 @@ function LoopStep({ label }) {
   );
 }
 
-function RuntimeDot({ active = false, label }) {
+function FeatureItem({ accent, icon: Icon, kicker, title }) {
   return (
-    <div className={active ? "runtime-dot active" : "runtime-dot"}>
-      <CheckCircle2 size={15} />
-      <span>{label}</span>
-    </div>
+    <article className={`parallex-feature-item ${accent}`}>
+      <Icon size={21} />
+      <div>
+        <span>{kicker}</span>
+        <strong>{title}</strong>
+      </div>
+    </article>
   );
 }
 

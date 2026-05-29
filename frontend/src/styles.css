@@ -446,8 +446,8 @@ input:disabled {
 .hackathon-actions,
 .hackathon-loop,
 .hackathon-loop-step,
-.parallex-stage-head,
-.runtime-dot,
+.parallex-feature-head,
+.parallex-feature-item,
 .hackathon-proof,
 .hackathon-metrics,
 .hackathon-signal {
@@ -557,10 +557,10 @@ input:disabled {
   font-size: 13px;
 }
 
-.parallex-stage {
+.parallex-feature-panel {
   position: relative;
   display: grid;
-  gap: 22px;
+  gap: 20px;
   min-height: 470px;
   border: 1px solid rgba(151, 163, 174, 0.22);
   border-radius: 8px;
@@ -571,7 +571,7 @@ input:disabled {
   box-shadow: 0 34px 84px rgba(0, 0, 0, 0.42);
 }
 
-.parallex-stage::before {
+.parallex-feature-panel::before {
   position: absolute;
   inset: 24px;
   border: 1px solid rgba(57, 208, 196, 0.13);
@@ -580,7 +580,7 @@ input:disabled {
   pointer-events: none;
 }
 
-.parallex-stage-head {
+.parallex-feature-head {
   position: relative;
   z-index: 1;
   justify-content: space-between;
@@ -588,16 +588,15 @@ input:disabled {
   padding: 0 0 18px;
 }
 
-.parallex-stage-head span,
-.parallex-stage-kpi span,
-.parallex-stage-product span {
+.parallex-feature-head span,
+.parallex-feature-item span {
   color: #9ba5ae;
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.parallex-stage-head strong {
+.parallex-feature-head strong {
   border: 1px solid rgba(155, 229, 143, 0.32);
   border-radius: 999px;
   padding: 6px 10px;
@@ -605,82 +604,78 @@ input:disabled {
   font-size: 12px;
 }
 
-.parallex-stage-body {
+.parallex-feature-list {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 0.72fr 1fr 0.72fr;
   gap: 12px;
 }
 
-.parallex-stage-kpi,
-.parallex-stage-product {
+.parallex-feature-item {
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 92px;
+  border: 1px solid rgba(151, 163, 174, 0.18);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(9, 13, 16, 0.84);
+}
+
+.parallex-feature-item svg {
   display: grid;
-  align-content: end;
-  min-height: 250px;
+  width: 42px;
+  height: 42px;
   border: 1px solid rgba(151, 163, 174, 0.18);
   border-radius: 8px;
-  padding: 18px;
-  background: rgba(9, 13, 16, 0.9);
-}
-
-.parallex-stage-kpi {
-  gap: 10px;
-  background: rgba(18, 49, 47, 0.34);
-}
-
-.parallex-stage-kpi.amber {
-  background: rgba(31, 24, 13, 0.48);
-}
-
-.parallex-stage-kpi strong {
-  color: #fffaf1;
-  font-size: 76px;
-  line-height: 0.9;
-}
-
-.parallex-stage-product {
-  gap: 8px;
-  background: rgba(13, 17, 21, 0.96);
-}
-
-.parallex-stage-product strong {
-  color: #fffaf1;
-  font-size: 34px;
-  line-height: 1;
-}
-
-.parallex-stage-product p {
-  margin: 0;
-  color: #8f9aa4;
-  font-size: 14px;
-}
-
-.parallex-stage-rail {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  border: 1px solid rgba(57, 208, 196, 0.16);
-  border-radius: 8px;
   padding: 10px;
-  background: rgba(5, 8, 10, 0.76);
+  background: #0b1013;
 }
 
-.runtime-dot {
-  gap: 7px;
-  color: #8f9aa4;
-  font-size: 12px;
-  font-weight: 900;
+.parallex-feature-item div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
-.runtime-dot svg {
-  color: rgba(57, 208, 196, 0.5);
-}
-
-.runtime-dot.active {
+.parallex-feature-item strong {
   color: #fffaf1;
+  font-size: 22px;
+  line-height: 1.08;
+}
+
+.parallex-feature-item.teal {
+  border-left-color: var(--teal);
+  background: rgba(18, 49, 47, 0.3);
+}
+
+.parallex-feature-item.teal svg {
+  color: var(--teal);
+}
+
+.parallex-feature-item.green {
+  border-left-color: var(--green);
+}
+
+.parallex-feature-item.green svg {
+  color: var(--green);
+}
+
+.parallex-feature-item.amber {
+  border-left-color: var(--amber);
+  background: rgba(31, 24, 13, 0.4);
+}
+
+.parallex-feature-item.amber svg {
+  color: var(--amber);
+}
+
+.parallex-feature-item.slate {
+  border-left-color: #8290a0;
+}
+
+.parallex-feature-item.slate svg {
+  color: #b4bec7;
 }
 
 .hackathon-loop,
@@ -3580,36 +3575,30 @@ input:disabled {
     width: 100%;
   }
 
-  .parallex-stage {
+  .parallex-feature-panel {
     min-height: auto;
     padding: 14px;
   }
 
-  .parallex-stage::before {
+  .parallex-feature-panel::before {
     inset: 14px;
   }
 
-  .parallex-stage-body {
-    grid-template-columns: 1fr;
-  }
-
-  .parallex-stage-kpi,
-  .parallex-stage-product {
-    min-height: 128px;
+  .parallex-feature-item {
+    grid-template-columns: 46px minmax(0, 1fr);
+    min-height: 84px;
     padding: 14px;
   }
 
-  .parallex-stage-kpi strong {
-    font-size: 54px;
+  .parallex-feature-item svg {
+    width: 36px;
+    height: 36px;
+    padding: 8px;
   }
 
-  .parallex-stage-product strong {
-    font-size: 27px;
-  }
-
-  .parallex-stage-rail {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .parallex-feature-item strong {
+    font-size: 19px;
+    line-height: 1.12;
   }
 
   .hackathon-loop {

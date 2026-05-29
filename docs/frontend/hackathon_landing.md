@@ -101,6 +101,19 @@ Intent -> Mission -> Product -> Review
 
 This explains the product without forcing judges to read a feature matrix.
 
+Question: Should the hero's right-side visual be an abstract mission dashboard?
+
+Decision: No. The `Mission 042 / Trace / Risk` visual is polished but too abstract for a hackathon judge. It looks like
+fake state rather than shipped capability. Replace it with a direct feature index that can be understood in seconds:
+
+- `Idle Mode`: brainstorm with multiple AI agents.
+- `Work Mode`: visualize agent work as missions, progress, windows, and product history.
+- `Evaluator`: reduce hallucination risk by surfacing evidence gaps and missing requirements.
+- `Product History`: keep drafts, reviews, revisions, and final output readable.
+
+The feature index must still look designed, not like a plain bullet list. Use differentiated rows, short labels, icons,
+and one strong "what it does" line per feature. Avoid decorative fake metrics in the hero.
+
 Question: What visual direction is allowed?
 
 Decision: Typography-led, product-system-led, and calm. Use dark graphite, off-white text, restrained teal, and small
@@ -116,7 +129,7 @@ Unauthenticated root page:
 - Hero title: `Parallex`.
 - Support line: `Agentic work, made inspectable.`
 - Short line: `Intent to product, with the trace intact.`
-- CSS-built product preview showing one mission, one product state, one reliability state, and trace count.
+- CSS-built feature index showing Idle Mode, Work Mode, Evaluator, and Product History.
 - Primary CTA: `Quick Try`.
 - Secondary CTA: `Create Account`.
 - Clear temporary-session note near Quick Try.
@@ -163,11 +176,12 @@ CTA copy:
 - `Create Account`
 - `Temporary session. Close this browser session and the work may be gone.`
 
-Product pillars:
+Product capability labels:
 
-- `Trace`
-- `Product`
-- `Reliability`
+- `Idle Mode`
+- `Work Mode`
+- `Evaluator`
+- `Product History`
 
 Product architecture copy:
 

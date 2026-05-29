@@ -22,8 +22,13 @@ async function main() {
   await page.getByText("Parallex", { exact: true }).first().waitFor();
   await page.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
   await page.getByText("Intent to product, with the trace intact.", { exact: true }).waitFor();
-  await page.getByText("Mission 042", { exact: true }).waitFor();
-  await page.getByText("Research brief", { exact: true }).waitFor();
+  await page.getByText("What judges can try", { exact: true }).waitFor();
+  await page.getByText("Idle Mode", { exact: true }).waitFor();
+  await page.getByText("Brainstorm with multiple AI agents.", { exact: true }).waitFor();
+  await page.getByText("Work Mode", { exact: true }).waitFor();
+  await page.getByText("Visualize missions, progress, windows, and products.", { exact: true }).waitFor();
+  await page.getByText("Evaluator", { exact: true }).waitFor();
+  await page.getByText("Reduce hallucination risk with evidence-gap checks.", { exact: true }).waitFor();
   await page.getByText("What changes", { exact: false }).waitFor();
   await page.getByText("Not a chat stream. A supervised work surface.", { exact: true }).waitFor();
   await page.getByText("traceable steps", { exact: true }).waitFor();
