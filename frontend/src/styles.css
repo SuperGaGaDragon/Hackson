@@ -483,12 +483,12 @@ input:disabled {
 .hackathon-hero {
   display: grid;
   grid-template-columns: minmax(0, 0.96fr) minmax(360px, 1.04fr);
-  align-items: center;
+  align-items: start;
   gap: 70px;
   max-width: 1240px;
-  min-height: min(700px, calc(100vh - 86px));
+  min-height: min(560px, calc(100vh - 86px));
   margin: 0 auto;
-  padding: 76px 0 28px;
+  padding: 26px 0 20px;
 }
 
 .hackathon-copy {
@@ -664,30 +664,23 @@ input:disabled {
 
 .workflow-section {
   align-items: start;
-  gap: 48px;
+  gap: 38px;
   border-top: 1px solid #263039;
-  padding: 56px 0 34px;
+  padding: 38px 0 24px;
 }
 
 .workflow-copy {
   display: grid;
-  gap: 12px;
-  flex: 0 0 420px;
+  gap: 10px;
+  flex: 0 0 360px;
   min-width: 0;
 }
 
 .workflow-copy h2,
 .memory-section h2 {
-  font-size: 46px;
-  line-height: 1.02;
+  font-size: 38px;
+  line-height: 1.04;
   letter-spacing: 0;
-}
-
-.workflow-copy p {
-  max-width: 520px;
-  color: #aeb8c2;
-  font-size: 15px;
-  line-height: 1.55;
 }
 
 .workflow-track {
@@ -704,10 +697,10 @@ input:disabled {
 .workflow-step {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 9px;
   min-width: 0;
-  min-height: 188px;
-  padding: 16px;
+  min-height: 112px;
+  padding: 14px;
   background: rgba(12, 16, 19, 0.82);
 }
 
@@ -719,27 +712,28 @@ input:disabled {
 
 .workflow-step strong {
   color: #fffaf1;
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .workflow-step p,
 .memory-point p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .memory-section {
   align-items: stretch;
   justify-content: space-between;
-  gap: 36px;
+  gap: 28px;
   border-top: 1px solid #263039;
-  padding: 34px 0 94px;
+  padding: 28px 0 72px;
 }
 
 .memory-section > div:first-child {
-  flex: 0 0 440px;
+  flex: 0 0 300px;
 }
 
 .memory-grid {
@@ -752,17 +746,17 @@ input:disabled {
 .memory-point {
   display: grid;
   align-content: start;
-  gap: 10px;
-  min-height: 128px;
+  gap: 7px;
+  min-height: 82px;
   border: 1px solid rgba(151, 163, 174, 0.18);
   border-radius: 8px;
-  padding: 16px;
+  padding: 14px;
   background: rgba(9, 13, 16, 0.78);
 }
 
 .memory-point strong {
   color: #fffaf1;
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .idle-grid,
@@ -3653,7 +3647,7 @@ input:disabled {
     grid-template-columns: 1fr;
     gap: 22px;
     min-height: auto;
-    padding: 42px 0 28px;
+    padding: 26px 0 24px;
   }
 
   .hackathon-copy h1 {
@@ -3709,7 +3703,7 @@ input:disabled {
     align-items: flex-start;
     flex-direction: column;
     gap: 18px;
-    padding: 32px 0 16px;
+    padding: 28px 0 14px;
   }
 
   .workflow-copy {
@@ -3730,6 +3724,7 @@ input:disabled {
   .workflow-step {
     grid-template-columns: 34px minmax(0, 1fr);
     align-items: start;
+    gap: 6px 10px;
     min-height: auto;
   }
 
@@ -3740,7 +3735,7 @@ input:disabled {
   .memory-section {
     flex-direction: column;
     gap: 18px;
-    padding: 22px 0 72px;
+    padding: 22px 0 64px;
   }
 
   .memory-section > div:first-child {

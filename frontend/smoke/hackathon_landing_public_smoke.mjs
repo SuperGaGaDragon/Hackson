@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { chromium } from "playwright";
@@ -15,6 +15,7 @@ async function main() {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.setDefaultTimeout(15000);
+  await installLocalMocks(page);
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   const pageTitle = await page.title();
   if (pageTitle !== "Parallex") throw new Error(`unexpected_title:${pageTitle}`);
@@ -29,10 +30,11 @@ async function main() {
   await page.getByText("Evaluator", { exact: true }).waitFor();
   await page.getByText("Reduce hallucination risk with evidence-gap checks.", { exact: true }).waitFor();
   await page.getByText("Visual workflow", { exact: true }).waitFor();
-  await page.getByText("From brainstorm to final product, every step has a place.", { exact: true }).waitFor();
-  await page.getByText("Universal memory", { exact: true }).waitFor();
-  await page.getByText("The same two agents carry approved context across the workspace.", { exact: true }).waitFor();
+  await page.getByText("Brainstorm to final, visibly.", { exact: true }).waitFor();
+  await page.getByText("Universal memory.", { exact: true }).waitFor();
+  await page.getByText("Permanent agents", { exact: true }).waitFor();
   await page.getByText("Approved memory", { exact: true }).waitFor();
+  await page.getByText("Context you allow", { exact: true }).waitFor();
   const catImageCount = await page.locator('img[src="/assets/companion-cat-preview.png"]').count();
   if (catImageCount !== 0) throw new Error("landing_cat_image_should_not_render");
   await assertNoHorizontalOverflow(page, "desktop_landing");
@@ -56,16 +58,41 @@ async function main() {
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
   mobile.setDefaultTimeout(15000);
+  await installLocalMocks(mobile);
   await mobile.goto(baseUrl, { waitUntil: "networkidle" });
   await mobile.getByText("TMLS Agentic Hackathon", { exact: false }).waitFor();
   await mobile.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
-  await mobile.getByText("From brainstorm to final product, every step has a place.", { exact: true }).waitFor();
+  await mobile.getByText("Brainstorm to final, visibly.", { exact: true }).waitFor();
   await mobile.getByText("Quick Try", { exact: true }).first().waitFor();
   await assertNoHorizontalOverflow(mobile, "mobile");
   await mobile.screenshot({ path: mobileScreenshot, fullPage: true });
 
   await browser.close();
   console.log(`hackathon_landing_public_smoke=ok screenshot=${screenshot} mobile=${mobileScreenshot}`);
+}
+
+async function installLocalMocks(page) {
+  if (process.env.HACKSON_USE_QUICK_TRY_MOCKS === "true") {
+    await page.route("**/api/users/quick-try", async (route) => {
+      await route.fulfill({
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          accessToken: "quick-try-smoke-token",
+          tokenType: "bearer",
+          user: {
+            id: "quick_try_smoke",
+            username: "quick-smoke",
+            isTemporary: true,
+            agentProfiles: [
+              { slot: "agent_1", short: "A1", name: "Nora", color: "teal", voice: "precise" },
+              { slot: "agent_2", short: "A2", name: "Vale", color: "amber", voice: "sharp" },
+            ],
+          },
+        }),
+      });
+    });
+  }
 }
 
 async function assertNoHorizontalOverflow(page, label) {

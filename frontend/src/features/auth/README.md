@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 ## brief intro
@@ -11,6 +11,7 @@ Lst Modified by: Codex
   - Store token through the shared API client.
   - Unauthenticated root traffic first sees the Parallex Hackathon landing; the form is opened from Create Account or Login.
   - Quick Try uses a backend-created temporary user and session storage, not a frontend-only fake account.
+  - Quick Try navigates to Work before mounting authenticated content so Idle does not briefly start background reads.
   - Public brand copy says Parallex even while the existing deployment domain and internal token keys keep Hackson names.
   - Keep copy short and expose only fields supported by the backend.
 

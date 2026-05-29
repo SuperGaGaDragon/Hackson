@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 
 # Parallex Hackathon Landing Page
@@ -137,6 +137,34 @@ Decision: Typography-led, product-system-led, and calm. Use dark graphite, off-w
 amber/green accents. Avoid cute mascots, gradient blobs/orbs, fake decorative SVG illustrations, and huge paragraphs.
 Cards must stay functional, not nested decoration.
 
+Question: Should the landing use large empty space under the header to feel premium?
+
+Decision: No. The first viewport should feel intentional, not delayed. Header-to-hero spacing must be tight enough that
+the product name, positioning, CTAs, and capability index are all visible without a large dead band. Use scale and
+contrast for premium feel, not unused vertical space.
+
+Question: Should the lower workflow and memory sections keep paragraph explanations under every label?
+
+Decision: No. The judge-facing lower page should scan like a product map. Compress explanation copy into short product
+labels:
+
+- `Brainstorm`: `multi-agent directions`
+- `Assign`: `supervised mission`
+- `Watch`: `live progress`
+- `Deliver`: `drafts to final`
+- `Evaluate`: `evidence gaps`
+- `Permanent agents`: `Nora / Vale`
+- `Universal memory`: `approved context`
+- `Controlled context`: `only what matters`
+
+Cards must size to their content. Do not leave large blank areas below short text.
+
+Question: Should compact labels use tiny uppercase microcopy?
+
+Decision: No. Compact does not mean hard to read. Lower-section labels should use short, normal-sized phrases instead of
+tiny microcopy. Eyebrows can remain small as section labels, but the actual user-facing content must be comfortable to
+scan.
+
 ## Required Experience
 
 Unauthenticated root page:
@@ -230,6 +258,9 @@ Forbidden copy:
 - Landing uses fewer, more visually distinct modules instead of repeated same-style text cards.
 - Landing body copy stays sparse enough to read at a glance during a hackathon demo.
 - Landing lower half makes the visual workflow and universal memory model explicit.
+- Landing first viewport does not create a large empty band between nav and hero.
+- Lower workflow and memory sections use compact label chips instead of paragraph-heavy cards.
+- Lower-section chip text is readable at a glance; do not rely on tiny uppercase explanatory text.
 - Public `https://hackson.catachess.com/` serves the landing after deployment.
 - Landing copy clearly separates core runtime from entry surfaces.
 - Landing does not overclaim unshipped Idle Summary Card, Promote to Work Mission, or Companion Work-context attachment.

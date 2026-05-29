@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { Activity, BriefcaseBusiness, Download, MessageSquare, Sparkles, UserRound } from "lucide-react";
@@ -98,9 +98,9 @@ function App() {
   if (!user) {
     const handleAuth = (nextUser) => handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode);
     const handleQuickAuth = async (nextUser) => {
+      navigateTo("work", setView, setRouteParams);
       await handleAuth(nextUser);
       setSessionScoped(hasSessionToken());
-      navigateTo("work", setView, setRouteParams);
     };
     if (authMode === "landing") {
       return <HackathonLanding onAuthed={handleQuickAuth} onOpenAuth={(mode) => setAuthMode(mode)} />;

@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import {
@@ -103,30 +103,26 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
       <section className="workflow-section" aria-label="Parallex visual workflow">
         <div className="workflow-copy">
           <p className="eyebrow">Visual workflow</p>
-          <h2>From brainstorm to final product, every step has a place.</h2>
-          <p>
-            Parallex turns AI work into a visible sequence instead of a disappearing chat thread. You can start with a
-            rough idea, assign a mission, watch progress, keep the output, and check reliability.
-          </p>
+          <h2>Brainstorm to final, visibly.</h2>
         </div>
         <div className="workflow-track">
-          <WorkflowStep index="01" label="Brainstorm" text="Explore directions with multiple AI agents." />
-          <WorkflowStep index="02" label="Assign" text="Turn intent into a supervised Work Mission." />
-          <WorkflowStep index="03" label="Watch" text="See progress, windows, tool choices, and revisions." />
-          <WorkflowStep index="04" label="Deliver" text="Keep drafts, reviews, and final output organized." />
-          <WorkflowStep index="05" label="Evaluate" text="Surface weak evidence, missing requirements, and risk." />
+          <WorkflowStep index="01" label="Brainstorm" text="Multiple AI directions" />
+          <WorkflowStep index="02" label="Assign" text="Supervised mission" />
+          <WorkflowStep index="03" label="Watch" text="Live progress" />
+          <WorkflowStep index="04" label="Deliver" text="Drafts to final" />
+          <WorkflowStep index="05" label="Evaluate" text="Evidence gaps" />
         </div>
       </section>
 
       <section className="memory-section" aria-label="Parallex universal memory">
         <div>
-          <p className="eyebrow">Universal memory</p>
-          <h2>The same two agents carry approved context across the workspace.</h2>
+          <p className="eyebrow">Permanent agents</p>
+          <h2>Universal memory.</h2>
         </div>
         <div className="memory-grid">
-          <MemoryPoint label="One agent identity" text="Nora and Vale keep their editable profiles across modes." />
-          <MemoryPoint label="Approved memory" text="User-approved memory can support brainstorms, chats, and work." />
-          <MemoryPoint label="Controlled context" text="The system keeps useful context without dumping every trace everywhere." />
+          <MemoryPoint label="Nora / Vale" text="Same two agents" />
+          <MemoryPoint label="Approved memory" text="Context you allow" />
+          <MemoryPoint label="Controlled context" text="Only what matters" />
         </div>
       </section>
     </main>
