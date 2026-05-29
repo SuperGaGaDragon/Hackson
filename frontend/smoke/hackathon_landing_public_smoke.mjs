@@ -18,7 +18,11 @@ async function main() {
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   await page.getByText("TMLS Agentic Hackathon", { exact: false }).waitFor();
   await page.getByText("Meet Hackson.", { exact: true }).waitFor();
-  await page.getByText("Two long-lived agents", { exact: false }).waitFor();
+  await page.getByText("A supervised workspace", { exact: false }).waitFor();
+  await page.getByText("Core runtime", { exact: false }).waitFor();
+  await page.getByText("Agentic work needs more than a chat box.", { exact: true }).waitFor();
+  await page.getByText("Entry surfaces", { exact: false }).waitFor();
+  await page.getByText("The product is the runtime, not the chat.", { exact: true }).waitFor();
   await page.locator('img[src="/assets/companion-cat-preview.png"]').waitFor();
   await assertNoHorizontalOverflow(page, "desktop_landing");
   await page.screenshot({ path: screenshot, fullPage: true });
@@ -38,6 +42,7 @@ async function main() {
   mobile.setDefaultTimeout(15000);
   await mobile.goto(baseUrl, { waitUntil: "networkidle" });
   await mobile.getByText("TMLS Agentic Hackathon", { exact: false }).waitFor();
+  await mobile.getByText("Core runtime", { exact: false }).waitFor();
   await mobile.getByText("Quick Try", { exact: true }).first().waitFor();
   await assertNoHorizontalOverflow(mobile, "mobile");
   await mobile.screenshot({ path: mobileScreenshot, fullPage: true });

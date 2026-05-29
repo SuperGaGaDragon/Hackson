@@ -41,6 +41,32 @@ Decision: Use a concrete agentic-product line, not hype:
 Two long-lived agents that talk, remember, delegate, and deliver reviewed work.
 ```
 
+Question: Should the landing present Idle and Companion as core product value?
+
+Decision: No. The landing must not sell "two AIs chatting" or "another chatbot." It should present the product
+hierarchy clearly:
+
+- Core runtime: Context Runtime, Work Mission Runtime, Product/Artifact Lineage, AgentLens Reliability, Memory
+  Governance.
+- Entry surfaces: Idle, Companion, Desktop Pet.
+
+Idle is described as a low-friction brainstorm entry where a rough topic can become a clearer Work direction. Do not
+claim the future `Promote to Work Mission` button exists until that closed loop ships.
+
+Companion is described as a conversational surface for the same two editable Agents and approved memory. Do not claim
+it can inspect arbitrary Work artifacts or Reliability reports until explicit context attachment ships.
+
+Question: What should judges understand in the first minute?
+
+Decision: The landing should show the system loop, not a feature list:
+
+```text
+Brainstorm -> Mission -> Product -> Quality -> Memory
+```
+
+This explains why Idle, Work, AgentLens, and Memory belong together. It also makes Desktop Pet feel like visible
+presence rather than the product's main capability.
+
 ## Required Experience
 
 Unauthenticated root page:
@@ -99,6 +125,27 @@ Product pillars:
 - `Quality`
 - `Desktop pet`
 
+Product architecture copy:
+
+- `Core runtime`
+- `Context`
+- `Missions`
+- `Lineage`
+- `Quality`
+- `Memory`
+- `Entry surfaces`
+- `Brainstorm`
+- `Companion`
+- `Desktop pet`
+
+Forbidden copy:
+
+- `Two agents chat by themselves`
+- `AI chatbot`
+- `Autonomous employee`
+- Claims that Companion can inspect Work artifacts by default.
+- Claims that Idle already has one-click mission promotion.
+
 ## Acceptance
 
 - Logged-out `GET /` renders the hackathon landing, not the old auth form.
@@ -107,3 +154,5 @@ Product pillars:
 - Existing login remains accessible.
 - Desktop and mobile screenshots have no horizontal overflow.
 - Public `https://hackson.catachess.com/` serves the landing after deployment.
+- Landing copy clearly separates core runtime from entry surfaces.
+- Landing does not overclaim unshipped Idle Summary Card, Promote to Work Mission, or Companion Work-context attachment.

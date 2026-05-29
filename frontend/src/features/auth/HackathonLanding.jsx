@@ -48,11 +48,11 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
           <p className="eyebrow">TMLS Agentic Hackathon</p>
           <h1>Meet Hackson.</h1>
           <p className="hackathon-lede">
-            Two long-lived agents that talk, remember, delegate, and deliver reviewed work.
+            A supervised workspace for two long-lived agents.
           </p>
           <p className="hackathon-subcopy">
-            Not a chatbot. Not a coding shell. A supervised workspace where your agents plan, split work, keep context,
-            and ship a readable Product with a Quality check.
+            Explore rough ideas, run them as Missions, keep every Product version readable, and check delivery
+            risk before it ships.
           </p>
           <div className="hackathon-actions">
             <button className="hackathon-primary" disabled={loading} onClick={startQuickTry} type="button">
@@ -81,22 +81,46 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
         </div>
       </section>
 
-      <section className="hackathon-pillars" aria-label="Product overview">
-        <Pillar icon={MessageSquare} title="Two agents" text="Nora and Vale stay editable, persistent, and present across modes." />
-        <Pillar icon={BriefcaseBusiness} title="Mission work" text="Plan, delegate, write, revise, and keep every Product version readable." />
-        <Pillar icon={ShieldCheck} title="Quality" text="Evaluator reports risk, evidence, missing requirements, and tool failures." />
-        <Pillar icon={Cat} title="Desktop pet" text="The cat turns background Work progress into a visible companion." />
+      <section className="hackathon-loop" aria-label="Hackson work loop">
+        <LoopStep label="Brainstorm" />
+        <LoopStep label="Mission" />
+        <LoopStep label="Product" />
+        <LoopStep label="Quality" />
+        <LoopStep label="Memory" />
+      </section>
+
+      <section className="hackathon-section-head">
+        <p className="eyebrow">Core runtime</p>
+        <h2>Agentic work needs more than a chat box.</h2>
+      </section>
+
+      <section className="hackathon-pillars" aria-label="Core runtime">
+        <Pillar icon={Brain} title="Context" text="Calls are built from traceable messages, summaries, memory, and agent identity." />
+        <Pillar icon={BriefcaseBusiness} title="Missions" text="Lead agents plan, delegate, review, and keep work moving inside a supervised loop." />
+        <Pillar icon={MessageSquare} title="Lineage" text="Deliverables live as Product and Artifact history, not loose transcript fragments." />
+        <Pillar icon={ShieldCheck} title="AgentLens" text="Quality reports risk, evidence gaps, missing requirements, and tool failures." />
+      </section>
+
+      <section className="hackathon-section-head compact">
+        <p className="eyebrow">Entry surfaces</p>
+        <h2>Start where the work feels natural.</h2>
+      </section>
+
+      <section className="hackathon-pillars hackathon-entry" aria-label="Entry surfaces">
+        <Pillar icon={MessageSquare} title="Idle" text="A low-friction brainstorm room where Nora and Vale explore a topic before Work." />
+        <Pillar icon={Brain} title="Companion" text="A conversational surface for the same editable agents and approved memory." />
+        <Pillar icon={Cat} title="Desktop pet" text="The cat turns background Mission state into visible presence." />
       </section>
 
       <section className="hackathon-explain" aria-label="How it works">
         <div>
           <p className="eyebrow">Why it matters</p>
-          <h2>Agentic work needs memory, supervision, and a result you can actually read.</h2>
+          <h2>The product is the runtime, not the chat.</h2>
         </div>
         <div className="hackathon-flow">
-          <FlowStep icon={Brain} label="Context" text="Every call is built from traceable messages, summaries, memory, and agent identity." />
-          <FlowStep icon={BriefcaseBusiness} label="Product" text="Work Mode stores deliverables as Product and Artifact lineage, not loose chat." />
-          <FlowStep icon={ShieldCheck} label="Review" text="Quality checks stay visible without pretending to be proof of truth." />
+          <FlowStep icon={Brain} label="Memory governance" text="Useful context is retained with boundaries; raw Work trace does not leak everywhere." />
+          <FlowStep icon={BriefcaseBusiness} label="Readable delivery" text="Work Mode keeps a clean Product while preserving the revision trail." />
+          <FlowStep icon={ShieldCheck} label="Supervision" text="AgentLens makes risk visible without pretending the score is absolute truth." />
         </div>
       </section>
 
@@ -107,6 +131,14 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
         </button>
       </div>
     </main>
+  );
+}
+
+function LoopStep({ label }) {
+  return (
+    <div className="hackathon-loop-step">
+      <span>{label}</span>
+    </div>
   );
 }
 

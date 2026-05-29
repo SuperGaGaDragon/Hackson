@@ -432,7 +432,9 @@ input:disabled {
 .hackathon-nav-actions,
 .hackathon-actions,
 .hackathon-card,
-.hackathon-flow-step {
+.hackathon-flow-step,
+.hackathon-loop,
+.hackathon-loop-step {
   display: flex;
   align-items: center;
 }
@@ -591,16 +593,73 @@ input:disabled {
   opacity: 0.76;
 }
 
+.hackathon-loop,
+.hackathon-section-head,
 .hackathon-pillars,
 .hackathon-explain {
   max-width: 1180px;
   margin: 0 auto;
 }
 
+.hackathon-loop {
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(12, 17, 21, 0.84);
+}
+
+.hackathon-loop-step {
+  position: relative;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid rgba(57, 208, 196, 0.2);
+  border-radius: 8px;
+  background: rgba(18, 49, 47, 0.42);
+}
+
+.hackathon-loop-step:not(:last-child)::after {
+  position: absolute;
+  right: -12px;
+  z-index: 1;
+  color: var(--teal);
+  content: ">";
+  font-weight: 900;
+}
+
+.hackathon-loop-step span {
+  color: #fffaf1;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.hackathon-section-head {
+  display: grid;
+  gap: 8px;
+  padding: 54px 0 16px;
+}
+
+.hackathon-section-head.compact {
+  padding-top: 30px;
+}
+
+.hackathon-section-head h2 {
+  max-width: 620px;
+  font-size: 32px;
+  line-height: 1.1;
+}
+
 .hackathon-pillars {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+.hackathon-entry {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .hackathon-card {
@@ -3491,8 +3550,27 @@ input:disabled {
   }
 
   .hackathon-pillars,
+  .hackathon-entry,
+  .hackathon-loop,
   .hackathon-explain {
     grid-template-columns: 1fr;
+  }
+
+  .hackathon-loop {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hackathon-loop-step:not(:last-child)::after {
+    display: none;
+  }
+
+  .hackathon-section-head {
+    padding: 34px 0 14px;
+  }
+
+  .hackathon-section-head h2 {
+    font-size: 26px;
   }
 
   .hackathon-explain {
@@ -3508,7 +3586,6 @@ input:disabled {
     right: 12px;
     bottom: 12px;
     left: 12px;
-    display: flex;
     justify-content: space-between;
   }
 
