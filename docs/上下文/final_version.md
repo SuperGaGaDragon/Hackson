@@ -32,6 +32,7 @@ Current issue notes:
 - `issues/issue11-account-agent-continuity.md`
 - `issues/issue12-idle-collaborative-convergence.md`
 - `issues/issue14-idle-brainstorm-to-work-mission.md`
+- `issues/issue15-idle-right-rail-information-architecture.md`
 
 ## 2. Product North Star
 
@@ -69,6 +70,7 @@ User action or idle cadence
 - Idle input MUST stay available during generation by queueing Idle Interruption.
 - Idle Agents MUST respond as a relationship-aware pair, not as alternating advice generators.
 - Idle Agents MUST use Collaborative Convergence Protocol so disagreement stops when it no longer changes action, risk, or decision criteria.
+- Idle right rail MUST prioritize target, topic, Brainstorm, and compact session status; raw conversation ids belong behind Debug.
 - Raw chain-of-thought MUST NOT be stored or shown.
 
 ## 4. Version Summary

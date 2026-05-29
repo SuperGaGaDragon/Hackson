@@ -276,3 +276,23 @@ Required tests:
 Exit criteria:
 
 - A user can discuss in Idle, convert the discussion into a concise brief, edit the Work draft, create a Mission, and jump to Work without copying text manually.
+
+## 16. Loop 13: Idle Right Rail Product Polish
+
+Required behavior:
+
+- Right rail default view prioritizes Target Agent, Topic, and Brainstorm action.
+- Brainstorm appears before secondary Session metadata.
+- Session metadata is compact and limited to user-comprehensible state such as Auto and Status.
+- Turn count appears only inside collapsed Debug when needed.
+- Raw conversation ids and parent ids are hidden behind collapsed Debug.
+- No standalone `ID` or `Count` object cards appear in the normal right rail.
+
+Required tests:
+
+- Frontend build passes.
+- Target public static asset smoke confirms the updated bundle is served.
+
+Exit criteria:
+
+- Idle right rail feels like a user control surface, not an internal inspector.

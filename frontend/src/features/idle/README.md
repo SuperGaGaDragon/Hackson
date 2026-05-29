@@ -18,10 +18,11 @@ Lst Modified by: Codex
   - Send `Topic` as `discussionDirection`; never render it as a transcript message unless the backend returns it as one.
   - Treat `Say` as an idle transcript message and `Join` as the only mode transition into companion_1.
   - Build a user-requested Brainstorm Card from the selected Idle transcript and promote it only through an editable Work Mission confirmation modal.
+  - Keep the Idle right rail user-facing: Target, Topic, Brainstorm, compact Session, and collapsed Debug for internal ids.
 
 ## folder structure
 |-README.md idle feature guide
-|-IdlePage.jsx idle history, new topic modal, timeline, auto cadence, tick, say, join, Brainstorm Card promotion, and status UI
+|-IdlePage.jsx idle history, new topic modal, timeline, auto cadence, tick, say, join, Brainstorm Card promotion, compact session status, and Debug details UI
 
 ## 代办
 - Move Auto to a backend-owned runner only if Idle must continue after the browser closes.

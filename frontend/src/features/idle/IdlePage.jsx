@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { ArrowRight, BriefcaseBusiness, Check, ChevronDown, RefreshCw, Send } from "lucide-react";
@@ -60,6 +60,7 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
   const timelineRef = useRef(null);
   const isIdle = mode === "idle";
   const timelineMessages = isIdle ? idleMessages : [...idleMessages, ...companionMessages];
+  const sessionStatus = loading ? "Loading" : queuedIdleMessage ? "Queued" : busy ? "Working" : "Ready";
 
   useEffect(() => {
     let mounted = true;
@@ -542,24 +543,6 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
           <span>Topic</span>
           <p>{topic.trim() || "none"}</p>
         </section>
-        <section className="context-item">
-          <span>ID</span>
-          <p>{conversation?.id || "none"}</p>
-        </section>
-        {!isIdle && (
-          <section className="context-item">
-            <span>Parent</span>
-            <p>{idleConversation?.id || "none"}</p>
-          </section>
-        )}
-        <section className="context-item">
-          <span>Count</span>
-          <p>{timelineMessages.length}</p>
-        </section>
-        <section className="context-item">
-          <span>Auto</span>
-          <p>{autoIdle ? "on" : "off"}</p>
-        </section>
         <section className="idle-brief-panel">
           <div className="idle-brief-head">
             <div>
@@ -588,7 +571,39 @@ function IdlePage({ agents = FALLBACK_AGENTS }) {
             <p className="muted">Turn this discussion into a draft Mission.</p>
           )}
         </section>
-        <StatusLine error={error} loading={loading} text={busy ? "Working" : ""} />
+        <section className="idle-session-panel" aria-label="Session status">
+          <div className="idle-session-row">
+            <span>Auto</span>
+            <strong>{autoIdle ? "On" : "Off"}</strong>
+          </div>
+          <div className="idle-session-row">
+            <span>Status</span>
+            <strong>{sessionStatus}</strong>
+          </div>
+        </section>
+        <details className="idle-debug-details">
+          <summary>
+            <span>Debug</span>
+            <small>Details</small>
+          </summary>
+          <dl>
+            <div>
+              <dt>Conversation</dt>
+              <dd>{conversation?.id || "none"}</dd>
+            </div>
+            {!isIdle && (
+              <div>
+                <dt>Parent</dt>
+                <dd>{idleConversation?.id || "none"}</dd>
+              </div>
+            )}
+            <div>
+              <dt>Turns</dt>
+              <dd>{timelineMessages.length}</dd>
+            </div>
+          </dl>
+        </details>
+        <StatusLine error={error} />
       </aside>
       {promoteOpen && brainstormCard && (
         <PromoteMissionModal

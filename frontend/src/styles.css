@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 :root {
@@ -1132,6 +1132,89 @@ input:disabled {
 
 .idle-brief-promote {
   width: 100%;
+}
+
+.idle-session-panel,
+.idle-debug-details {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #10161a;
+}
+
+.idle-session-panel {
+  display: grid;
+  gap: 0;
+  padding: 4px 12px;
+}
+
+.idle-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.idle-session-row:last-child {
+  border-bottom: 0;
+}
+
+.idle-session-row span,
+.idle-debug-details summary small,
+.idle-debug-details dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.idle-session-row strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.idle-debug-details {
+  padding: 0;
+}
+
+.idle-debug-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.idle-debug-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.idle-debug-details summary span {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.idle-debug-details dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0 12px 12px;
+}
+
+.idle-debug-details dl div {
+  display: grid;
+  gap: 3px;
+}
+
+.idle-debug-details dd {
+  margin: 0;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .promote-modal {

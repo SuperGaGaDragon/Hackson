@@ -28,6 +28,7 @@ Lst Modified by: Codex
 |-issue12-idle-collaborative-convergence.md Idle agreement, meaningful disagreement, and stop condition protocol
 |-issue13-memory-preference-recall-comfort.md explicit preference recall and comfort gap
 |-issue14-idle-brainstorm-to-work-mission.md Idle Brainstorm Card and user-confirmed Work Mission promotion
+|-issue15-idle-right-rail-information-architecture.md Idle right rail user-facing hierarchy and Debug boundary
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Context Runtime architecture.

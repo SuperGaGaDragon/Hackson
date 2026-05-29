@@ -23,6 +23,7 @@ Idle SHOULD show:
 - model failure state.
 - queued user interjection while an Agent is generating.
 - Brainstorm Card when the user asks to summarize Idle into a Work-ready brief.
+- compact session status.
 
 Idle SHOULD NOT show:
 
@@ -30,6 +31,8 @@ Idle SHOULD NOT show:
 - raw chain-of-thought.
 - internal memory candidates.
 - one-click Work Mission creation without an editable confirmation step.
+- raw conversation ids or parent ids as primary right-rail cards.
+- raw message count as a standalone object card.
 
 Idle composer rules:
 
@@ -42,11 +45,19 @@ Idle composer rules:
 Idle Brainstorm Card rules:
 
 - The card belongs in the right rail as a compact action surface, not inside the transcript.
+- The card appears before secondary Session metadata in the right rail.
 - The card sections are `Topic`, `Key ideas`, `Disagreements`, `Decision`, `Open questions`, and `Suggested Mission`.
 - Source message ids should be available behind a compact disclosure surface.
 - The suggested Mission title and goal must be editable before Work Mission creation.
 - The user must choose an existing Work Project or create a new Project before promotion.
 - Promotion creates a draft Mission and does not start execution.
+
+Idle Session rules:
+
+- Auto and current Status may appear as compact metadata.
+- Turn count may appear only inside collapsed Debug labeled `Turns`.
+- Conversation ids and parent ids belong under a collapsed `Debug` disclosure.
+- Normal loading and working state should not be duplicated by a second generic status line below Debug; only actual errors need a separate error line.
 
 ### Background Idle
 
