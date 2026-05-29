@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,12 +24,13 @@ import {
 import { normalizeAgents } from "../../domain/agents";
 import ActivityStrip from "./components/ActivityStrip";
 import InspectorPanel from "./components/InspectorPanel";
+import MissionMapPanel from "./components/MissionMapPanel";
 import MissionHeader from "./components/MissionHeader";
 import ProductPanel from "./components/ProductPanel";
 import ProgressTimeline from "./components/ProgressTimeline";
 import ProjectMissionRail from "./components/ProjectMissionRail";
 import RawLogPanel from "./components/RawLogPanel";
-import ReliabilityPanel from "./components/ReliabilityPanel";
+import ReliabilityPanel, { reliabilitySummary } from "./components/ReliabilityPanel";
 import WarningCard from "./components/WarningCard";
 import WorkWindowPanel from "./components/WorkWindowPanel";
 import WorkspaceView from "./components/WorkspaceView";
@@ -55,9 +56,18 @@ function WorkPage({ agents = [], initialRoute = {} }) {
   const [answerText, setAnswerText] = useState("");
   const [followUpText, setFollowUpText] = useState("");
   const [instructionText, setInstructionText] = useState("");
+  const [showMissionInfo, setShowMissionInfo] = useState(false);
+  const [showQualityDetails, setShowQualityDetails] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const sectionRefs = {
+    activity: useRef(null),
+    diagnostics: useRef(null),
+    product: useRef(null),
+    progress: useRef(null),
+    windows: useRef(null),
+  };
 
   const afterSequence = useMemo(() => Math.max(0, ...events.map((event) => event.sequence || 0)), [events]);
   const afterSequenceRef = useRef(0);
@@ -65,6 +75,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     () => [...events].reverse().find((event) => event.type === "USER_INPUT_REQUESTED") || null,
     [events],
   );
+  const currentReliabilitySummary = useMemo(() => reliabilitySummary(artifacts, events), [artifacts, events]);
 
   useEffect(() => {
     afterSequenceRef.current = afterSequence;
@@ -490,6 +501,11 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     }
   }
 
+  function scrollToSection(sectionId) {
+    const node = sectionRefs[sectionId]?.current;
+    node?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   if (!selectedProject) {
     return (
       <WorkspaceView
@@ -524,6 +540,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
         onCreateMission={addMission}
         onFollowUp={continueFollowUp}
         onFollowUpTextChange={setFollowUpText}
+        onOpenMissionInfo={() => setShowMissionInfo(true)}
         onInstruction={addInstruction}
         onInstructionTextChange={setInstructionText}
         onMissionLeadChange={setMissionLeadId}
@@ -544,23 +561,76 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           onPause={pause}
         />
         <div className="mission-content">
-          <ActivityStrip events={events} mission={selectedMission} />
-          <ProductPanel artifacts={artifacts} mission={selectedMission} products={products} />
-          <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
-          <ProgressTimeline events={events} />
-          <RawLogPanel events={events} />
+          <section ref={sectionRefs.activity}>
+            <ActivityStrip events={events} mission={selectedMission} />
+          </section>
+          <section ref={sectionRefs.product}>
+            <ProductPanel artifacts={artifacts} mission={selectedMission} products={products} />
+          </section>
+          <section ref={sectionRefs.windows}>
+            <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
+          </section>
+          <section ref={sectionRefs.progress}>
+            <ProgressTimeline events={events} />
+          </section>
+          <section ref={sectionRefs.diagnostics}>
+            <RawLogPanel events={events} />
+          </section>
         </div>
       </section>
       <div className="work-side">
-        <InspectorPanel
-          busy={busy || loading}
-          error={error}
-          agentCount={workAgents.length}
+        <MissionMapPanel
+          diagnosticsCount={events.length}
           mission={selectedMission}
-          project={selectedProject}
+          onOpenQuality={() => setShowQualityDetails(true)}
+          onScrollToSection={scrollToSection}
+          productsCount={products.length}
+          progressCount={events.length}
+          qualitySummary={currentReliabilitySummary}
+          windowsCount={workWindows.length}
         />
-        <ReliabilityPanel artifacts={artifacts} compact events={events} />
         <WarningCard events={events} />
+      </div>
+      {showMissionInfo && (
+        <Modal title="Mission info" onClose={() => setShowMissionInfo(false)}>
+          <InspectorPanel
+            busy={busy || loading}
+            error={error}
+            agentCount={workAgents.length}
+            mission={selectedMission}
+            project={selectedProject}
+          />
+        </Modal>
+      )}
+      {showQualityDetails && (
+        <Modal title="Quality" onClose={() => setShowQualityDetails(false)}>
+          <ReliabilityPanel artifacts={artifacts} events={events} />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function Modal({ children, onClose, title }) {
+  return (
+    <div className="modal-layer work-modal-layer" onMouseDown={onClose} role="presentation">
+      <div
+        aria-label={title}
+        aria-modal="true"
+        className="topic-modal work-detail-modal"
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="panel-head compact">
+          <div>
+            <p className="eyebrow">Details</p>
+            <h2>{title}</h2>
+          </div>
+          <button className="secondary-button" onClick={onClose} type="button">
+            Close
+          </button>
+        </div>
+        {children}
       </div>
     </div>
   );

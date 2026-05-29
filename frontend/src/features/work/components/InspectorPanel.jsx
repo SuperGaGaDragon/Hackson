@@ -1,14 +1,14 @@
 /*
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import StatusLine from "../../../shared/components/StatusLine";
 
 function InspectorPanel({ agentCount = 0, busy, error, mission, project }) {
   return (
-    <aside className="context-rail inspector-rail">
+    <div className="inspector-panel">
       <div className="panel-head compact">
         <div>
           <p className="eyebrow">Inspector</p>
@@ -40,7 +40,7 @@ function InspectorPanel({ agentCount = 0, busy, error, mission, project }) {
         <p>V1 text</p>
       </div>
       <StatusLine error={error} loading={busy} text={busy ? "Working" : ""} />
-    </aside>
+    </div>
   );
 }
 

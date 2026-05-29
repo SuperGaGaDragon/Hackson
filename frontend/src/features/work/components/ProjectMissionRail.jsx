@@ -1,10 +1,10 @@
 /*
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
-import { ArrowLeft, Plus, UserRound } from "lucide-react";
+import { ArrowLeft, Info, Plus, UserRound } from "lucide-react";
 import MissionComposer from "./MissionComposer";
 
 function ProjectMissionRail({
@@ -24,6 +24,7 @@ function ProjectMissionRail({
   onCreateMission,
   onFollowUp,
   onFollowUpTextChange,
+  onOpenMissionInfo,
   onInstruction,
   onInstructionTextChange,
   onMissionLeadChange,
@@ -59,6 +60,9 @@ function ProjectMissionRail({
             <strong>{selectedLead?.name || "Agent"}</strong>
           </span>
           <em>{selectedLead?.voice || selectedMission?.leadEmployeeRole || ""}</em>
+          <button className="icon-button rail-info-button" onClick={onOpenMissionInfo} title="Mission info" type="button">
+            <Info size={15} />
+          </button>
         </div>
         <div className="panel-head compact rail-section">
           <div>

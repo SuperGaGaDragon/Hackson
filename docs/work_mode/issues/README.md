@@ -49,6 +49,7 @@ Last Modified by: Codex
 |-issue35-authoritative-deliverable.md Product-level authoritative deliverable separate from editable Artifact history
 |-issue36-reliability-placement.md Reliability belongs in compact Inspector quality status, not as default main content
 |-issue37-search-summary-artifacts.md backend-owned Search Summary Artifacts for durable research evidence
+|-issue39-work-console-navigation-and-quality-modal.md Work Console right rail becomes section navigation, Inspector becomes Info modal, and Quality opens in a focused modal
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

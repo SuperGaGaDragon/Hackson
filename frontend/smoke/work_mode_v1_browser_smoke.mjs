@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 
@@ -36,7 +36,7 @@ async function main() {
 
   await page.locator(".mission-head .chip", { hasText: "completed" }).waitFor({ timeout: completionTimeoutMs });
   await page.getByRole("button", { name: /Check/ }).click();
-  await page.locator(".quality-panel").waitFor();
+  await page.locator(".mission-map-panel").waitFor();
   await assertVisible(page, "Quality");
   await assertReliabilityPanel(page);
   await assertVisible(page, "Progress");
@@ -57,14 +57,14 @@ async function main() {
   if (windowCount < 2) {
     throw new Error(`expected_at_least_two_windows:${windowCount}`);
   }
-  const missionOrder = await page.locator(".mission-content > *").evaluateAll((nodes) =>
+  const missionOrder = await page.locator(".mission-content > section").evaluateAll((nodes) =>
     nodes.map((node) => {
-      if (node.classList.contains("activity-strip")) return "activity";
-      if (node.classList.contains("reliability-panel")) return "reliability";
-      if (node.classList.contains("window-panel")) return "windows";
-      if (node.classList.contains("product-panel")) return "product";
-      if (node.classList.contains("timeline-card")) return "progress";
-      if (node.classList.contains("raw-log-panel")) return "diagnostics";
+      if (node.querySelector(".activity-strip")) return "activity";
+      if (node.querySelector(".reliability-panel")) return "reliability";
+      if (node.querySelector(".window-panel")) return "windows";
+      if (node.querySelector(".product-panel")) return "product";
+      if (node.querySelector(".timeline-card")) return "progress";
+      if (node.querySelector(".raw-log-panel")) return "diagnostics";
       return "unknown";
     }),
   );
@@ -74,10 +74,6 @@ async function main() {
   const expectedOrder = ["activity", "product", "windows", "progress", "diagnostics"];
   if (expectedOrder.some((item, index) => missionOrder[index] !== item)) {
     throw new Error(`mission_order_invalid:${missionOrder.join(",")}`);
-  }
-  const qualityDetailsOpen = await page.locator(".quality-details").evaluate((node) => node.open);
-  if (qualityDetailsOpen) {
-    throw new Error("quality_details_should_be_collapsed_by_default");
   }
   const diagnosticOpen = await page.locator(".raw-log-panel").evaluate((node) => node.open);
   if (diagnosticOpen) {
@@ -192,18 +188,20 @@ async function assertVisible(page, text) {
 }
 
 async function assertReliabilityPanel(page) {
-  const panelText = await page.locator(".quality-panel").innerText();
+  const panelText = await page.locator(".quality-trigger").innerText();
   if (!/\d+\s*\/\s*100/.test(panelText)) {
     throw new Error(`reliability_score_missing:${panelText}`);
   }
   if (!/(Ship-ready|Minor review|Needs review|Unsafe)/.test(panelText)) {
     throw new Error(`reliability_status_missing:${panelText}`);
   }
-  await page.locator(".quality-details summary").click();
-  const detailText = await page.locator(".reliability-panel.embedded").innerText();
+  await page.locator(".quality-trigger").click();
+  await page.getByRole("dialog", { name: /Quality/ }).waitFor();
+  const detailText = await page.locator(".work-detail-modal").innerText();
   if (!/Reliability|Risk score/.test(detailText)) {
     throw new Error(`reliability_detail_missing:${detailText}`);
   }
+  await page.getByRole("button", { name: "Close" }).click();
 }
 
 main().catch((error) => {

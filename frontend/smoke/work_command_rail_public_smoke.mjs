@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { chromium } from 'playwright';
@@ -62,7 +62,9 @@ async function api(path, options = {}) {
 }
 
 async function main() {
-  await assertPublicInstructionRoute();
+  if (process.env.HACKSON_SKIP_PUBLIC_ROUTE_PROBE !== 'true') {
+    await assertPublicInstructionRoute();
+  }
 
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -97,11 +99,23 @@ async function main() {
   const inputText = await page.locator('.timeline-card').innerText();
   if (!inputText.includes('Instruction')) throw new Error(`input_filter_missing_instruction:${inputText}`);
   await page.locator('.progress-filters').getByRole('button', { name: /All/ }).click();
-  await page.locator('.quality-panel').waitFor();
+  await page.locator('.mission-map-panel').waitFor();
+  await page.locator('.mission-map-row', { hasText: 'Product' }).click();
+  await page.locator('.product-panel').waitFor();
+  await page.getByTitle('Mission info').click();
+  const infoDialog = page.getByRole('dialog', { name: /Mission info/ });
+  await infoDialog.waitFor();
+  await infoDialog.getByText('Project', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close' }).click();
   const mainReliabilityCards = await page.locator('.mission-content > .reliability-panel').count();
   if (mainReliabilityCards !== 0) throw new Error(`reliability_should_not_be_main_content:${mainReliabilityCards}`);
-  const qualityOpen = await page.locator('.quality-details').evaluate((node) => node.open);
-  if (qualityOpen) throw new Error('quality_details_should_start_collapsed');
+  await page.locator('.quality-trigger', { hasText: '80 / 100' }).click();
+  await page.getByRole('dialog', { name: /Quality/ }).waitFor();
+  const qualityText = await page.locator('.work-detail-modal').innerText();
+  if (!/Reliability/i.test(qualityText) || !/80\s*\/\s*100/.test(qualityText)) {
+    throw new Error(`quality_modal_incomplete:${qualityText}`);
+  }
+  await page.getByRole('button', { name: 'Close' }).click();
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   if (horizontalOverflow) throw new Error('desktop_horizontal_overflow');
   await page.screenshot({ path: screenshot, fullPage: true });

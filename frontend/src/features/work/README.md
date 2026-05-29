@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 
 ## brief intro
@@ -9,10 +9,11 @@ Last Modified by: Codex
   - Store the Work Mode Workspace and Project Mission pages backed by verified `/api/work` APIs.
 - 架构思路
   - Work opens to a Workspace project list and New Project form.
-  - Project detail owns the two user-edited Agents from `Me`, Missions, console, and Inspector.
+  - Project detail owns the two user-edited Agents from `Me`, Missions, console, Mission Map, and Info/Quality modals.
   - Use `/api/work` Project, Mission, and Event APIs verified on the target machine.
   - Selected Project navigation should use a two-zone rail: Directory above and Mission Composer below.
-  - Mission detail renders a single vertical console stream so Activity, Windows, Product, Progress, and Diagnostics never overlap.
+  - Mission detail renders a single vertical console stream so Activity, Product, Windows, Progress, and Diagnostics never overlap.
+  - Mission Map is the right-side table of contents on desktop and moves above the main content on mobile.
   - `ActivityStrip` renders the latest safe runtime lifecycle event so long model turns do not look frozen.
   - `WorkWindowPanel` renders delegated Agent work above Progress because it answers who is working before showing the audit trail.
   - `ProductPanel` renders Product and Artifact lineage from persisted state and never treats only the latest Artifact as the whole deliverable.
@@ -28,7 +29,7 @@ Last Modified by: Codex
 ## folder structure
 |-README.md work feature guide
 |-WorkPage.jsx Work Mode Workspace and Project detail page
-|-components/ fixed Work UI components for Activity, Windows, Product, Progress, Diagnostics, and Inspector
+|-components/ fixed Work UI components for Activity, Mission Map, Windows, Product, Progress, Diagnostics, and Info/Quality modals
 
 ## 代办
 - Add richer streaming state labels after the backend exposes safe partial-progress events beyond persisted Mission events.

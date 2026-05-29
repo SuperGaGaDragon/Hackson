@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 
@@ -42,8 +42,8 @@ async function main() {
   if (!(await checkButton.isEnabled())) {
     throw new Error("check_button_disabled");
   }
-  await page.locator(".quality-panel").waitFor();
-  const panelText = await page.locator(".quality-panel").innerText();
+  await page.locator(".mission-map-panel").waitFor();
+  const panelText = await page.locator(".quality-trigger").innerText();
   if (!panelText.includes(`${state.score} / 100`)) {
     throw new Error(`score_missing:${panelText}`);
   }
@@ -54,12 +54,9 @@ async function main() {
   if (mainReliabilityCards !== 0) {
     throw new Error(`reliability_should_not_be_main_content:${mainReliabilityCards}`);
   }
-  const qualityDetailsOpen = await page.locator(".quality-details").evaluate((node) => node.open);
-  if (qualityDetailsOpen) {
-    throw new Error("quality_details_should_be_collapsed");
-  }
-  await page.locator(".quality-details summary").click();
-  const detailText = await page.locator(".reliability-panel.embedded").innerText();
+  await page.locator(".quality-trigger").click();
+  await page.getByRole("dialog", { name: /Quality/ }).waitFor();
+  const detailText = await page.locator(".work-detail-modal").innerText();
   if (!/Reliability|Issues|Claims/.test(detailText)) {
     throw new Error(`details_incomplete:${detailText}`);
   }

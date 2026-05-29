@@ -1673,14 +1673,14 @@ input:disabled {
 
 .work-console-grid {
   display: grid;
-  grid-template-columns: 280px minmax(420px, 1fr) 300px;
+  grid-template-columns: 280px minmax(420px, 1fr) 260px;
   gap: 16px;
   min-height: max(720px, calc(100vh - 79px));
   padding: 16px;
 }
 
 .work-rail,
-.inspector-rail,
+.mission-map-panel,
 .mission-console {
   min-height: 0;
   max-height: max(560px, calc(100vh - 111px));
@@ -1698,7 +1698,7 @@ input:disabled {
 
 .work-side {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 16px;
   min-height: 0;
 }
@@ -1746,7 +1746,7 @@ input:disabled {
 
 .rail-lead {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
   gap: 9px;
   align-items: center;
   min-width: 0;
@@ -1797,7 +1797,13 @@ input:disabled {
 }
 
 .rail-lead em {
-  grid-column: 1 / -1;
+  grid-column: 1 / 3;
+}
+
+.rail-info-button {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: center;
 }
 
 .mission-list {
@@ -2783,6 +2789,125 @@ input:disabled {
   overflow: auto;
 }
 
+.mission-map-panel {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(16, 20, 24, 0.9);
+}
+
+.mission-map-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mission-map-row,
+.quality-trigger {
+  display: grid;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid #29333a;
+  border-radius: 8px;
+  background: #0c1115;
+  color: var(--text);
+  text-align: left;
+}
+
+.mission-map-row {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 54px;
+  padding: 9px;
+}
+
+.mission-map-row svg,
+.quality-trigger svg {
+  color: var(--teal);
+}
+
+.mission-map-row span,
+.quality-trigger strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-map-row small {
+  grid-column: 2;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-map-row:hover,
+.mission-map-row:focus-visible,
+.quality-trigger:hover,
+.quality-trigger:focus-visible {
+  border-color: rgba(57, 208, 196, 0.58);
+  outline: none;
+}
+
+.quality-trigger {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 9px;
+  min-height: 68px;
+  padding: 10px;
+}
+
+.quality-trigger:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.quality-trigger.has-report {
+  border-color: rgba(232, 168, 75, 0.48);
+}
+
+.quality-trigger span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.quality-trigger small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quality-trigger em {
+  color: var(--text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.inspector-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.work-detail-modal {
+  max-height: min(86vh, 860px);
+  overflow: auto;
+}
+
+.work-detail-modal .reliability-panel.work-card {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
 .quality-panel {
   display: grid;
   gap: 10px;
@@ -3257,13 +3382,18 @@ input:disabled {
   }
 
   .work-side {
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
+    order: 2;
   }
 
   .work-rail,
-  .inspector-rail,
+  .mission-map-panel,
   .mission-console {
     max-height: none;
+  }
+
+  .mission-console {
+    order: 3;
   }
 
   .download-hero {

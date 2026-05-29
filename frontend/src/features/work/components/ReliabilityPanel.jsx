@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { ChevronRight, ShieldCheck } from "lucide-react";
@@ -12,6 +12,20 @@ function ReliabilityPanel({ artifacts = [], compact = false, events = [] }) {
   if (!report) return null;
   if (compact) return <CompactReliabilityPanel history={history} report={report} />;
   return <ReliabilityReportBody history={history} report={report} shellClass="work-card reliability-panel" />;
+}
+
+export function reliabilitySummary(artifacts = [], events = []) {
+  const { report } = reliabilityReports(artifacts, events);
+  if (!report) return null;
+  const issues = report.issues || [];
+  const evidence = report.evidence || [];
+  const issueCount = issues.length || Object.values(report.issueCounts || {}).reduce((sum, count) => sum + Number(count || 0), 0);
+  return {
+    evidenceCount: evidence.length,
+    issueCount,
+    score: report.score,
+    status: statusLabel(report.status),
+  };
 }
 
 function CompactReliabilityPanel({ history, report }) {

@@ -31,7 +31,8 @@ The main Mission Console MUST render in this order:
 4. Mission Progress.
 5. Diagnostics.
 
-The side rail MAY render Inspector, Quality, warnings, and budget details.
+The side rail SHOULD render Mission section navigation. Inspector metadata belongs behind an explicit Info action, and
+Quality details belong behind an explicit Quality action/modal.
 
 Reliability reports MUST NOT render as a default expanded card in the main Mission Console. They belong in the side
 Quality surface, with full details collapsed until the user expands them.
@@ -173,7 +174,7 @@ Progress filters:
 
 The Quality surface renders the latest Reliability report.
 
-It MUST live in the side rail or equivalent secondary area.
+It MUST live behind a compact trigger in the side rail or equivalent secondary area.
 
 It MUST render compactly by default:
 
@@ -185,8 +186,24 @@ It MUST render compactly by default:
 
 It MUST NOT push the Deliverable or Product Panel down the main Mission column.
 
-Full Reliability details MAY render inside an expandable disclosure. Expanded details can include issues, evidence,
+Full Reliability details SHOULD render in a focused modal or drawer. Expanded details can include issues, evidence,
 claims, limitations, suggested fixes, and report history.
+
+## 6.2 Mission Map
+
+The Mission Map is the selected Mission table of contents.
+
+It MUST render:
+
+- Activity.
+- Product.
+- Windows.
+- Progress.
+- Diagnostics.
+- Compact Quality trigger when a report exists.
+
+Clicking a Mission Map row SHOULD scroll the main Mission column to the corresponding section. Mission Map replaces the
+old permanent Inspector rail in the right side.
 
 ## 7. Diagnostics
 
