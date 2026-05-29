@@ -4,12 +4,50 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ShieldCheck } from "lucide-react";
 import { formatEventTime } from "./eventDisplay";
 
-function ReliabilityPanel({ artifacts = [], events = [] }) {
+function ReliabilityPanel({ artifacts = [], compact = false, events = [] }) {
   const { report, history } = reliabilityReports(artifacts, events);
   if (!report) return null;
+  if (compact) return <CompactReliabilityPanel history={history} report={report} />;
+  return <ReliabilityReportBody history={history} report={report} shellClass="work-card reliability-panel" />;
+}
+
+function CompactReliabilityPanel({ history, report }) {
+  const issues = report.issues || [];
+  const evidence = report.evidence || [];
+  const issueCount = issues.length || Object.values(report.issueCounts || {}).reduce((sum, count) => sum + Number(count || 0), 0);
+  return (
+    <section className={`quality-panel status-${report.status}`} aria-label="Quality">
+      <div className="quality-head">
+        <div>
+          <p className="eyebrow">Quality</p>
+          <h2>
+            Risk <span>{report.score} / 100</span>
+          </h2>
+        </div>
+        <ShieldCheck size={20} />
+      </div>
+      <div className="quality-grid">
+        <span>{statusLabel(report.status)}</span>
+        <span>{confidenceShortLabel(report.confidence)}</span>
+        <span>{issueCount} issues</span>
+        <span>{evidence.length} evidence</span>
+      </div>
+      <p>{report.summary || report.scoreMeaning || "Trace-backed risk score, not proof."}</p>
+      <details className="quality-details">
+        <summary>
+          <ChevronRight size={14} />
+          <span>Review details</span>
+        </summary>
+        <ReliabilityReportBody history={history} report={report} shellClass="reliability-panel embedded" />
+      </details>
+    </section>
+  );
+}
+
+function ReliabilityReportBody({ history = [], report, shellClass }) {
   const issues = report.issues || [];
   const topIssues = issues.slice(0, 4);
   const requirements = (report.requirements || []).slice(0, 5);
@@ -20,7 +58,7 @@ function ReliabilityPanel({ artifacts = [], events = [] }) {
   const limitations = (report.limitations || []).slice(0, 3);
 
   return (
-    <div className={`work-card reliability-panel status-${report.status}`}>
+    <div className={`${shellClass} status-${report.status}`}>
       <div className="card-head reliability-head">
         <div>
           <p className="eyebrow">Reliability</p>
@@ -177,6 +215,16 @@ function ReliabilityPanel({ artifacts = [], events = [] }) {
         </details>
       )}
     </div>
+  );
+}
+
+function confidenceShortLabel(confidence) {
+  return (
+    {
+      high: "High conf.",
+      low: "Low conf.",
+      medium: "Med. conf.",
+    }[confidence] || "No conf."
   );
 }
 

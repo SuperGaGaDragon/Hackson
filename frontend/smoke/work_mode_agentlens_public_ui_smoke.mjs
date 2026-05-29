@@ -42,16 +42,29 @@ async function main() {
   if (!(await checkButton.isEnabled())) {
     throw new Error("check_button_disabled");
   }
-  await page.locator(".reliability-panel").waitFor();
-  const panelText = await page.locator(".reliability-panel").innerText();
+  await page.locator(".quality-panel").waitFor();
+  const panelText = await page.locator(".quality-panel").innerText();
   if (!panelText.includes(`${state.score} / 100`)) {
     throw new Error(`score_missing:${panelText}`);
   }
-  if (!/Reliability|Issues|Claims/.test(panelText)) {
+  if (!/Quality|Risk|Needs review|Unsafe|Minor review|Ship-ready/.test(panelText)) {
     throw new Error(`panel_incomplete:${panelText}`);
   }
-  if (!panelText.includes("Unsupported claim")) {
-    throw new Error(`unsupported_issue_missing:${panelText}`);
+  const mainReliabilityCards = await page.locator(".mission-content > .reliability-panel").count();
+  if (mainReliabilityCards !== 0) {
+    throw new Error(`reliability_should_not_be_main_content:${mainReliabilityCards}`);
+  }
+  const qualityDetailsOpen = await page.locator(".quality-details").evaluate((node) => node.open);
+  if (qualityDetailsOpen) {
+    throw new Error("quality_details_should_be_collapsed");
+  }
+  await page.locator(".quality-details summary").click();
+  const detailText = await page.locator(".reliability-panel.embedded").innerText();
+  if (!/Reliability|Issues|Claims/.test(detailText)) {
+    throw new Error(`details_incomplete:${detailText}`);
+  }
+  if (!detailText.includes("Unsupported claim")) {
+    throw new Error(`unsupported_issue_missing:${detailText}`);
   }
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,

@@ -12,7 +12,8 @@ Last Modified by: Codex
   - Project detail renders the two user-owned Agents passed from `App.jsx`; it does not create Work-only Employees.
   - Selected Project rail is a two-zone command surface: Directory above, Composer below.
   - Mission console cards are vertical siblings; cards must not overlap or nest inside each other.
-  - Main order is Activity, optional Reliability, Windows, Product, Progress, then Diagnostics.
+  - Main order is Activity, Product, Windows, Progress, then Diagnostics.
+  - Reliability renders as side Quality status by default; full review details stay collapsed until opened.
   - `MissionHeader` mirrors selected Mission identity/status and lifecycle controls; it must not own textarea forms after the command-rail refactor.
   - `ProjectMissionRail` owns selected Project navigation and will compose the Mission input Composer.
   - `ProductPanel` uses persisted Products and Artifacts as the source of truth and exposes Artifact lineage as readable content, including after Done.
@@ -32,7 +33,7 @@ Last Modified by: Codex
 |-MissionComposer.jsx selected Mission command input for waiting answers, follow-up, resume, draft start, and running instructions
 |-MissionHeader.jsx selected mission title, status, and controls
 |-ActivityStrip.jsx latest compact Mission activity row
-|-ReliabilityPanel.jsx latest event-backed Evaluator Runtime risk score, confidence, issue counts, collapsed report history, requirement evidence, claim support, tool failures, and evidence summary
+|-ReliabilityPanel.jsx side Quality status plus expandable event-backed Evaluator Runtime risk report
 |-ProgressTimeline.jsx compact mission progress audit trail with single-select category filters
 |-WorkWindowPanel.jsx delegate work window list
 |-SummaryCard.jsx summary event card

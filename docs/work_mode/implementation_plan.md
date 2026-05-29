@@ -30,6 +30,22 @@ Release constraints:
 - Do not claim Reliability score is objective.
 - Do not restart public service while a real Mission is running unless the user approves.
 
+## 1.2 2026-05-28 Addendum: Reliability Placement
+
+Execution order:
+
+1. Move Reliability out of the main Mission content column.
+2. Render latest Reliability as a compact side Quality status.
+3. Keep full Reliability details behind an explicit disclosure.
+4. Keep Progress Reliability filter unchanged.
+5. Verify desktop/mobile screenshots so Quality does not dominate the first viewport.
+
+Release constraints:
+
+- Do not remove Reliability data or evaluator behavior.
+- Do not make Product harder to find.
+- Do not claim the score is objective.
+
 ## 2. Preflight
 
 Before implementation:

@@ -97,6 +97,11 @@ async function main() {
   const inputText = await page.locator('.timeline-card').innerText();
   if (!inputText.includes('Instruction')) throw new Error(`input_filter_missing_instruction:${inputText}`);
   await page.locator('.progress-filters').getByRole('button', { name: /All/ }).click();
+  await page.locator('.quality-panel').waitFor();
+  const mainReliabilityCards = await page.locator('.mission-content > .reliability-panel').count();
+  if (mainReliabilityCards !== 0) throw new Error(`reliability_should_not_be_main_content:${mainReliabilityCards}`);
+  const qualityOpen = await page.locator('.quality-details').evaluate((node) => node.open);
+  if (qualityOpen) throw new Error('quality_details_should_start_collapsed');
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   if (horizontalOverflow) throw new Error('desktop_horizontal_overflow');
   await page.screenshot({ path: screenshot, fullPage: true });

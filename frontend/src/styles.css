@@ -1336,7 +1336,7 @@ input:disabled {
 
 .work-side {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 16px;
   min-height: 0;
 }
@@ -2421,9 +2421,116 @@ input:disabled {
   overflow: auto;
 }
 
+.quality-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  padding: 12px;
+  background: #10161a;
+}
+
+.quality-panel.status-ship_ready {
+  border-color: rgba(155, 229, 143, 0.42);
+}
+
+.quality-panel.status-minor_review,
+.quality-panel.status-needs_human_review {
+  border-color: rgba(232, 168, 75, 0.48);
+}
+
+.quality-panel.status-unsafe_to_ship {
+  border-color: rgba(255, 158, 158, 0.5);
+}
+
+.quality-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.quality-head h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.quality-head h2 span {
+  color: var(--muted);
+}
+
+.quality-head svg {
+  color: var(--teal);
+}
+
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.quality-grid span {
+  min-width: 0;
+  border: 1px solid #303941;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quality-panel > p {
+  color: #dbe3ea;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.quality-details {
+  overflow: hidden;
+  border: 1px solid #263039;
+  border-radius: 8px;
+  background: #0c1115;
+}
+
+.quality-details summary {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.quality-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.quality-details[open] summary svg {
+  transform: rotate(90deg);
+}
+
+.quality-details summary span {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .reliability-panel {
   display: grid;
   gap: 10px;
+}
+
+.reliability-panel.embedded {
+  border-top: 1px solid #263039;
+  padding: 10px;
+  background: #0a0f12;
 }
 
 .reliability-panel.status-ship_ready {
@@ -2788,7 +2895,7 @@ input:disabled {
   }
 
   .work-side {
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
   }
 
   .work-rail,

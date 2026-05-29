@@ -26,12 +26,15 @@ V1.0 UI MUST contain:
 The main Mission Console MUST render in this order:
 
 1. Current Activity.
-2. Work Windows.
-3. Product Panel.
+2. Product Panel.
+3. Work Windows.
 4. Mission Progress.
 5. Diagnostics.
 
-The side rail MAY render Inspector, warnings, and budget details.
+The side rail MAY render Inspector, Quality, warnings, and budget details.
+
+Reliability reports MUST NOT render as a default expanded card in the main Mission Console. They belong in the side
+Quality surface, with full details collapsed until the user expands them.
 
 ## 3. Current Activity
 
@@ -163,6 +166,25 @@ Progress filters:
 - Filter controls SHOULD show event counts.
 - Empty filtered views MUST say `No matching events`.
 - Diagnostics MUST remain unfiltered.
+
+## 6.1 Quality Surface
+
+The Quality surface renders the latest Reliability report.
+
+It MUST live in the side rail or equivalent secondary area.
+
+It MUST render compactly by default:
+
+- Score.
+- Status.
+- Confidence.
+- Issue count.
+- Evidence count.
+
+It MUST NOT push the Deliverable or Product Panel down the main Mission column.
+
+Full Reliability details MAY render inside an expandable disclosure. Expanded details can include issues, evidence,
+claims, limitations, suggested fixes, and report history.
 
 ## 7. Diagnostics
 

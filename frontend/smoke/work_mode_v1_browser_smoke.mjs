@@ -36,8 +36,8 @@ async function main() {
 
   await page.locator(".mission-head .chip", { hasText: "completed" }).waitFor({ timeout: completionTimeoutMs });
   await page.getByRole("button", { name: /Check/ }).click();
-  await page.locator(".reliability-panel").waitFor();
-  await assertVisible(page, "Reliability");
+  await page.locator(".quality-panel").waitFor();
+  await assertVisible(page, "Quality");
   await assertReliabilityPanel(page);
   await assertVisible(page, "Progress");
   await page.locator(".activity-strip").waitFor();
@@ -68,9 +68,16 @@ async function main() {
       return "unknown";
     }),
   );
-  const expectedOrder = ["activity", "reliability", "windows", "product", "progress", "diagnostics"];
+  if (missionOrder.includes("reliability")) {
+    throw new Error(`reliability_should_not_be_main_content:${missionOrder.join(",")}`);
+  }
+  const expectedOrder = ["activity", "product", "windows", "progress", "diagnostics"];
   if (expectedOrder.some((item, index) => missionOrder[index] !== item)) {
     throw new Error(`mission_order_invalid:${missionOrder.join(",")}`);
+  }
+  const qualityDetailsOpen = await page.locator(".quality-details").evaluate((node) => node.open);
+  if (qualityDetailsOpen) {
+    throw new Error("quality_details_should_be_collapsed_by_default");
   }
   const diagnosticOpen = await page.locator(".raw-log-panel").evaluate((node) => node.open);
   if (diagnosticOpen) {
@@ -185,12 +192,17 @@ async function assertVisible(page, text) {
 }
 
 async function assertReliabilityPanel(page) {
-  const panelText = await page.locator(".reliability-panel").innerText();
+  const panelText = await page.locator(".quality-panel").innerText();
   if (!/\d+\s*\/\s*100/.test(panelText)) {
     throw new Error(`reliability_score_missing:${panelText}`);
   }
   if (!/(Ship-ready|Minor review|Needs review|Unsafe)/.test(panelText)) {
     throw new Error(`reliability_status_missing:${panelText}`);
+  }
+  await page.locator(".quality-details summary").click();
+  const detailText = await page.locator(".reliability-panel.embedded").innerText();
+  if (!/Reliability|Risk score/.test(detailText)) {
+    throw new Error(`reliability_detail_missing:${detailText}`);
   }
 }
 
