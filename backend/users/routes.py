@@ -19,6 +19,7 @@ from users.schemas import (
     PromptLogDeleteResponse,
     PromptLogListResponse,
     UserLoginRequest,
+    UserQuickTryRequest,
     UserRegisterRequest,
     UserResponse,
     UserUpdateRequest,
@@ -46,6 +47,14 @@ def login(
     service: UserService = Depends(get_user_service),
 ) -> dict:
     return service.login(payload)
+
+
+@router.post("/quick-try", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+def quick_try(
+    payload: UserQuickTryRequest | None = None,
+    service: UserService = Depends(get_user_service),
+) -> dict:
+    return service.quick_try(payload or UserQuickTryRequest())
 
 
 @router.get("/me", response_model=UserResponse)

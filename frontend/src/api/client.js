@@ -5,6 +5,7 @@ Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 const TOKEN_KEY = "hackson_access_token";
+const SESSION_TOKEN_KEY = "hackson_quick_access_token";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -17,15 +18,22 @@ export class ApiError extends Error {
 }
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(SESSION_TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 }
 
 export function setToken(token) {
   localStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.removeItem(SESSION_TOKEN_KEY);
+}
+
+export function setSessionToken(token) {
+  sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(SESSION_TOKEN_KEY);
 }
 
 export async function apiRequest(path, options = {}) {

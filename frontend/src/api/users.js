@@ -4,7 +4,7 @@ Created by: Codex
 Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
-import { apiRequest, clearToken, setToken } from "./client";
+import { apiRequest, clearToken, setSessionToken, setToken } from "./client";
 
 export async function registerUser(payload) {
   const data = await apiRequest("/api/users/register", {
@@ -21,6 +21,15 @@ export async function loginUser(payload) {
     body: JSON.stringify(payload),
   });
   setToken(data.accessToken);
+  return data;
+}
+
+export async function quickTryUser() {
+  const data = await apiRequest("/api/users/quick-try", {
+    method: "POST",
+    body: JSON.stringify({ source: "hackathon" }),
+  });
+  setSessionToken(data.accessToken);
   return data;
 }
 

@@ -27,6 +27,10 @@ class UserLoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class UserQuickTryRequest(BaseModel):
+    source: str = Field(default="hackathon", min_length=1, max_length=32)
+
+
 class UserAgentProfile(BaseModel):
     slot: str
     name: str

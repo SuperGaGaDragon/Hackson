@@ -11,6 +11,7 @@ import { getToken } from "./api/client";
 import { bindDesktopHandoff, getCurrentUser } from "./api/users";
 import { FALLBACK_AGENTS, normalizeAgents } from "./domain/agents";
 import AuthPage from "./features/auth/AuthPage";
+import HackathonLanding from "./features/auth/HackathonLanding";
 import ChatPage from "./features/chat/ChatPage";
 import CompanionDownloadPage from "./features/download/CompanionDownloadPage";
 import IdlePage from "./features/idle/IdlePage";
@@ -34,6 +35,7 @@ function App() {
   const [agents, setAgents] = useState(FALLBACK_AGENTS);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState("");
+  const [authMode, setAuthMode] = useState("landing");
   const desktopAuthCode = getDesktopAuthCode();
 
   useEffect(() => {
@@ -92,7 +94,15 @@ function App() {
   }
 
   if (!user) {
-    return <AuthPage onAuthed={(nextUser) => handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode)} />;
+    const handleAuth = (nextUser) => handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode);
+    const handleQuickAuth = async (nextUser) => {
+      await handleAuth(nextUser);
+      navigateTo("work", setView, setRouteParams);
+    };
+    if (authMode === "landing") {
+      return <HackathonLanding onAuthed={handleQuickAuth} onOpenAuth={(mode) => setAuthMode(mode)} />;
+    }
+    return <AuthPage initialMode={authMode} onAuthed={handleAuth} onBack={() => setAuthMode("landing")} />;
   }
 
   const visibleAgents = normalizeAgents(user.agentProfiles || agents);

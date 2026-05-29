@@ -1,15 +1,15 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Last Modified by: Codex
 */
 import { useState } from "react";
 import { loginUser, registerUser } from "../../api/users";
 import StatusLine from "../../shared/components/StatusLine";
 
-function AuthPage({ onAuthed }) {
-  const [mode, setMode] = useState("login");
+function AuthPage({ initialMode = "login", onAuthed, onBack }) {
+  const [mode, setMode] = useState(initialMode);
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -49,7 +49,12 @@ function AuthPage({ onAuthed }) {
     <main className="auth-shell">
       <section className="auth-panel">
         <p className="eyebrow">Hackson</p>
-        <h1>Enter</h1>
+        <h1>{mode === "register" ? "Create Account" : "Login"}</h1>
+        {onBack && (
+          <button className="auth-back" onClick={onBack} type="button">
+            Back to intro
+          </button>
+        )}
         <div className="segmented">
           <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")} type="button">
             Login

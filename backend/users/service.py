@@ -6,6 +6,7 @@ Last Modified by: Codex
 """
 
 from datetime import timedelta
+from secrets import token_urlsafe
 from typing import Any, Protocol
 
 from fastapi import HTTPException, status
@@ -18,6 +19,7 @@ from users.schemas import (
     DesktopHandoffBindRequest,
     DesktopHandoffClaimRequest,
     UserLoginRequest,
+    UserQuickTryRequest,
     UserRegisterRequest,
     UserUpdateRequest,
 )
@@ -80,6 +82,40 @@ class UserService:
             )
         return self._auth_response(user)
 
+    def quick_try(self, payload: UserQuickTryRequest) -> dict[str, Any]:
+        timestamp = now_utc()
+        suffix = token_urlsafe(9).replace("-", "_")
+        username = f"quick_{suffix}"[:32]
+        document = {
+            "username": username,
+            "username_normalized": username.lower(),
+            "display_name": "Quick Try",
+            "email": f"{username}@quick.hackson.catachess.com",
+            "email_normalized": f"{username}@quick.hackson.catachess.com",
+            "password_hash": hash_password(token_urlsafe(24)),
+            "idle_on": True,
+            "background_idle_on": False,
+            "full_prompt_logging_on": False,
+            "language_preference": "zh",
+            "personality": "I am trying Hackson from the TMLS Agentic Hackathon landing page.",
+            "story": "Temporary hackathon session. Work may not be recoverable after this browser session.",
+            "agent_profiles": default_user_agent_profiles(),
+            "is_temporary": True,
+            "temporary_source": payload.source,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        try:
+            user = self.repository.create(document)
+        except DuplicateKeyError:
+            username = f"quick_{token_urlsafe(12).replace('-', '_')}"[:32]
+            document["username"] = username
+            document["username_normalized"] = username.lower()
+            document["email"] = f"{username}@quick.hackson.catachess.com"
+            document["email_normalized"] = f"{username}@quick.hackson.catachess.com"
+            user = self.repository.create(document)
+        return self._auth_response(user, token_claims={"quick": True})
+
     def get_user(self, user_id: str) -> dict[str, Any]:
         user = self.repository.find_by_id(user_id)
         if user is None:
@@ -130,10 +166,10 @@ class UserService:
         response = self._auth_response(user)
         return {"status": "authorized", **response}
 
-    def _auth_response(self, user: dict[str, Any]) -> dict[str, Any]:
+    def _auth_response(self, user: dict[str, Any], token_claims: dict[str, Any] | None = None) -> dict[str, Any]:
         public = public_user(user)
         return {
-            "accessToken": create_access_token(public["id"]),
+            "accessToken": create_access_token(public["id"], token_claims),
             "tokenType": "bearer",
             "user": public,
         }

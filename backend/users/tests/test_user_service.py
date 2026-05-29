@@ -9,6 +9,7 @@ from typing import Any
 from unittest import TestCase
 
 from users.schemas import DesktopHandoffBindRequest, DesktopHandoffClaimRequest
+from users.schemas import UserQuickTryRequest
 from users.schemas import UserRegisterRequest, UserUpdateRequest
 from users.service import UserService
 from agents.catalog import NORA_DEFAULT_STORY, VALE_DEFAULT_STORY
@@ -88,6 +89,23 @@ class UserServiceTest(TestCase):
         self.assertEqual(user["agentProfiles"][1]["story"], VALE_DEFAULT_STORY)
         self.assertNotIn("password_hash", user)
         self.assertNotIn("endpoint", user)
+
+    def test_quick_try_creates_temporary_real_user(self) -> None:
+        repository = FakeUserRepository()
+        service = UserService(repository)
+
+        response = service.quick_try(UserQuickTryRequest(source="hackathon"))
+
+        user = response["user"]
+        stored = repository.documents[user["id"]]
+        self.assertTrue(response["accessToken"])
+        self.assertTrue(user["username"].startswith("quick_"))
+        self.assertEqual(user["displayName"], "Quick Try")
+        self.assertFalse(user["fullPromptLoggingOn"])
+        self.assertEqual(user["agentProfiles"][0]["name"], "Nora")
+        self.assertTrue(stored["is_temporary"])
+        self.assertEqual(stored["temporary_source"], "hackathon")
+        self.assertTrue(stored["password_hash"])
 
     def test_update_user_changes_demo_settings(self) -> None:
         service = UserService(FakeUserRepository())

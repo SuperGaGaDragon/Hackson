@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-05-28
 Lst Modified by: Codex
 
 ## brief intro
@@ -9,11 +9,14 @@ Lst Modified by: Codex
   - Own login and register UI backed by verified user APIs.
 - 架构思路
   - Store token through the shared API client.
+  - Unauthenticated root traffic first sees the Hackathon landing; the form is opened from Create Account or Login.
+  - Quick Try uses a backend-created temporary user and session storage, not a frontend-only fake account.
   - Keep copy short and expose only fields supported by the backend.
 
 ## folder structure
 |-README.md auth feature guide
 |-AuthPage.jsx login and register page
+|-HackathonLanding.jsx QR-code landing page with Quick Try and product intro
 
 ## 代办
 - Add password reset only if backend supports it.

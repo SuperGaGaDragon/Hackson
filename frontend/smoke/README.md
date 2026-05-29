@@ -17,6 +17,7 @@ Lst Modified by: Codex
 |-work_mode_agentlens_public_ui_smoke.mjs Playwright smoke for public AgentLens Reliability panel
 |-work_mode_product_reader_public_ui_smoke.mjs Playwright smoke for production-bundle Product reader layout using API mocks
 |-work_command_rail_public_smoke.mjs Playwright smoke for public Work command rail, Mission Composer, and Progress filters
+|-hackathon_landing_public_smoke.mjs Playwright smoke for QR-code landing, Create Account path, Quick Try session, and responsive overflow
 |-context_runtime_me_smoke.mjs Playwright smoke for Me IA, Agent editor priority, collapsed Debug, prompt-log access, and memory controls
 |-idle_interruption_smoke.mjs Playwright smoke for typing during Idle Working state; `HACKSON_SMOKE_TIMEOUT_MS` covers slower public model turns
 

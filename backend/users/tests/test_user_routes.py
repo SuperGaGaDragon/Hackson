@@ -46,6 +46,7 @@ class FakeUserService:
     def __init__(self) -> None:
         self.bound: tuple[str, str] | None = None
         self.claimed: str | None = None
+        self.quick_source: str | None = None
 
     def bind_desktop_handoff(self, user_id, payload):
         self.bound = (user_id, payload.code)
@@ -75,6 +76,28 @@ class FakeUserService:
                 },
             }
         return {"status": "pending"}
+
+    def quick_try(self, payload):
+        self.quick_source = payload.source
+        return {
+            "accessToken": "quick_token",
+            "tokenType": "bearer",
+            "user": {
+                "id": "quick_1",
+                "username": "quick_demo",
+                "displayName": "Quick Try",
+                "email": "quick_demo@quick.hackson.catachess.com",
+                "idleOn": True,
+                "backgroundIdleOn": False,
+                "fullPromptLoggingOn": False,
+                "languagePreference": "zh",
+                "personality": "",
+                "story": "",
+                "agentProfiles": [],
+                "createdAt": "2026-05-28T00:00:00Z",
+                "updatedAt": "2026-05-28T00:00:00Z",
+            },
+        }
 
 
 class UserRoutesTest(TestCase):
@@ -123,3 +146,11 @@ class UserRoutesTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "pending", "accessToken": None, "tokenType": None, "user": None})
+
+    def test_quick_try_does_not_require_current_user(self) -> None:
+        response = self.client.post("/api/users/quick-try", json={"source": "hackathon"})
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["accessToken"], "quick_token")
+        self.assertEqual(response.json()["user"]["displayName"], "Quick Try")
+        self.assertEqual(self.user_service.quick_source, "hackathon")
