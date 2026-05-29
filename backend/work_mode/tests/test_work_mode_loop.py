@@ -829,9 +829,10 @@ class SearchThenProductActionClient:
     def generate_action(self, context: dict):
         self.calls += 1
         products = context.get("productManifest") or []
-        if products:
-            self.product_id = products[0]["id"]
-            self.artifact_id = products[0]["latestArtifactId"]
+        deliverable_products = [product for product in products if product.get("productRole") != "research_notes"]
+        if deliverable_products:
+            self.product_id = deliverable_products[0]["id"]
+            self.artifact_id = deliverable_products[0]["latestArtifactId"]
         if self.artifact_id:
             return parse_tool_action(
                 f"""

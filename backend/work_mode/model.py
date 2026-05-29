@@ -1,14 +1,14 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
 from typing import Any
 
 DELIVERABLE_ARTIFACT_KINDS = {"text", "chapter", "draft", "revision", "final", "mission_result"}
-NON_DELIVERABLE_ARTIFACT_ROLES = {"review", "reliability_report", "discussion"}
+NON_DELIVERABLE_ARTIFACT_ROLES = {"review", "reliability_report", "discussion", "search_summary"}
 
 
 def public_project(document: dict[str, Any]) -> dict[str, Any]:

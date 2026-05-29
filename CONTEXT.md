@@ -88,6 +88,10 @@ _Avoid_: task understanding, intent score
 The bounded set of source snippets, URLs, tool observations, and research Artifacts that Evaluator Runtime is allowed to use when checking factual claims.
 _Avoid_: web memory, source dump, hidden browsing history
 
+**Search Summary Artifact**:
+A backend-created, non-deliverable Work Artifact that records one successful Web Search query, useful sources, snippet-based takeaways, and limitations. It belongs to research evidence and Product History, not to the authoritative final answer.
+_Avoid_: search log, source dump, final citation proof
+
 **Reliability Issue**:
 A concrete failure or risk detected by Evaluator Runtime, tied to a requirement, claim, source, tool event, Product, or Artifact. It must include severity and a suggested fix.
 _Avoid_: feedback, comment, vague concern
@@ -161,6 +165,10 @@ Domain expert: "No. Evaluator Runtime flags reliability risks from the Mission t
 Developer: "Can Evaluator Runtime inspect hidden model reasoning?"
 
 Domain expert: "No. It uses visible Mission events, Products, Artifacts, tool observations, and persisted context metadata. Raw chain-of-thought stays out."
+
+Developer: "Should a Web Search disappear into Progress after it runs?"
+
+Domain expert: "No. Each successful Web Search should create a Search Summary Artifact so the user, Lead Agent, and Evaluator Runtime can inspect durable research evidence without treating it as the final answer."
 
 Developer: "Should Product Artifacts render as a wrapping card grid?"
 

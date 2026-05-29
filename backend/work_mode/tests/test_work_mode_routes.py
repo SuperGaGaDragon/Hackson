@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
@@ -23,6 +23,7 @@ from work_mode.routes import (
 from work_mode.evaluator import EvaluatorRuntime
 from work_mode.service import WorkModeService
 from work_mode.tests.test_work_mode_service import FakeWorkModeRepository
+from work_mode.tool_executor import WorkModeToolExecutor
 from work_mode.tool_protocol import parse_tool_action
 
 TEST_USER_ID = "work_route_user"
@@ -178,6 +179,83 @@ class AskThenFinishRouteActionClient:
         )
 
 
+class SearchThenProductRouteActionClient:
+    def generate_action(self, context: dict):
+        products = context.get("productManifest") or []
+        deliverable_products = [product for product in products if product.get("productRole") != "research_notes"]
+        if deliverable_products:
+            product = deliverable_products[0]
+            return parse_tool_action(
+                f"""
+                {{
+                  "tool": "finish_mission",
+                  "arguments": {{
+                    "reason": "Search-backed deliverable exists.",
+                    "summary": "Route mission complete.",
+                    "finalProductIds": ["{product["id"]}"],
+                    "finalArtifactIds": ["{product["latestArtifactId"]}"]
+                  }}
+                }}
+                """
+            )
+        observation = context.get("lastObservation") or {}
+        if observation.get("tool") == "web_search" and observation.get("status") == "ok":
+            summary_artifact_id = observation["summaryArtifactId"]
+            source_url = observation["results"][0]["url"]
+            return parse_tool_action(
+                f"""
+                {{
+                  "tool": "work_product",
+                  "arguments": {{
+                    "reason": "Turn the search result into a deliverable.",
+                    "operation": "create_product",
+                    "productId": null,
+                    "sourceArtifactIds": ["{summary_artifact_id}"],
+                    "productTitle": "Search-backed brief",
+                    "artifactTitle": "Search-backed brief",
+                    "artifactKind": "report",
+                    "content": "The user-facing brief cites {source_url} while keeping backend search notes separate.",
+                    "summary": "Search-backed brief."
+                  }}
+                }}
+                """
+            )
+        return parse_tool_action(
+            """
+            {
+              "tool": "web_search",
+              "arguments": {
+                "reason": "Need a source trail.",
+                "query": "source backed reference",
+                "searchType": "reference",
+                "maxResults": 1,
+                "recencyDays": 30,
+                "allowedDomains": [],
+                "blockedDomains": []
+              }
+            }
+            """
+        )
+
+
+class FakeSearchProvider:
+    def search(self, request: dict) -> dict:
+        return {
+            "status": "ok",
+            "provider": "fake_search",
+            "truncated": False,
+            "results": [
+                {
+                    "title": "Source A",
+                    "url": "https://example.com/a",
+                    "source": "example.com",
+                    "snippet": "First source snippet with decision-relevant evidence.",
+                    "publishedAt": "2026-05-01",
+                }
+            ],
+        }
+
+
 class WorkModeRoutesTest(TestCase):
     def setUp(self) -> None:
         self.service = WorkModeService(FakeWorkModeRepository())
@@ -285,6 +363,51 @@ class WorkModeRoutesTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[-1]["type"], "MODEL_TURN_INVALID")
+
+    def test_start_route_serializes_search_summary_events_and_notes_product(self) -> None:
+        action_client = SearchThenProductRouteActionClient()
+        self.client.app.dependency_overrides[get_work_mode_worker_launcher] = lambda: (
+            lambda user_id, mission_id, run_id: MissionLoopRunner(
+                self.service,
+                action_client,
+                executor=WorkModeToolExecutor(self.service, search_provider=FakeSearchProvider()),
+                max_turns=5,
+            ).run(user_id, mission_id, run_id)
+        )
+        project = self.client.post("/api/work/projects", json={"name": "Search Summary"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={
+                "projectId": project["id"],
+                "title": "Search-backed brief",
+                "goal": "Search and create a source-backed brief.",
+            },
+        ).json()
+
+        response = self.client.post(f"/api/work/missions/{mission['id']}/start", json={})
+
+        self.assertEqual(response.status_code, 200)
+        detail_response = self.client.get(f"/api/work/missions/{mission['id']}")
+        self.assertEqual(detail_response.status_code, 200)
+        detail = detail_response.json()
+        event_types = [event["type"] for event in detail["events"]]
+        self.assertIn("WEB_SEARCH_COMPLETED", event_types)
+        self.assertIn("SEARCH_SUMMARY_CREATED", event_types)
+        summary_artifact = next(
+            artifact for artifact in detail["artifacts"] if artifact["metadata"].get("artifactRole") == "search_summary"
+        )
+        research_product = next(
+            product for product in detail["products"] if product["metadata"].get("productRole") == "research_notes"
+        )
+        deliverable_products = [
+            product for product in detail["products"] if product["metadata"].get("productRole") != "research_notes"
+        ]
+
+        self.assertEqual(detail["mission"]["status"], "completed")
+        self.assertEqual(summary_artifact["kind"], "notes")
+        self.assertIsNone(research_product["deliverableArtifactId"])
+        self.assertEqual(len(deliverable_products), 1)
+        self.assertEqual(detail["events"][-1]["type"], "MISSION_COMPLETED")
 
     def test_event_stream_route_streams_persisted_events_in_order(self) -> None:
         project = self.client.post("/api/work/projects", json={"name": "Stream"}).json()

@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { CheckCircle2, CircleAlert, FileText, History } from "lucide-react";
@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { sortByCreatedAt } from "./eventDisplay";
 
 const DELIVERABLE_KINDS = new Set(["text", "chapter", "draft", "revision", "final", "mission_result"]);
-const NON_DELIVERABLE_ROLES = new Set(["outline", "review", "reliability_report", "discussion"]);
+const NON_DELIVERABLE_ROLES = new Set(["outline", "review", "reliability_report", "discussion", "search_summary"]);
 
 function ProductPanel({ artifacts = [], mission = null, products = [] }) {
   const viewModel = useMemo(() => buildProductView(products, artifacts), [products, artifacts]);
@@ -191,6 +191,7 @@ function ArtifactMeta({ artifact }) {
 function artifactLabel(artifact) {
   if (artifact.metadata?.artifactRole === "review") return "review";
   if (artifact.metadata?.artifactRole === "discussion") return "discussion";
+  if (artifact.metadata?.artifactRole === "search_summary") return "search summary";
   if (artifact.metadata?.artifactRole === "final") return "final";
   if (artifact.metadata?.revisionOf) return "revision";
   return artifact.kind;

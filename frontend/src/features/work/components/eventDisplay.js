@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import {
@@ -92,6 +92,8 @@ export function eventView(event) {
       return { ...common, icon: Search, tone: "product", title: event.title || "Inspect" };
     case "WEB_SEARCH_COMPLETED":
       return { ...common, icon: Search, tone: "product", title: event.title || "Search" };
+    case "SEARCH_SUMMARY_CREATED":
+      return { ...common, icon: FileText, tone: "product", title: event.title || "Search summary" };
     case "WEB_SEARCH_FAILED":
       return { ...common, icon: TriangleAlert, tone: "danger", title: event.title || "Search failed" };
     case "EVALUATION_STARTED":

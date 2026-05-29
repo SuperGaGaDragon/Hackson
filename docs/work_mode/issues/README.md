@@ -48,6 +48,7 @@ Last Modified by: Codex
 |-issue34-progress-filters.md Progress segmented filters for Thinking, Reliability, Products, Windows, Search, Inputs, and Issues
 |-issue35-authoritative-deliverable.md Product-level authoritative deliverable separate from editable Artifact history
 |-issue36-reliability-placement.md Reliability belongs in compact Inspector quality status, not as default main content
+|-issue37-search-summary-artifacts.md backend-owned Search Summary Artifacts for durable research evidence
 
 ## 代办
 - Add implementation issue notes only when the risk changes the Work Mode architecture.

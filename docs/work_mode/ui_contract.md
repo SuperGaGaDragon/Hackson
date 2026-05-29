@@ -123,6 +123,7 @@ It MUST render:
 - Product updates.
 - Product inspections.
 - Web Search completed/failed events.
+- Search Summary created events.
 - Delegate window opened/completed/blocked.
 - User input requested/received.
 - Retryable pauses.
@@ -156,6 +157,7 @@ Progress row expansion:
 - Review rows show verdict, score, findings summary, and Review Artifact link.
 - Discussion rows show participants, linked Product/Artifact/Window, transcript summary, recommendation, and Discussion Artifact link.
 - Web Search rows show query, source count, source links, provider, and truncation state.
+- Search Summary rows show the summary Artifact id and Product id without rendering full source notes inline.
 - Full long-form Product content MUST remain in Product Panel.
 
 Progress filters:

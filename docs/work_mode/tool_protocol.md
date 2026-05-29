@@ -420,6 +420,9 @@ Constraints:
 - MUST be read-only.
 - MUST emit `WEB_SEARCH_COMPLETED` when search succeeds.
 - MUST emit `WEB_SEARCH_FAILED` or return a rejected tool observation when search fails.
+- Successful searches MUST create a backend-owned Search Summary Artifact and emit `SEARCH_SUMMARY_CREATED`.
+- Search Summary Artifacts MUST use `metadata.artifactRole=search_summary`.
+- Search Summary Artifacts MUST be non-deliverable Product History, not authoritative final answers.
 - MUST return bounded results; unbounded page content is forbidden.
 - MUST expose source URLs to the UI.
 - MUST NOT modify Product content.
@@ -452,7 +455,9 @@ Constraints:
   "provider": "string",
   "fallbackApplied": false,
   "fallbackReason": "string|null",
-  "attemptCount": 1
+  "attemptCount": 1,
+  "summaryProductId": "string",
+  "summaryArtifactId": "string"
 }
 ```
 
@@ -478,7 +483,7 @@ Rules:
 - Search snippets are evidence hints, not final content.
 - Providers MAY run bounded internal fallback attempts, but returned results MUST still respect `allowedDomains` and `blockedDomains`.
 - `query` is the model-requested query. `effectiveQuery` is the provider query that produced the returned result set.
-- If the Mission needs a citation or source trail, the Lead SHOULD preserve the relevant URLs in Product content or a Research Artifact.
+- If the Mission needs a citation or source trail, the Lead SHOULD preserve the relevant URLs in Product content while the backend preserves the search trail in a Search Summary Artifact.
 
 ### 13.6 Tool: evaluate_product
 

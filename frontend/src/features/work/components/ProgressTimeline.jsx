@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { ChevronDown } from "lucide-react";
@@ -24,6 +24,7 @@ const timelineTypes = new Set([
   "PRODUCT_INSPECTED",
   "PRODUCT_REVIEWED",
   "WEB_SEARCH_COMPLETED",
+  "SEARCH_SUMMARY_CREATED",
   "WEB_SEARCH_FAILED",
   "EVALUATION_STARTED",
   "RELIABILITY_REPORTED",
@@ -76,7 +77,7 @@ const filterTypes = {
     "DISCUSSION_WINDOW_BLOCKED",
     "DISCUSSION_WINDOW_FAILED",
   ]),
-  search: new Set(["WEB_SEARCH_COMPLETED", "WEB_SEARCH_FAILED"]),
+  search: new Set(["WEB_SEARCH_COMPLETED", "SEARCH_SUMMARY_CREATED", "WEB_SEARCH_FAILED"]),
   inputs: new Set(["USER_INPUT_REQUESTED", "USER_INPUT_RECEIVED", "USER_FOLLOWUP_REQUESTED", "USER_INSTRUCTION_ADDED"]),
   issues: new Set([
     "MODEL_TURN_RETRYING",
@@ -249,6 +250,20 @@ function progressDetails(event) {
     if (Array.isArray(payload.results) && payload.results.length > 0) {
       details.push({ label: "Sources", value: payload.results.slice(0, 5), kind: "sources" });
     }
+  }
+  if (event.type === "SEARCH_SUMMARY_CREATED") {
+    details.push({
+      label: "Search summary",
+      value: [
+        payload.query ? `Query: ${payload.query}` : "",
+        payload.effectiveQuery ? `Effective: ${payload.effectiveQuery}` : "",
+        payload.productId ? `Product ${payload.productId}` : "",
+        payload.artifactId ? `Artifact ${payload.artifactId}` : "",
+        payload.sourceCount != null ? `Sources: ${payload.sourceCount}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
   }
   if (payload.arguments) {
     const args = payload.arguments;

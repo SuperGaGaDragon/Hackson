@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
@@ -65,6 +65,7 @@ def build_lead_context(
             "Use evaluate_product to request a backend Reliability Report for research or paper-like final candidates before finish_mission.",
             "Use ask_user when a missing requirement would materially change the deliverable.",
             "Do not ask_user for choices the user explicitly delegated with words like 随你, 不限, 你决定, or 题材自定.",
+            "Do not use Research Notes Products or search_summary Artifacts as final deliverables.",
         ],
         "productManifest": [_product_manifest(product) for product in products],
         "workWindowManifest": [_window_manifest(window) for window in work_windows],
@@ -119,6 +120,9 @@ def _product_manifest(product: dict[str, Any]) -> dict[str, Any]:
         "summary": product.get("summary", ""),
         "artifactIds": product.get("artifactIds", []),
         "latestArtifactId": product.get("latestArtifactId"),
+        "deliverableArtifactId": product.get("deliverableArtifactId"),
+        "productRole": product.get("metadata", {}).get("productRole", "deliverable"),
+        "deliveryStatus": product.get("deliveryStatus", "none"),
     }
 
 
@@ -338,6 +342,7 @@ def _tool_use_guidance() -> list[str]:
         "Prefer evaluate_product after a research or paper final candidate exists and before finish_mission; if it reports missing evidence, run web_search or revise before finishing.",
         "Prefer ask_user when a missing requirement would materially change the deliverable; otherwise choose a strong default and continue.",
         "Prefer work_product after web_search, review_product, or discuss_with_delegate when the observation should become user-visible deliverable content.",
+        "After web_search, use the returned summaryArtifactId as research evidence only; write a separate deliverable Artifact before finish_mission.",
         "Avoid ask_user when the Mission already grants autonomy, such as 题材自定 or 不限题材.",
     ]
 

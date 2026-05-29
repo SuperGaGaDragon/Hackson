@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
@@ -70,6 +70,7 @@ EventType = Literal[
     "DISCUSSION_WINDOW_BLOCKED",
     "DISCUSSION_WINDOW_FAILED",
     "WEB_SEARCH_COMPLETED",
+    "SEARCH_SUMMARY_CREATED",
     "WEB_SEARCH_FAILED",
     "EVALUATION_STARTED",
     "RELIABILITY_REPORTED",

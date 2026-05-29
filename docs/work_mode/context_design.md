@@ -172,6 +172,7 @@ The search observation MUST include:
 - Bounded snippets.
 - Provider name.
 - Truncation flag.
+- Search Summary Artifact id when a successful search was persisted.
 
 The search observation MUST NOT include:
 
@@ -184,14 +185,19 @@ The Lead SHOULD:
 
 - Use `web_search` only when external facts, current references, or niche information matter.
 - Use `work_product` on a later turn to write user-visible output from search results.
+- Treat Research Notes Products and Search Summary Artifacts as research evidence, not final deliverables.
 - Preserve important source URLs in Product content when the final answer depends on them.
 - Prefer `web_search` early when a Mission asks for current facts, source-backed research, named companies, market information, technical references, or other claims not already supported by Product or Artifact context.
 
 The backend SHOULD:
 
 - Keep recent search observations compact in context.
-- Preserve complete structured result payloads in events or Research Artifacts for UI inspection.
+- Preserve complete structured result payloads in events and Search Summary Artifacts for UI inspection.
 - Avoid treating snippets as verified facts without source links.
+
+Successful searches MUST create deterministic Search Summary Artifacts. These Artifacts are durable research evidence
+and should be inspectable through Product History, but they are not the final answer and must not replace the Product's
+authoritative deliverable candidate.
 
 ## 11. Review Context Guidance
 

@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
@@ -634,7 +634,7 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertIn("补齐参考文献", discussion_artifact["content"])
         self.assertIn("不要直接收尾", discussion_artifact["content"])
 
-    def test_web_search_persists_bounded_search_event(self) -> None:
+    def test_web_search_persists_bounded_search_event_and_summary_artifact(self) -> None:
         mission, run_id = self._started_agent_mission(title="查资料", goal="查找一个可引用资料。")
         executor = WorkModeToolExecutor(
             self.service,
@@ -681,7 +681,12 @@ class WorkModeToolExecutorTest(TestCase):
         )
 
         detail = self.service.get_mission_detail("user_1", mission["id"])
-        event = detail["events"][-1]
+        search_event = next(event for event in detail["events"] if event["type"] == "WEB_SEARCH_COMPLETED")
+        summary_event = detail["events"][-1]
+        summary_artifact = next(
+            artifact for artifact in detail["artifacts"] if artifact["metadata"].get("artifactRole") == "search_summary"
+        )
+        research_product = next(product for product in detail["products"] if product["metadata"].get("productRole") == "research_notes")
 
         self.assertFalse(result.terminal)
         self.assertEqual(result.observation["tool"], "web_search")
@@ -690,10 +695,65 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertEqual(result.observation["effectiveQuery"], "latest source backed reference")
         self.assertFalse(result.observation["fallbackApplied"])
         self.assertEqual(result.observation["attemptCount"], 1)
-        self.assertEqual(event["type"], "WEB_SEARCH_COMPLETED")
-        self.assertEqual(event["payload"]["query"], "latest source backed reference")
-        self.assertEqual(event["payload"]["effectiveQuery"], "latest source backed reference")
-        self.assertEqual(event["payload"]["results"][0]["url"], "https://example.com/a")
+        self.assertEqual(result.observation["summaryProductId"], research_product["id"])
+        self.assertEqual(result.observation["summaryArtifactId"], summary_artifact["id"])
+        self.assertEqual(search_event["payload"]["query"], "latest source backed reference")
+        self.assertEqual(search_event["payload"]["effectiveQuery"], "latest source backed reference")
+        self.assertEqual(search_event["payload"]["results"][0]["url"], "https://example.com/a")
+        self.assertEqual(search_event["payload"]["summaryArtifactId"], summary_artifact["id"])
+        self.assertEqual(summary_event["type"], "SEARCH_SUMMARY_CREATED")
+        self.assertEqual(summary_event["payload"]["artifactId"], summary_artifact["id"])
+        self.assertEqual(summary_artifact["kind"], "notes")
+        self.assertEqual(summary_artifact["metadata"]["search"]["results"][0]["url"], "https://example.com/a")
+        self.assertIn("## Useful Sources", summary_artifact["content"])
+        self.assertIn("https://example.com/a", summary_artifact["content"])
+        self.assertIsNone(research_product["deliverableArtifactId"])
+        self.assertEqual(research_product["deliveryStatus"], "none")
+
+    def test_web_search_reuses_research_notes_product(self) -> None:
+        mission, run_id = self._started_agent_mission(title="查资料", goal="查找资料。")
+        executor = WorkModeToolExecutor(
+            self.service,
+            search_provider=FakeSearchProvider(
+                [
+                    {
+                        "title": "Source A",
+                        "url": "https://example.com/a",
+                        "source": "example.com",
+                        "snippet": "第一条资料摘要。",
+                        "publishedAt": None,
+                    }
+                ]
+            ),
+        )
+        action = parse_tool_action(
+            """
+            {
+              "tool": "web_search",
+              "arguments": {
+                "reason": "需要外部资料。",
+                "query": "source backed reference",
+                "searchType": "reference",
+                "maxResults": 1,
+                "recencyDays": null,
+                "allowedDomains": [],
+                "blockedDomains": []
+              }
+            }
+            """
+        )
+
+        first = executor.execute("user_1", mission["id"], run_id, action)
+        second = executor.execute("user_1", mission["id"], run_id, action)
+        detail = self.service.get_mission_detail("user_1", mission["id"])
+        research_products = [product for product in detail["products"] if product["metadata"].get("productRole") == "research_notes"]
+        search_summaries = [
+            artifact for artifact in detail["artifacts"] if artifact["metadata"].get("artifactRole") == "search_summary"
+        ]
+
+        self.assertEqual(first.observation["summaryProductId"], second.observation["summaryProductId"])
+        self.assertEqual(len(research_products), 1)
+        self.assertEqual(len(search_summaries), 2)
 
     def test_web_search_failure_is_visible_and_non_terminal(self) -> None:
         mission, run_id = self._started_agent_mission(title="查资料", goal="查找一个可引用资料。")
@@ -733,7 +793,69 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertTrue(result.observation["retryable"])
         self.assertEqual(result.observation["effectiveQuery"], "latest source backed reference")
         self.assertEqual(event["type"], "WEB_SEARCH_FAILED")
+        self.assertFalse(any(artifact["metadata"].get("artifactRole") == "search_summary" for artifact in detail["artifacts"]))
         self.assertEqual(detail["mission"]["status"], "running")
+
+    def test_finish_mission_rejects_search_summary_as_final_artifact(self) -> None:
+        mission, run_id = self._started_agent_mission(title="查资料", goal="查找一个可引用资料。")
+        executor = WorkModeToolExecutor(
+            self.service,
+            search_provider=FakeSearchProvider(
+                [
+                    {
+                        "title": "Source A",
+                        "url": "https://example.com/a",
+                        "source": "example.com",
+                        "snippet": "第一条资料摘要。",
+                        "publishedAt": None,
+                    }
+                ]
+            ),
+        )
+        search = executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                """
+                {
+                  "tool": "web_search",
+                  "arguments": {
+                    "reason": "需要外部资料。",
+                    "query": "source backed reference",
+                    "searchType": "reference",
+                    "maxResults": 1,
+                    "recencyDays": null,
+                    "allowedDomains": [],
+                    "blockedDomains": []
+                  }
+                }
+                """
+            ),
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            executor.execute(
+                "user_1",
+                mission["id"],
+                run_id,
+                parse_tool_action(
+                    f"""
+                    {{
+                      "tool": "finish_mission",
+                      "arguments": {{
+                        "reason": "错误地把搜索记录当最终答案。",
+                        "summary": "完成。",
+                        "finalProductIds": ["{search.observation["summaryProductId"]}"],
+                        "finalArtifactIds": ["{search.observation["summaryArtifactId"]}"]
+                      }}
+                    }}
+                    """
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(error.exception.detail, "final_artifact_not_deliverable")
 
     def test_evaluate_product_persists_reliability_report_observation(self) -> None:
         mission, run_id = self._started_agent_mission(title="研究论文", goal="写一篇关于海地革命的研究论文，需要有最终稿。")

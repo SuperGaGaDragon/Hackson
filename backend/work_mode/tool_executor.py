@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
@@ -527,6 +527,7 @@ class WorkModeToolExecutor:
         for artifact_id in arguments.final_artifact_ids:
             self.service.require_artifact(user_id, mission_id, artifact_id)
         detail = self.service.get_mission_detail(user_id, mission_id)
+        _validate_final_artifacts_are_deliverable(detail, arguments.final_artifact_ids)
         quality = validate_final_product_quality(
             mission,
             detail,
@@ -971,6 +972,16 @@ class WorkModeToolExecutor:
             "fallbackReason": provider_result.fallback_reason,
             "attemptCount": provider_result.attempt_count,
         }
+        summary = self._create_search_summary_artifact(
+            user_id,
+            mission_id,
+            run_id,
+            arguments,
+            observation,
+            results,
+        )
+        observation["summaryProductId"] = summary["productId"]
+        observation["summaryArtifactId"] = summary["artifactId"]
         self.service.append_event(
             user_id,
             mission,
@@ -981,7 +992,80 @@ class WorkModeToolExecutor:
             message=arguments.query,
             payload={**observation, "reason": arguments.reason, "employee": _employee_payload(mission)},
         )
+        self.service.append_event(
+            user_id,
+            mission,
+            run={"_id": run_id},
+            step=None,
+            event_type="SEARCH_SUMMARY_CREATED",
+            title=summary["title"],
+            message=summary["summary"],
+            payload={
+                "tool": "web_search",
+                "status": "ok",
+                "query": observation["query"],
+                "effectiveQuery": observation["effectiveQuery"],
+                "productId": summary["productId"],
+                "artifactId": summary["artifactId"],
+                "sourceCount": len(results),
+                "employee": _employee_payload(mission),
+            },
+        )
         return ToolExecutionResult(observation)
+
+    def _create_search_summary_artifact(
+        self,
+        user_id: str,
+        mission_id: str,
+        run_id: str,
+        arguments: WebSearchArguments,
+        observation: dict[str, Any],
+        results: list[dict[str, Any]],
+    ) -> dict[str, str]:
+        mission = self.service._require_mission(user_id, mission_id)
+        detail = self.service.get_mission_detail(user_id, mission_id)
+        product = _research_notes_product(detail["products"])
+        if product is None:
+            product = self.service.create_product(
+                user_id,
+                mission_id,
+                title="Research Notes",
+                summary="Search summaries and source notes.",
+                created_by=_employee_payload(mission),
+                metadata={"productRole": "research_notes"},
+            )
+        summary_text = _search_summary_text(observation, arguments.reason, results)
+        title = _search_summary_title(observation["effectiveQuery"])
+        summary = _search_summary_line(observation, results)
+        artifact = self.service.create_product_artifact(
+            user_id,
+            mission_id,
+            run_id,
+            product["id"],
+            kind="notes",
+            title=title,
+            content=summary_text,
+            summary=summary,
+            created_by=_employee_payload(mission),
+            source_artifact_ids=[],
+            work_window_id=None,
+            metadata={
+                "artifactRole": "search_summary",
+                "summary": summary,
+                "search": {
+                    "query": observation["query"],
+                    "effectiveQuery": observation["effectiveQuery"],
+                    "searchType": observation["searchType"],
+                    "provider": observation["provider"],
+                    "truncated": observation["truncated"],
+                    "fallbackApplied": observation["fallbackApplied"],
+                    "fallbackReason": observation["fallbackReason"],
+                    "attemptCount": observation["attemptCount"],
+                    "results": results,
+                },
+            },
+        )
+        return {"productId": product["id"], "artifactId": artifact["id"], "title": title, "summary": summary}
 
 
 def _employee_payload(mission: dict[str, Any]) -> dict[str, str]:
@@ -1009,6 +1093,91 @@ def _artifact_kind_for_delegate(expected_output: str) -> str:
     if expected_output == "review":
         return "report"
     return "other"
+
+
+def _research_notes_product(products: list[dict[str, Any]]) -> dict[str, Any] | None:
+    return next(
+        (
+            product
+            for product in products
+            if product.get("metadata", {}).get("productRole") == "research_notes"
+            or product.get("title") == "Research Notes"
+        ),
+        None,
+    )
+
+
+def _search_summary_title(query: str) -> str:
+    compact = " ".join((query or "search").split())
+    if len(compact) > 96:
+        compact = f"{compact[:93].rstrip()}..."
+    return f"Search: {compact}"
+
+
+def _search_summary_line(observation: dict[str, Any], results: list[dict[str, Any]]) -> str:
+    source_count = len(results)
+    plural = "source" if source_count == 1 else "sources"
+    return f"Searched `{observation['effectiveQuery']}` and captured {source_count} {plural}."
+
+
+def _search_summary_text(observation: dict[str, Any], reason: str, results: list[dict[str, Any]]) -> str:
+    lines = [
+        "# Search Summary",
+        "",
+        "## Search Intent",
+        reason or "The Lead Agent searched for external reference material.",
+        "",
+        "## Query",
+        f"- Requested: {observation['query']}",
+        f"- Effective: {observation['effectiveQuery']}",
+        f"- Type: {observation['searchType']}",
+        f"- Provider: {observation['provider']}",
+        f"- Fallback applied: {'yes' if observation['fallbackApplied'] else 'no'}",
+        f"- Truncated: {'yes' if observation['truncated'] else 'no'}",
+        "",
+        "## Useful Sources",
+    ]
+    if not results:
+        lines.append("- No usable sources returned.")
+    for index, item in enumerate(results, start=1):
+        source = item.get("source") or item.get("url") or "unknown source"
+        published = item.get("publishedAt") or "date not provided"
+        lines.extend(
+            [
+                f"{index}. {item.get('title', 'Untitled source')}",
+                f"   - URL: {item.get('url', '')}",
+                f"   - Source: {source}",
+                f"   - Published: {published}",
+                f"   - Snippet: {item.get('snippet', '')}",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "## Evidence Takeaways From Snippets",
+            *_snippet_takeaways(results),
+            "",
+            "## Limitations",
+            "- Search snippets are evidence hints, not verified full-source readings.",
+            "- Any claim used in a final deliverable should preserve source URLs and be checked against the source context.",
+            "",
+            "## Suggested Next Action",
+            "- Use `work_product` to incorporate relevant sources into user-visible deliverable prose, or run another focused `web_search` if evidence is still thin.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _snippet_takeaways(results: list[dict[str, Any]]) -> list[str]:
+    takeaways = []
+    for item in results[:6]:
+        snippet = " ".join((item.get("snippet") or "").split())
+        if not snippet:
+            continue
+        if len(snippet) > 260:
+            snippet = f"{snippet[:257].rstrip()}..."
+        takeaways.append(f"- {item.get('source') or item.get('title')}: {snippet}")
+    return takeaways or ["- No snippet-based takeaway was available."]
 
 
 def _find_public_product(products: list[dict[str, Any]], product_id: str | None) -> dict[str, Any] | None:
@@ -1083,6 +1252,17 @@ def _validate_research_paper_completion(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_required")
     if _report_has_blocking_issues(report):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_needs_review")
+
+
+def _validate_final_artifacts_are_deliverable(detail: dict[str, Any], final_artifact_ids: list[str]) -> None:
+    from fastapi import HTTPException, status
+
+    final_ids = set(final_artifact_ids)
+    artifacts = [artifact for artifact in detail["artifacts"] if artifact["id"] in final_ids]
+    for artifact in artifacts:
+        role = artifact.get("metadata", {}).get("artifactRole")
+        if role in {"review", "reliability_report", "discussion", "search_summary"}:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="final_artifact_not_deliverable")
 
 
 def _final_artifact_id_by_product_id(
