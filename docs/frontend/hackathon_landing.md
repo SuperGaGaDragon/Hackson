@@ -114,6 +114,23 @@ fake state rather than shipped capability. Replace it with a direct feature inde
 The feature index must still look designed, not like a plain bullet list. Use differentiated rows, short labels, icons,
 and one strong "what it does" line per feature. Avoid decorative fake metrics in the hero.
 
+Question: Should the feature index keep a panel title such as `What judges can try` and `Live product`?
+
+Decision: No. The four rows already explain the capability set. The extra header creates noise and makes the panel feel
+like a mockup label. Remove that header and let the rows carry the meaning.
+
+Question: Should the lower landing sections keep abstract proof metrics and architecture words?
+
+Decision: No. The top half is already strong enough and should remain stable. The lower half must explain the product
+through a concrete workflow and the cross-mode memory model. Use two sections:
+
+- `A visual workflow for AI work`: show `Brainstorm -> Assign -> Watch -> Deliver -> Evaluate`.
+- `Universal memory for two persistent agents`: explain that approved memory and agent profiles carry across Idle,
+  Companion, and Work without claiming that every trace is automatically remembered.
+
+Avoid vague labels such as `Context`, `Runtime`, `Traceable steps`, and `Not a chat stream` in the lower landing. They
+sound polished but do not tell a judge what the user can do.
+
 Question: What visual direction is allowed?
 
 Decision: Typography-led, product-system-led, and calm. Use dark graphite, off-white text, restrained teal, and small
@@ -133,7 +150,8 @@ Unauthenticated root page:
 - Primary CTA: `Quick Try`.
 - Secondary CTA: `Create Account`.
 - Clear temporary-session note near Quick Try.
-- A compact proof section below the hero with no repeated long cards.
+- A compact lower section explaining the visual workflow.
+- A compact lower section explaining universal memory across the user's two agents.
 - No cat image.
 - No sticky CTA if it adds clutter. The first viewport should make the primary actions obvious.
 
@@ -185,10 +203,12 @@ Product capability labels:
 
 Product architecture copy:
 
-- `Context`
-- `Mission`
-- `Lineage`
-- `Review`
+- `Brainstorm`
+- `Assign`
+- `Watch`
+- `Deliver`
+- `Evaluate`
+- `Universal Memory`
 
 Forbidden copy:
 
@@ -209,6 +229,7 @@ Forbidden copy:
 - Desktop and mobile screenshots have no horizontal overflow and no cramped text columns.
 - Landing uses fewer, more visually distinct modules instead of repeated same-style text cards.
 - Landing body copy stays sparse enough to read at a glance during a hackathon demo.
+- Landing lower half makes the visual workflow and universal memory model explicit.
 - Public `https://hackson.catachess.com/` serves the landing after deployment.
 - Landing copy clearly separates core runtime from entry surfaces.
 - Landing does not overclaim unshipped Idle Summary Card, Promote to Work Mission, or Companion Work-context attachment.

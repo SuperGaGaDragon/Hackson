@@ -6,7 +6,6 @@ Last Modified by: Codex
 */
 import {
   ArrowRight,
-  BriefcaseBusiness,
   FileText,
   MessageSquareText,
   ShieldCheck,
@@ -72,10 +71,6 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
         </div>
 
         <div className="parallex-feature-panel" aria-label="Parallex product capabilities">
-          <div className="parallex-feature-head">
-            <span>What judges can try</span>
-            <strong>Live product</strong>
-          </div>
           <div className="parallex-feature-list">
             <FeatureItem
               accent="teal"
@@ -105,40 +100,36 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
         </div>
       </section>
 
-      <section className="hackathon-loop" aria-label="Parallex work loop">
-        <LoopStep label="Intent" />
-        <LoopStep label="Mission" />
-        <LoopStep label="Product" />
-        <LoopStep label="Review" />
+      <section className="workflow-section" aria-label="Parallex visual workflow">
+        <div className="workflow-copy">
+          <p className="eyebrow">Visual workflow</p>
+          <h2>From brainstorm to final product, every step has a place.</h2>
+          <p>
+            Parallex turns AI work into a visible sequence instead of a disappearing chat thread. You can start with a
+            rough idea, assign a mission, watch progress, keep the output, and check reliability.
+          </p>
+        </div>
+        <div className="workflow-track">
+          <WorkflowStep index="01" label="Brainstorm" text="Explore directions with multiple AI agents." />
+          <WorkflowStep index="02" label="Assign" text="Turn intent into a supervised Work Mission." />
+          <WorkflowStep index="03" label="Watch" text="See progress, windows, tool choices, and revisions." />
+          <WorkflowStep index="04" label="Deliver" text="Keep drafts, reviews, and final output organized." />
+          <WorkflowStep index="05" label="Evaluate" text="Surface weak evidence, missing requirements, and risk." />
+        </div>
       </section>
 
-      <section className="hackathon-proof" aria-label="What Parallex makes visible">
-        <div className="hackathon-proof-copy">
-          <p className="eyebrow">What changes</p>
-          <h2>Not a chat stream. A supervised work surface.</h2>
+      <section className="memory-section" aria-label="Parallex universal memory">
+        <div>
+          <p className="eyebrow">Universal memory</p>
+          <h2>The same two agents carry approved context across the workspace.</h2>
         </div>
-        <div className="hackathon-metrics" aria-label="Parallex proof points">
-          <Metric value="2" label="persistent agents" />
-          <Metric value="1" label="clean product" />
-          <Metric value="∞" label="traceable steps" />
+        <div className="memory-grid">
+          <MemoryPoint label="One agent identity" text="Nora and Vale keep their editable profiles across modes." />
+          <MemoryPoint label="Approved memory" text="User-approved memory can support brainstorms, chats, and work." />
+          <MemoryPoint label="Controlled context" text="The system keeps useful context without dumping every trace everywhere." />
         </div>
-      </section>
-
-      <section className="hackathon-signal" aria-label="Parallex runtime signals">
-        <Signal icon={Workflow} label="Context" text="The model sees a curated, auditable package." />
-        <Signal icon={BriefcaseBusiness} label="Mission" text="Work moves through selected tools, not hidden vibes." />
-        <Signal icon={FileText} label="Lineage" text="Drafts, reviews, and final products stay readable." />
-        <Signal icon={ShieldCheck} label="Review" text="AgentLens marks evidence gaps and delivery risk." />
       </section>
     </main>
-  );
-}
-
-function LoopStep({ label }) {
-  return (
-    <div className="hackathon-loop-step">
-      <span>{label}</span>
-    </div>
   );
 }
 
@@ -154,19 +145,19 @@ function FeatureItem({ accent, icon: Icon, kicker, title }) {
   );
 }
 
-function Metric({ label, value }) {
+function WorkflowStep({ index, label, text }) {
   return (
-    <div className="hackathon-metric">
-      <strong>{value}</strong>
-      <span>{label}</span>
-    </div>
+    <article className="workflow-step">
+      <span>{index}</span>
+      <strong>{label}</strong>
+      <p>{text}</p>
+    </article>
   );
 }
 
-function Signal({ icon: Icon, label, text }) {
+function MemoryPoint({ label, text }) {
   return (
-    <article className="hackathon-signal-item">
-      <Icon size={18} />
+    <article className="memory-point">
       <strong>{label}</strong>
       <p>{text}</p>
     </article>
