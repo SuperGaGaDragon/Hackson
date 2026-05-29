@@ -6,6 +6,7 @@ Last Modified by: Codex
 """
 
 import json
+from hashlib import sha256
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -577,18 +578,33 @@ class WorkModeToolExecutor:
         detail = self.service.get_mission_detail(user_id, mission_id)
         _require_public_products(detail["products"], arguments.product_ids)
         _require_public_artifacts_by_ids(detail["artifacts"], arguments.artifact_ids)
-        evaluated = EvaluatorRuntime(self.service).evaluate(user_id, mission_id, profile=arguments.profile)
+        evaluated = EvaluatorRuntime(self.service).evaluate(
+            user_id,
+            mission_id,
+            profile=arguments.profile,
+            product_ids=arguments.product_ids,
+            artifact_ids=arguments.artifact_ids,
+            focus=arguments.focus,
+        )
         report = _latest_reliability_report(evaluated)
+        blocking_issues = _blocking_reliability_issues(report)
         observation = {
             "tool": "evaluate_product",
             "status": "ok",
             "profile": arguments.profile,
+            "gateStatus": report.get("gateStatus", "human_review"),
+            "evaluatedProductIds": report.get("evaluatedProductIds", []),
+            "evaluatedArtifactIds": report.get("evaluatedArtifactIds", []),
+            "evaluatedArtifactHashes": report.get("evaluatedArtifactHashes", {}),
+            "targetSelectionReason": report.get("targetSelectionReason", ""),
             "score": report.get("score"),
             "reliabilityStatus": report.get("status"),
             "issueCounts": report.get("issueCounts", {}),
             "reportArtifactId": report.get("reportArtifactId"),
+            "blockingIssues": blocking_issues,
             "topIssues": _top_reliability_issues(report),
             "recommendedNextTool": _recommended_next_tool(report),
+            "nextActionContract": _next_reliability_action_contract(report),
             "summary": report.get("summary", ""),
         }
         return ToolExecutionResult(
@@ -1250,6 +1266,8 @@ def _validate_research_paper_completion(
     report = _latest_reliability_report(detail)
     if not report or not _report_is_current(detail):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_required")
+    if not _report_covers_final_artifacts(report, detail, final_artifact_ids):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_required")
     if _report_has_blocking_issues(report):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="reliability_evaluation_needs_review")
 
@@ -1313,6 +1331,11 @@ def _latest_reliability_report(detail: dict[str, Any]) -> dict[str, Any]:
 
 
 def _report_has_blocking_issues(report: dict[str, Any]) -> bool:
+    if report.get("gateStatus") in {"blocked", "repair_required", "human_review"}:
+        if _blocking_reliability_issues(report):
+            return True
+        if report.get("gateStatus") in {"blocked", "human_review"}:
+            return True
     if report.get("status") == "unsafe_to_ship":
         return True
     issues = [issue for issue in report.get("issues", []) if isinstance(issue, dict)]
@@ -1320,6 +1343,108 @@ def _report_has_blocking_issues(report: dict[str, Any]) -> bool:
     if not actionable_issues:
         return False
     return any(issue.get("severity") in {"critical", "high", "medium"} for issue in actionable_issues)
+
+
+def _blocking_reliability_issues(report: dict[str, Any]) -> list[dict[str, Any]]:
+    issues = [issue for issue in report.get("issues", []) if isinstance(issue, dict)]
+    blocking: list[dict[str, Any]] = []
+    for issue in issues:
+        if issue.get("type") == "mission_incomplete":
+            continue
+        if issue.get("severity") not in {"critical", "high", "medium"}:
+            continue
+        blocking.append(
+            {
+                "id": issue.get("id"),
+                "type": issue.get("type"),
+                "severity": issue.get("severity"),
+                "title": issue.get("title"),
+                "artifactIds": issue.get("artifactIds", []),
+                "requiredAction": _required_action_for_issue(issue),
+                "suggestedTool": _suggested_tool_for_issue(issue),
+                "suggestedFix": issue.get("suggestedFix", ""),
+            }
+        )
+    return blocking[:6]
+
+
+def _required_action_for_issue(issue: dict[str, Any]) -> str:
+    issue_type = issue.get("type")
+    if issue_type in {"unsupported_claim", "weakly_supported_claim", "hallucinated_entity", "missing_source"}:
+        return "add_source_or_remove_claim"
+    if issue_type in {"missing_requirement", "partial_requirement"}:
+        return "revise_candidate"
+    if issue_type == "tool_failure_ignored":
+        return "rerun_or_acknowledge_failed_tool"
+    if issue_type == "evaluation_limitation":
+        return "add_evidence"
+    if issue_type == "unsafe_action":
+        return "remove_or_require_human_approval"
+    return "review_issue"
+
+
+def _suggested_tool_for_issue(issue: dict[str, Any]) -> str:
+    issue_type = issue.get("type")
+    if issue_type in {"unsupported_claim", "weakly_supported_claim", "hallucinated_entity", "missing_source", "evaluation_limitation"}:
+        return "web_search"
+    if issue_type == "tool_failure_ignored":
+        return "web_search"
+    if issue_type == "unsafe_action":
+        return "ask_user"
+    return "work_product"
+
+
+def _next_reliability_action_contract(report: dict[str, Any]) -> dict[str, Any]:
+    evaluated_artifact_ids = list(report.get("evaluatedArtifactIds") or [])
+    blocking_issues = _blocking_reliability_issues(report)
+    if report.get("gateStatus") == "pass" and not blocking_issues:
+        return {
+            "nextTool": "finish_mission",
+            "finishOnlyAfter": "Use finish_mission only with finalArtifactIds covered by this report.",
+        }
+    next_tool = _recommended_next_tool(report)
+    return {
+        "nextTool": next_tool,
+        "ifEditing": {
+            "tool": "work_product",
+            "operation": "revise_artifact",
+            "sourceArtifactIds": evaluated_artifact_ids,
+        },
+        "ifSearching": {
+            "tool": "web_search",
+            "reason": "Retrieve trace-backed evidence for the blocking Reliability issues.",
+        },
+        "afterEditing": {
+            "tool": "evaluate_product",
+            "artifactIds": ["new_artifact_id"],
+            "productIds": list(report.get("evaluatedProductIds") or []),
+        },
+        "finishOnlyAfter": "gateStatus pass and report hashes match finalArtifactIds",
+        "blockingIssueIds": [issue["id"] for issue in blocking_issues if issue.get("id")],
+    }
+
+
+def _report_covers_final_artifacts(report: dict[str, Any], detail: dict[str, Any], final_artifact_ids: list[str]) -> bool:
+    final_ids = set(final_artifact_ids)
+    evaluated_ids = set(report.get("evaluatedArtifactIds") or [])
+    if not final_ids or final_ids != evaluated_ids:
+        return False
+    report_hashes = report.get("evaluatedArtifactHashes") or {}
+    if not isinstance(report_hashes, dict):
+        return False
+    artifacts = {artifact["id"]: artifact for artifact in detail.get("artifacts", []) if artifact["id"] in final_ids}
+    if set(artifacts) != final_ids:
+        return False
+    for artifact_id, artifact in artifacts.items():
+        if report_hashes.get(artifact_id) != _artifact_content_hash(artifact):
+            return False
+    return True
+
+
+def _artifact_content_hash(artifact: dict[str, Any]) -> str:
+    content = str(artifact.get("content") or "")
+    normalized = "\n".join(line.rstrip() for line in content.replace("\r\n", "\n").replace("\r", "\n").split("\n")).strip()
+    return sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def _report_is_current(detail: dict[str, Any]) -> bool:
@@ -1340,6 +1465,7 @@ def _top_reliability_issues(report: dict[str, Any]) -> list[dict[str, Any]]:
             "type": issue.get("type"),
             "severity": issue.get("severity"),
             "title": issue.get("title"),
+            "description": issue.get("description", ""),
             "suggestedFix": issue.get("suggestedFix", ""),
         }
         for issue in issues[:4]

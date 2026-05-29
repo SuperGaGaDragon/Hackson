@@ -54,6 +54,10 @@ export function getMission(missionId) {
   return apiRequest(`/api/work/missions/${missionId}`);
 }
 
+export function getMissionArtifact(missionId, artifactId) {
+  return apiRequest(`/api/work/missions/${missionId}/artifacts/${artifactId}`);
+}
+
 export function startMission(missionId, payload = {}) {
   return apiRequest(`/api/work/missions/${missionId}/start`, {
     method: "POST",

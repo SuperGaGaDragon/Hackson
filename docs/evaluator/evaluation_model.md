@@ -55,6 +55,29 @@ Evaluator Runtime input:
 }
 ```
 
+Evaluator Runtime MUST also know which deliverable candidate is being evaluated. Work Mode passes this target from
+`evaluate_product` whenever the Lead supplies Product or Artifact ids.
+
+Candidate target schema:
+
+```json
+{
+  "productIds": ["product_id"],
+  "artifactIds": ["artifact_id"],
+  "focus": "optional focus",
+  "selectionReason": "explicit_tool_args|product_deliverable|product_final"
+}
+```
+
+Selection rules:
+
+- Explicit `artifactIds` from `evaluate_product` win over fallback selection.
+- If explicit Artifact ids are absent, the selected Product's `deliverableArtifactId` is the candidate.
+- If no deliverable candidate exists, report construction should fail with a stable `evaluation_target_required` error
+  instead of silently evaluating an unrelated Artifact.
+- A candidate is identified by both Artifact id and normalized content hash. A later Product revision makes prior
+  reports stale even if the title is unchanged.
+
 Evidence sources:
 
 - `WEB_SEARCH_COMPLETED` event results.
@@ -206,6 +229,38 @@ Issue rules:
 - Every high or critical issue MUST have a suggested fix.
 - Every issue SHOULD reference at least one event, Artifact, requirement, claim, or evidence item.
 - Issue text MUST be specific enough for a Lead Agent or human to act.
+
+## 8.1 Candidate Binding And Gate Status
+
+Every report MUST include candidate binding metadata:
+
+```json
+{
+  "evaluatedProductIds": ["product_id"],
+  "evaluatedArtifactIds": ["artifact_id"],
+  "evaluatedArtifactHashes": {
+    "artifact_id": "sha256..."
+  },
+  "targetSelectionReason": "explicit_tool_args",
+  "traceSnapshot": {
+    "latestProductEventSequence": 117,
+    "latestSearchEventSequence": 42,
+    "evaluatorVersion": "string"
+  }
+}
+```
+
+Every report MUST include a `gateStatus` for runtime control:
+
+| Gate Status | Meaning |
+| --- | --- |
+| `pass` | No actionable critical/high/medium issue remains for the evaluated candidate. |
+| `repair_required` | Concrete issues remain and the Lead should repair/search/revise. |
+| `human_review` | The evaluator boundary or repeated unresolved issues make autonomous repair unreliable. |
+| `blocked` | Unsafe, structurally impossible, or non-recoverable state. |
+
+`score` is a deterministic risk triage signal. `gateStatus` is the execution gate. The Lead loop MUST use
+`gateStatus`, target metadata, and blocking issue ids for control flow instead of chasing a score threshold.
 
 ## 9. Score
 

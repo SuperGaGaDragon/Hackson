@@ -5,7 +5,9 @@ Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 import { ChevronRight, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import { formatEventTime } from "./eventDisplay";
+import { formatEasternTime } from "./timeFormat";
 
 function ReliabilityPanel({ artifacts = [], compact = false, events = [] }) {
   const { report, history } = reliabilityReports(artifacts, events);
@@ -62,42 +64,43 @@ function CompactReliabilityPanel({ history, report }) {
 }
 
 function ReliabilityReportBody({ history = [], report, shellClass }) {
-  const issues = report.issues || [];
+  const reports = useSelectableReports(report, history);
+  const activeReport = reports.activeReport;
+  const issues = activeReport.issues || [];
   const topIssues = issues.slice(0, 4);
-  const requirements = (report.requirements || []).slice(0, 5);
-  const claims = (report.claims || []).slice(0, 5);
-  const evidence = report.evidence || [];
-  const toolFailures = (report.toolFailures || []).slice(0, 5);
-  const suggestedActions = (report.suggestedNextActions || []).slice(0, 4);
-  const limitations = (report.limitations || []).slice(0, 3);
+  const requirements = (activeReport.requirements || []).slice(0, 5);
+  const claims = (activeReport.claims || []).slice(0, 5);
+  const evidence = activeReport.evidence || [];
+  const toolFailures = (activeReport.toolFailures || []).slice(0, 5);
+  const suggestedActions = (activeReport.suggestedNextActions || []).slice(0, 4);
+  const limitations = (activeReport.limitations || []).slice(0, 3);
 
   return (
-    <div className={`${shellClass} status-${report.status}`}>
+    <div className={`${shellClass} status-${activeReport.status}`}>
       <div className="card-head reliability-head">
         <div>
           <p className="eyebrow">Reliability</p>
-          <h2>{report.score} / 100</h2>
+          <h2>{activeReport.score} / 100</h2>
         </div>
-        <span>{statusLabel(report.status)}</span>
+        <span>{statusLabel(activeReport.status)}</span>
       </div>
       <p className="reliability-meta">
-        {report.createdAt || report.eventTime || "Latest report"}
-        {report.reportArtifactId ? ` / ${report.reportArtifactId}` : ""}
+        {reportTimeLabel(activeReport)}
       </p>
       <div className="reliability-confidence">
         <span>Risk score</span>
-        <strong>{report.scoreMeaning || "Trace-backed risk score, not proof."}</strong>
-        <small>{confidenceLabel(report.confidence, report.confidenceReason)}</small>
+        <strong>{activeReport.scoreMeaning || "Trace-backed risk score, not proof."}</strong>
+        <small>{confidenceLabel(activeReport.confidence, activeReport.confidenceReason)}</small>
       </div>
-      <p className="reliability-summary">{report.summary}</p>
+      <p className="reliability-summary">{activeReport.summary}</p>
       <div className="reliability-badges">
-        {issueBadges(report.issueCounts).map(([label, count]) => (
+        {issueBadges(activeReport.issueCounts).map(([label, count]) => (
           <span key={label}>
             {count} {label}
           </span>
         ))}
         <span>{evidence.length} evidence</span>
-        {report.mode && <span>{report.mode}</span>}
+        {activeReport.mode && <span>{activeReport.mode}</span>}
         {issues.length === 0 && <span>Clear</span>}
       </div>
       <div className="reliability-evidence">
@@ -204,32 +207,43 @@ function ReliabilityReportBody({ history = [], report, shellClass }) {
           </div>
         </div>
       )}
-      {history.length > 0 && (
+      {reports.allReports.length > 1 && (
         <details className="reliability-history">
           <summary>
             <ChevronRight size={14} />
             <span>History</span>
-            <small>{history.length}</small>
+            <small>{reports.allReports.length}</small>
           </summary>
           <div className="reliability-history-list">
-            {history.map((item) => (
-              <div className="reliability-history-row" key={item.reportId || item.reportArtifactId}>
+            {reports.allReports.map((item) => (
+              <button
+                className={reports.activeKey === reportKey(item) ? "reliability-history-row active" : "reliability-history-row"}
+                key={reportKey(item)}
+                onClick={() => reports.setActiveKey(reportKey(item))}
+                type="button"
+              >
                 <span>{item.score} / 100</span>
                 <p>
                   <strong>{statusLabel(item.status)}</strong>
                   <small>
-                    {item.eventTime || item.createdAt || "Report"}
+                    {reportTimeLabel(item)}
                     {item.mode ? ` / ${item.mode}` : ""}
-                    {item.reportArtifactId ? ` / ${item.reportArtifactId}` : ""}
                   </small>
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         </details>
       )}
     </div>
   );
+}
+
+function useSelectableReports(report, history) {
+  const allReports = [report, ...history].filter(Boolean);
+  const [activeKey, setActiveKey] = useState(reportKey(report));
+  const activeReport = allReports.find((item) => reportKey(item) === activeKey) || report;
+  return { activeKey, activeReport, allReports, setActiveKey };
 }
 
 function confidenceShortLabel(confidence) {
@@ -293,6 +307,7 @@ function reportFromEvent(event, reportsByArtifactId) {
     confidence: report?.confidence || event.payload?.confidence || "low",
     confidenceReason: report?.confidenceReason || event.payload?.confidenceReason || "",
     eventSequence: event.sequence,
+    eventCreatedAt: event.createdAt,
     eventTime: formatEventTime(event),
     summary: report?.summary || event.message || "",
     issues: report?.issues || [],
@@ -303,6 +318,15 @@ function reportFromEvent(event, reportsByArtifactId) {
     suggestedNextActions: report?.suggestedNextActions || [],
     limitations: report?.limitations || [],
   };
+}
+
+function reportKey(report) {
+  return report?.reportArtifactId || report?.reportId || String(report?.eventSequence || "latest");
+}
+
+function reportTimeLabel(report) {
+  const raw = report.eventCreatedAt || report.createdAt || report.artifactCreatedAt;
+  return formatEasternTime(raw) || report.eventTime || "Latest report";
 }
 
 function uniqueReports(reports) {

@@ -32,6 +32,7 @@ RequirementStatus = Literal["met", "partially_met", "missing", "not_evaluable"]
 ClaimType = Literal["existence", "location", "product", "customer", "funding", "founding", "other"]
 SupportLevel = Literal["strong", "weak", "none", "contradicted", "not_evaluable"]
 ScoreConfidence = Literal["low", "medium", "high"]
+ReliabilityGateStatus = Literal["pass", "repair_required", "human_review", "blocked"]
 
 
 class RequirementItem(BaseModel):
@@ -130,6 +131,7 @@ class ReliabilityReport(BaseModel):
     mode: EvaluationMode = "live"
     score: int = Field(ge=0, le=100)
     status: ReliabilityStatus
+    gate_status: ReliabilityGateStatus = Field(default="human_review", alias="gateStatus")
     summary: str
     objective: bool = False
     score_meaning: str = Field(
@@ -138,6 +140,11 @@ class ReliabilityReport(BaseModel):
     )
     confidence: ScoreConfidence = "low"
     confidence_reason: str = Field(default="", alias="confidenceReason")
+    evaluated_product_ids: list[str] = Field(default_factory=list, alias="evaluatedProductIds")
+    evaluated_artifact_ids: list[str] = Field(default_factory=list, alias="evaluatedArtifactIds")
+    evaluated_artifact_hashes: dict[str, str] = Field(default_factory=dict, alias="evaluatedArtifactHashes")
+    target_selection_reason: str = Field(default="", alias="targetSelectionReason")
+    trace_snapshot: dict[str, int | str | None] = Field(default_factory=dict, alias="traceSnapshot")
     requirements: list[RequirementItem] = Field(default_factory=list)
     claims: list[ClaimItem] = Field(default_factory=list)
     evidence: list[EvidenceItem] = Field(default_factory=list)

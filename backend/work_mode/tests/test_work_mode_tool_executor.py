@@ -5,6 +5,7 @@ Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
+import json
 from unittest import TestCase
 
 from fastapi import HTTPException
@@ -895,6 +896,11 @@ class WorkModeToolExecutorTest(TestCase):
         self.assertEqual(result.observation["tool"], "evaluate_product")
         self.assertEqual(result.observation["status"], "ok")
         self.assertEqual(result.observation["reportArtifactId"], report_artifact["id"])
+        self.assertEqual(result.observation["evaluatedArtifactIds"], [artifact["id"]])
+        self.assertIn(artifact["id"], result.observation["evaluatedArtifactHashes"])
+        self.assertEqual(result.observation["gateStatus"], "human_review")
+        self.assertTrue(result.observation["blockingIssues"])
+        self.assertIn("nextActionContract", result.observation)
         self.assertEqual(result.observation["reliabilityStatus"], "needs_human_review")
         self.assertEqual(result.observation["recommendedNextTool"], "web_search")
         self.assertIn("EVALUATION_STARTED", event_types)
@@ -961,6 +967,7 @@ class WorkModeToolExecutorTest(TestCase):
 
         self.assertEqual(result.observation["recommendedNextTool"], "work_product")
         self.assertTrue(result.observation["topIssues"])
+        self.assertIn("description", result.observation["topIssues"][0])
         self.assertIn("type:unsupported_claim", result.observation["issueCounts"])
 
     def test_finish_mission_rejects_research_paper_outline_only_final(self) -> None:
@@ -1077,6 +1084,78 @@ class WorkModeToolExecutorTest(TestCase):
 
         self.assertEqual(error.exception.status_code, 422)
         self.assertEqual(error.exception.detail, "reliability_evaluation_needs_review")
+
+    def test_finish_mission_rejects_reliability_report_for_old_artifact(self) -> None:
+        mission, run_id = self._started_agent_mission(title="研究论文", goal="写一篇关于海地革命的研究论文，需要最终稿。")
+        product, old_artifact = self._product_with_artifact(
+            mission,
+            run_id,
+            content=paper_final_text(),
+            kind="final",
+        )
+        self.executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(
+                f"""
+                {{
+                  "tool": "evaluate_product",
+                  "arguments": {{
+                    "reason": "先检查旧稿。",
+                    "profile": "research_reliability_v1",
+                    "productIds": ["{product["id"]}"],
+                    "artifactIds": ["{old_artifact["id"]}"],
+                    "focus": "检查旧终稿。"
+                  }}
+                }}
+                """
+            ),
+        )
+        revised_content = f"{paper_final_text()}\n\n补充说明：本文保留为修订后的最终稿。"
+        revised_action = {
+            "tool": "work_product",
+            "arguments": {
+                "reason": "根据可靠性报告修订终稿。",
+                "operation": "revise_artifact",
+                "productId": product["id"],
+                "sourceArtifactIds": [old_artifact["id"]],
+                "productTitle": "海地革命论文",
+                "artifactTitle": "海地革命论文修订终稿",
+                "artifactKind": "final",
+                "content": revised_content,
+                "summary": "修订最终稿。",
+            },
+        }
+        revised = self.executor.execute(
+            "user_1",
+            mission["id"],
+            run_id,
+            parse_tool_action(json.dumps(revised_action, ensure_ascii=False)),
+        )
+
+        with self.assertRaises(HTTPException) as error:
+            self.executor.execute(
+                "user_1",
+                mission["id"],
+                run_id,
+                parse_tool_action(
+                    f"""
+                    {{
+                      "tool": "finish_mission",
+                      "arguments": {{
+                        "reason": "尝试用新稿完成。",
+                        "summary": "论文完成。",
+                        "finalProductIds": ["{product["id"]}"],
+                        "finalArtifactIds": ["{revised.artifact_id}"]
+                      }}
+                    }}
+                    """
+                ),
+            )
+
+        self.assertEqual(error.exception.status_code, 422)
+        self.assertEqual(error.exception.detail, "reliability_evaluation_required")
 
     def test_revise_artifact_links_review_and_discussion_lineage(self) -> None:
         mission, run_id = self._started_agent_mission(title="写短篇小说", goal="写一个短篇小说。")

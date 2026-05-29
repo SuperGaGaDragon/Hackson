@@ -264,6 +264,26 @@ class WorkModeRepository:
             .limit(limit)
         )
 
+    def list_artifacts_by_ids(self, user_id: str, mission_id: str, artifact_ids: list[str]) -> list[dict[str, Any]]:
+        query_id = _object_id_or_none(mission_id)
+        object_ids = [_object_id_or_none(value) for value in artifact_ids]
+        object_ids = [value for value in object_ids if value is not None]
+        if query_id is None or not object_ids:
+            return []
+        return list(
+            self.artifacts.find({"_id": {"$in": object_ids}, "user_id": user_id, "mission_id": query_id})
+            .sort("created_at", ASCENDING)
+        )
+
+    def find_artifact(self, user_id: str, mission_id: str, artifact_id: str) -> dict[str, Any] | None:
+        mission_query_id = _object_id_or_none(mission_id)
+        artifact_query_id = _object_id_or_none(artifact_id)
+        if mission_query_id is None or artifact_query_id is None:
+            return None
+        return self.artifacts.find_one(
+            {"_id": artifact_query_id, "user_id": user_id, "mission_id": mission_query_id}
+        )
+
     def create_product(self, document: dict[str, Any]) -> dict[str, Any]:
         document = dict(document)
         document["mission_id"] = _object_id(document["mission_id"])

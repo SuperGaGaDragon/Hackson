@@ -17,6 +17,7 @@ from users.repository import UserRepository
 from users.service import UserService
 from work_mode.repository import WorkModeRepository
 from work_mode.schemas import (
+    ArtifactResponse,
     EmployeeCreateRequest,
     EmployeeResponse,
     EventResponse,
@@ -148,6 +149,16 @@ def get_mission(
     service: WorkModeService = Depends(get_work_mode_service),
 ) -> dict:
     return service.get_mission_detail(current_user_id, mission_id)
+
+
+@router.get("/missions/{mission_id}/artifacts/{artifact_id}", response_model=ArtifactResponse)
+def get_mission_artifact(
+    mission_id: str,
+    artifact_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    service: WorkModeService = Depends(get_work_mode_service),
+) -> dict:
+    return service.require_artifact(current_user_id, mission_id, artifact_id)
 
 
 @router.post("/missions/{mission_id}/start", response_model=MissionDetailResponse)

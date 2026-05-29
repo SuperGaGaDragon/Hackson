@@ -10,6 +10,7 @@ function MissionHeader({
   busy,
   mission,
   onEvaluate,
+  onOpenInfo,
   onPause,
 }) {
   const running = mission?.status === "running";
@@ -26,7 +27,14 @@ function MissionHeader({
         <div>
           <p className="eyebrow">Mission</p>
           <h2>{title}</h2>
-          {mission?.goal && <p className="mission-goal">{mission.goal}</p>}
+          {mission?.goal && (
+            <div className="mission-goal-wrap">
+              <p className="mission-goal">{mission.goal}</p>
+              <button className="mission-brief-button" onClick={onOpenInfo} type="button">
+                Details
+              </button>
+            </div>
+          )}
         </div>
         <div className="panel-actions">
           <span className="chip">{mission?.status || "empty"}</span>

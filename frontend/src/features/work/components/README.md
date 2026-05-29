@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 
 ## brief intro
@@ -36,7 +36,7 @@ Last Modified by: Codex
 |-ActivityStrip.jsx latest compact Mission activity row
 |-ReliabilityPanel.jsx event-backed Evaluator Runtime risk report renderer and Quality summary helper
 |-MissionMapPanel.jsx mission section navigation plus compact Quality trigger
-|-ProgressTimeline.jsx compact mission progress audit trail with single-select category filters
+|-ProgressTimeline.jsx compact mission progress audit trail with multi-select category filters
 |-WorkWindowPanel.jsx delegate work window list
 |-SummaryCard.jsx summary event card
 |-WarningCard.jsx warning event card

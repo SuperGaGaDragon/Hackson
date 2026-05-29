@@ -1,15 +1,16 @@
 """
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
 from __future__ import annotations
 
+from collections import Counter
+from hashlib import sha256
 import json
 import re
-from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -29,7 +30,7 @@ from work_mode.evaluator_schemas import (
 from work_mode.service import WorkModeService
 
 ISSUE_WEIGHTS = {
-    "missing_requirement": 15,
+    "missing_requirement": 25,
     "partial_requirement": 7,
     "unsupported_claim": 12,
     "weakly_supported_claim": 5,
@@ -41,12 +42,17 @@ ISSUE_WEIGHTS = {
     "evaluation_limitation": 5,
     "mission_incomplete": 25,
 }
-EVALUATOR_VERSION = "2026-05-28.research-paper-gate.v2"
+EVALUATOR_VERSION = "2026-05-29.target-bound-gate.v1"
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9&.-]*")
 URL_RE = re.compile(r"https?://[^\s)\]>\"']+")
 SENTENCE_RE = re.compile(r"(?<=[.!?。！？])\s+|\n+")
 CHINESE_CHAR_RE = re.compile(r"[\u4e00-\u9fff]")
 ENTITY_RE = re.compile(r"\b(?:[A-Z][A-Za-z0-9&.-]+(?:\s+|$)){1,4}(?:AI|Labs|Systems|Technologies|Tech|Inc|Corp|Company|Cohere|Layer|Vector)?")
+REFERENCE_HEADING_RE = re.compile(
+    r"^\s{0,3}(?:#{1,6}\s*)?(references|reference list|works cited|bibliography|sources|source list|参考文献|引用)\s*:?\s*$",
+    re.IGNORECASE,
+)
+APA_REFERENCE_RE = re.compile(r"^\s*[A-Z][A-Za-z'.-]+,\s+[A-Z](?:\.\s*[A-Z])?\.?.*\(\d{4}[a-z]?\)\.")
 STOP_ENTITIES = {
     "AI",
     "Toronto",
@@ -60,6 +66,18 @@ STOP_ENTITIES = {
     "For",
     "Hi",
     "Hello",
+    "Another",
+    "Reference",
+    "References",
+    "Sources",
+    "Works",
+    "Cited",
+    "Bibliography",
+    "The",
+    "This",
+    "These",
+    "That",
+    "Title",
 }
 STOP_WORDS = {
     "about",
@@ -97,12 +115,18 @@ class EvaluatorRuntime:
         mission_id: str,
         profile: EvaluationProfile = "research_reliability_v1",
         mode: EvaluationMode = "live",
+        product_ids: list[str] | None = None,
+        artifact_ids: list[str] | None = None,
+        focus: str = "",
     ) -> dict[str, Any]:
-        detail = self.service.get_mission_detail(user_id, mission_id)
+        detail = self.service.get_mission_evaluation_detail(user_id, mission_id)
         run_id = _latest_run_id(detail)
         if run_id is None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="mission_has_no_run")
-        if _latest_event_is_current_report(detail):
+        target = _evaluation_target(detail, product_ids=product_ids, artifact_ids=artifact_ids)
+        if not target["artifacts"]:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="evaluation_target_required")
+        if _latest_event_is_current_report(detail, target):
             return detail
         mission = self.service._require_mission(user_id, mission_id)
         run = {"_id": run_id}
@@ -117,13 +141,26 @@ class EvaluatorRuntime:
             payload={
                 "profile": profile,
                 "mode": mode,
+                "productIds": target["productIds"],
+                "artifactIds": target["artifactIds"],
+                "focus": focus,
                 "evaluatorVersion": EVALUATOR_VERSION,
                 "employee": _employee_payload(detail["mission"]),
             },
         )
         try:
-            started_detail = self.service.get_mission_detail(user_id, mission_id)
-            report = build_reliability_report(started_detail, profile=profile, mode=mode)
+            started_detail = self.service.get_mission_evaluation_detail(user_id, mission_id)
+            started_target = _evaluation_target(started_detail, product_ids=product_ids, artifact_ids=artifact_ids)
+            if not started_target["artifacts"]:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="evaluation_target_required")
+            report = build_reliability_report(
+                started_detail,
+                profile=profile,
+                mode=mode,
+                product_ids=product_ids,
+                artifact_ids=artifact_ids,
+                focus=focus,
+            )
             artifact = self._persist_report(user_id, mission_id, run_id, report)
             report.report_artifact_id = artifact["id"]
             self.service.append_event(
@@ -139,8 +176,14 @@ class EvaluatorRuntime:
                     "mode": report.mode,
                     "score": report.score,
                     "status": report.status,
+                    "gateStatus": report.gate_status,
                     "issueCounts": report.issue_counts,
                     "reportArtifactId": artifact["id"],
+                    "evaluatedProductIds": report.evaluated_product_ids,
+                    "evaluatedArtifactIds": report.evaluated_artifact_ids,
+                    "evaluatedArtifactHashes": report.evaluated_artifact_hashes,
+                    "targetSelectionReason": report.target_selection_reason,
+                    "traceSnapshot": report.trace_snapshot,
                     "evaluatorVersion": EVALUATOR_VERSION,
                     "employee": _employee_payload(detail["mission"]),
                 },
@@ -205,19 +248,24 @@ def build_reliability_report(
     detail: dict[str, Any],
     profile: EvaluationProfile = "research_reliability_v1",
     mode: EvaluationMode = "live",
+    product_ids: list[str] | None = None,
+    artifact_ids: list[str] | None = None,
+    focus: str = "",
 ) -> ReliabilityReport:
     detail_for_report = _with_replay_evidence(detail) if mode == "replay" else detail
     mission = detail["mission"]
-    final_artifact = _final_artifact(detail_for_report)
+    target = _evaluation_target(detail_for_report, product_ids=product_ids, artifact_ids=artifact_ids)
+    final_artifact = target["artifacts"][0] if target["artifacts"] else None
     final_text = final_artifact.get("content", "") if final_artifact else ""
     evidence = _evidence_ledger(detail_for_report)
-    goal = mission.get("goal", "")
-    requirements = _requirements(goal, final_text, evidence, final_artifact)
+    requirement_text = f"{mission.get('title', '')} {mission.get('goal', '')}"
+    requirements = _requirements(requirement_text, final_text, evidence, final_artifact)
     claims = _claims(final_text, final_artifact["id"] if final_artifact else "", evidence)
     tool_failures = _tool_failures(detail_for_report.get("events", []))
     issues = _issues(detail_for_report, requirements, claims, evidence, final_artifact)
     score = _score(issues)
     confidence, confidence_reason = _score_confidence(detail_for_report, evidence, issues)
+    gate_status = _gate_status(_status(score, issues), issues, detail_for_report)
     report = ReliabilityReport(
         reportId=f"report_{uuid4().hex[:12]}",
         missionId=mission["id"],
@@ -225,10 +273,16 @@ def build_reliability_report(
         mode=mode,
         score=score,
         status=_status(score, issues),
+        gateStatus=gate_status,
         summary=_summary(score, issues),
         objective=False,
         confidence=confidence,
         confidenceReason=confidence_reason,
+        evaluatedProductIds=target["productIds"],
+        evaluatedArtifactIds=target["artifactIds"],
+        evaluatedArtifactHashes=target["artifactHashes"],
+        targetSelectionReason=target["selectionReason"],
+        traceSnapshot=_trace_snapshot(detail_for_report),
         requirements=requirements,
         claims=claims,
         evidence=evidence,
@@ -287,17 +341,18 @@ def _evidence_ledger(detail: dict[str, Any]) -> list[EvidenceItem]:
 
 
 def _requirements(
-    goal: str,
+    requirement_text: str,
     final_text: str,
     evidence: list[EvidenceItem],
     final_artifact: dict[str, Any] | None = None,
 ) -> list[RequirementItem]:
-    lowered = goal.lower()
+    lowered = requirement_text.lower()
     requirements: list[RequirementItem] = []
     expected_count = _expected_count(lowered)
+    expected_words = _expected_word_count(requirement_text)
     final_entities = _entities(final_text)
     url_count = len(URL_RE.findall(final_text))
-    paper_like = is_research_paper_like_goal(goal)
+    paper_like = is_research_paper_like_goal(requirement_text)
     if paper_like:
         has_final_draft = artifact_is_research_paper_final_draft(final_artifact)
         requirements.append(
@@ -312,6 +367,43 @@ def _requirements(
                     else "Final artifact is missing, too short, or appears to be only an outline/plan."
                 ),
                 fieldName="final draft",
+            )
+        )
+    if expected_words is not None:
+        actual_words = _content_word_count(final_text)
+        requirements.append(
+            RequirementItem(
+                id=f"R{len(requirements) + 1}",
+                requirement=f"Write at least {expected_words} words of deliverable body prose",
+                type="count",
+                status=_count_requirement_status(actual_words, expected_words),
+                evidence=f"Detected {actual_words} body words before references; expected at least {expected_words}.",
+                expectedCount=expected_words,
+                fieldName="word count",
+            )
+        )
+    if _requires_english(requirement_text):
+        english_status, english_evidence = _english_requirement(final_text)
+        requirements.append(
+            RequirementItem(
+                id=f"R{len(requirements) + 1}",
+                requirement="Write the deliverable in English",
+                type="format",
+                status=english_status,
+                evidence=english_evidence,
+                fieldName="language",
+            )
+        )
+    if _requires_apa(requirement_text):
+        apa_status, apa_evidence = _apa_requirement(final_text)
+        requirements.append(
+            RequirementItem(
+                id=f"R{len(requirements) + 1}",
+                requirement="Use APA-style citation format",
+                type="format",
+                status=apa_status,
+                evidence=apa_evidence,
+                fieldName="APA format",
             )
         )
     if expected_count is not None:
@@ -388,7 +480,9 @@ def _requirements(
 
 def _claims(final_text: str, artifact_id: str, evidence: list[EvidenceItem]) -> list[ClaimItem]:
     claims: list[ClaimItem] = []
-    for sentence in _sentences(final_text):
+    for sentence in _sentences(_claim_body_text(final_text)):
+        if _is_reference_like_sentence(sentence):
+            continue
         if not _looks_factual(sentence):
             continue
         entity = _best_entity(sentence)
@@ -421,7 +515,7 @@ def _issues(
     issues: list[ReliabilityIssue] = []
     artifact_ids = [final_artifact["id"]] if final_artifact else []
     mission_status = str(detail.get("mission", {}).get("status") or "")
-    if mission_status != "completed":
+    if mission_status not in {"running", "completed"}:
         mission = detail.get("mission", {})
         last_error = str(mission.get("lastError") or mission.get("last_error") or "").strip()
         description = f"Mission status is {mission_status or 'unknown'}, so the current Product cannot be treated as ready to ship."
@@ -453,6 +547,20 @@ def _issues(
                     artifactIds=artifact_ids,
                     suggestedFix=_requirement_fix(requirement),
                     confidence=0.9,
+                )
+            )
+        elif requirement.status == "partially_met":
+            issues.append(
+                ReliabilityIssue(
+                    id=f"I{len(issues) + 1}",
+                    type="partial_requirement",
+                    severity="medium",
+                    title="Partial requirement",
+                    description=requirement.evidence or requirement.requirement,
+                    requirementIds=[requirement.id],
+                    artifactIds=artifact_ids,
+                    suggestedFix=_requirement_fix(requirement),
+                    confidence=0.82,
                 )
             )
     evidence_text = _all_evidence_text(evidence)
@@ -587,6 +695,8 @@ def _status(score: int, issues: list[ReliabilityIssue]) -> str:
         return "needs_human_review"
     if any(issue.severity == "critical" for issue in issues):
         return "needs_human_review"
+    if any(issue.severity == "high" for issue in issues):
+        return "needs_human_review"
     if score >= 85:
         return "ship_ready"
     if score >= 70:
@@ -594,6 +704,68 @@ def _status(score: int, issues: list[ReliabilityIssue]) -> str:
     if score >= 50:
         return "needs_human_review"
     return "unsafe_to_ship"
+
+
+def _gate_status(status_value: str, issues: list[ReliabilityIssue], detail: dict[str, Any]) -> str:
+    actionable = [issue for issue in issues if issue.type != "mission_incomplete"]
+    if status_value == "unsafe_to_ship" or any(issue.type == "unsafe_action" for issue in actionable):
+        return "blocked"
+    if any(issue.severity in {"critical", "high", "medium"} for issue in actionable):
+        if any(issue.type == "evaluation_limitation" for issue in actionable):
+            return "human_review"
+        if _repeated_blocking_issue_count(detail, actionable) >= 2:
+            return "human_review"
+        return "repair_required"
+    if status_value == "ship_ready":
+        return "pass"
+    if actionable:
+        return "human_review"
+    return "pass"
+
+
+def _repeated_blocking_issue_count(detail: dict[str, Any], current_issues: list[ReliabilityIssue]) -> int:
+    current_signatures = {
+        _issue_signature(issue.model_dump(by_alias=True))
+        for issue in current_issues
+        if issue.severity in {"critical", "high", "medium"} and issue.type != "mission_incomplete"
+    }
+    if not current_signatures:
+        return 0
+    repeated_reports = 0
+    for report in _historical_report_payloads(detail):
+        previous_signatures = {
+            _issue_signature(issue)
+            for issue in report.get("issues", [])
+            if isinstance(issue, dict)
+            and issue.get("severity") in {"critical", "high", "medium"}
+            and issue.get("type") != "mission_incomplete"
+        }
+        if current_signatures.intersection(previous_signatures):
+            repeated_reports += 1
+    return repeated_reports
+
+
+def _historical_report_payloads(detail: dict[str, Any]) -> list[dict[str, Any]]:
+    reports: list[dict[str, Any]] = []
+    for artifact in detail.get("artifacts", []):
+        if artifact.get("metadata", {}).get("artifactRole") != "reliability_report":
+            continue
+        payload = artifact.get("metadata", {}).get("reportPayload")
+        if isinstance(payload, dict):
+            reports.append(payload)
+    return reports
+
+
+def _issue_signature(issue: dict[str, Any]) -> str:
+    text = " ".join(
+        str(issue.get(key) or "")
+        for key in ("type", "title", "description")
+    )
+    text = URL_RE.sub(" ", text.lower())
+    text = re.sub(r"\b[a-f0-9]{8,}\b", " ", text)
+    text = re.sub(r"\d+", "#", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:240]
 
 
 def _summary(score: int, issues: list[ReliabilityIssue]) -> str:
@@ -613,8 +785,8 @@ def _score_confidence(
     mission_status = str(detail.get("mission", {}).get("status") or "")
     if not evidence:
         return "low", "No Evidence Ledger was available, so the score is a risk signal with limited factual coverage."
-    if mission_status != "completed":
-        return "low", "The Mission is not completed, so the report cannot certify the current candidate."
+    if mission_status not in {"running", "completed"}:
+        return "low", "The Mission is not in an active or completed state, so the report cannot certify the current candidate."
     if any(issue.type == "evaluation_limitation" for issue in issues):
         return "low", "Evaluator limitations remain in the current trace."
     if any(issue.severity in {"critical", "high"} for issue in issues):
@@ -640,6 +812,8 @@ def _report_markdown(report: ReliabilityReport) -> str:
         "",
         f"Score: {report.score} / 100",
         f"Status: {report.status}",
+        f"Gate: {report.gate_status}",
+        f"Evaluated Artifacts: {', '.join(report.evaluated_artifact_ids) or 'None'}",
         f"Meaning: {report.score_meaning}",
         f"Confidence: {report.confidence} - {report.confidence_reason}",
         f"Profile: {report.profile}",
@@ -733,6 +907,126 @@ def _with_replay_evidence(detail: dict[str, Any]) -> dict[str, Any]:
     return replay_detail
 
 
+def _evaluation_target(
+    detail: dict[str, Any],
+    product_ids: list[str] | None = None,
+    artifact_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    artifacts = [
+        artifact
+        for artifact in detail.get("artifacts", [])
+        if artifact.get("metadata", {}).get("artifactRole") != "reliability_report"
+    ]
+    artifact_by_id = {artifact["id"]: artifact for artifact in artifacts}
+    requested_product_ids = [str(value) for value in product_ids or [] if value]
+    requested_artifact_ids = [str(value) for value in artifact_ids or [] if value]
+    products = [
+        product
+        for product in detail.get("products", [])
+        if not requested_product_ids or product.get("id") in set(requested_product_ids)
+    ]
+    target_artifacts: list[dict[str, Any]] = []
+    selection_reason = "fallback"
+
+    if requested_artifact_ids:
+        target_artifacts = [
+            artifact_by_id[artifact_id] for artifact_id in requested_artifact_ids if artifact_id in artifact_by_id
+        ]
+        selection_reason = "explicit_tool_args"
+    elif products:
+        deliverable_ids = [
+            product.get("deliverableArtifactId")
+            for product in products
+            if product.get("deliverableArtifactId")
+        ]
+        target_artifacts = [
+            artifact_by_id[artifact_id] for artifact_id in deliverable_ids if artifact_id in artifact_by_id
+        ]
+        selection_reason = "product_deliverable"
+        if not target_artifacts:
+            final_product_artifact_ids = {
+                artifact_id
+                for product in products
+                if product.get("status") == "final"
+                for artifact_id in product.get("artifactIds", [])
+            }
+            target_artifacts = [
+                artifact for artifact in artifacts if artifact["id"] in final_product_artifact_ids
+            ]
+            selection_reason = "product_final"
+    else:
+        fallback = _final_artifact(detail)
+        if fallback:
+            target_artifacts = [fallback]
+            selection_reason = "fallback_final_artifact"
+
+    target_product_ids = requested_product_ids or _product_ids_for_artifacts(detail, [item["id"] for item in target_artifacts])
+    target_artifacts = _dedupe_target_artifacts(target_artifacts)
+    target_artifact_ids = [artifact["id"] for artifact in target_artifacts]
+    return {
+        "products": products,
+        "artifacts": target_artifacts,
+        "productIds": target_product_ids,
+        "artifactIds": target_artifact_ids,
+        "artifactHashes": {artifact["id"]: _artifact_hash(artifact) for artifact in target_artifacts},
+        "selectionReason": selection_reason,
+    }
+
+
+def _dedupe_target_artifacts(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    result: list[dict[str, Any]] = []
+    for artifact in artifacts:
+        artifact_id = artifact.get("id")
+        if not artifact_id or artifact_id in seen:
+            continue
+        seen.add(artifact_id)
+        result.append(artifact)
+    return result
+
+
+def _product_ids_for_artifacts(detail: dict[str, Any], artifact_ids: list[str]) -> list[str]:
+    wanted = set(artifact_ids)
+    product_ids: list[str] = []
+    for product in detail.get("products", []):
+        product_artifact_ids = set(product.get("artifactIds") or [])
+        if product.get("deliverableArtifactId"):
+            product_artifact_ids.add(product["deliverableArtifactId"])
+        if wanted.intersection(product_artifact_ids):
+            product_ids.append(product["id"])
+    return product_ids
+
+
+def _artifact_hash(artifact: dict[str, Any]) -> str:
+    normalized = _normalized_artifact_content(artifact)
+    return sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _normalized_artifact_content(artifact: dict[str, Any]) -> str:
+    content = str(artifact.get("content") or "")
+    return "\n".join(line.rstrip() for line in content.replace("\r\n", "\n").replace("\r", "\n").split("\n")).strip()
+
+
+def _trace_snapshot(detail: dict[str, Any]) -> dict[str, int | str | None]:
+    events = detail.get("events", [])
+    product_sequences = [
+        int(event.get("sequence") or 0)
+        for event in events
+        if event.get("type") in {"PRODUCT_UPDATED", "WORK_WINDOW_COMPLETED", "MISSION_COMPLETED"}
+    ]
+    search_sequences = [
+        int(event.get("sequence") or 0)
+        for event in events
+        if event.get("type") in {"WEB_SEARCH_COMPLETED", "WEB_SEARCH_FAILED", "SEARCH_SUMMARY_CREATED"}
+    ]
+    return {
+        "latestEventSequence": int(events[-1].get("sequence") or 0) if events else 0,
+        "latestProductEventSequence": max(product_sequences) if product_sequences else None,
+        "latestSearchEventSequence": max(search_sequences) if search_sequences else None,
+        "evaluatorVersion": EVALUATOR_VERSION,
+    }
+
+
 def _replay_results(detail: dict[str, Any]) -> list[dict[str, Any]]:
     text = ""
     artifact = _final_artifact(detail)
@@ -814,6 +1108,15 @@ def _final_artifact(detail: dict[str, Any]) -> dict[str, Any] | None:
         for artifact in detail.get("artifacts", [])
         if artifact.get("metadata", {}).get("artifactRole") != "reliability_report"
     ]
+    deliverable_ids = [
+        product.get("deliverableArtifactId")
+        for product in detail.get("products", [])
+        if product.get("deliverableArtifactId")
+    ]
+    for artifact_id in deliverable_ids:
+        artifact = next((item for item in artifacts if item["id"] == artifact_id), None)
+        if artifact:
+            return artifact
     final_ids = _final_artifact_ids(detail.get("events", []))
     for artifact_id in final_ids:
         artifact = next((item for item in artifacts if item["id"] == artifact_id), None)
@@ -847,7 +1150,7 @@ def _latest_run_id(detail: dict[str, Any]) -> str | None:
     return (active or latest or {}).get("id")
 
 
-def _latest_event_is_current_report(detail: dict[str, Any]) -> bool:
+def _latest_event_is_current_report(detail: dict[str, Any], target: dict[str, Any]) -> bool:
     events = detail.get("events", [])
     if not events:
         return False
@@ -855,7 +1158,38 @@ def _latest_event_is_current_report(detail: dict[str, Any]) -> bool:
     if latest.get("type") != "RELIABILITY_REPORTED":
         return False
     payload = latest.get("payload", {})
-    return payload.get("evaluatorVersion") == EVALUATOR_VERSION
+    if payload.get("evaluatorVersion") != EVALUATOR_VERSION:
+        return False
+    report_artifact_id = str(payload.get("reportArtifactId") or "")
+    if not report_artifact_id:
+        return False
+    report_artifact = next(
+        (
+            artifact
+            for artifact in detail.get("artifacts", [])
+            if artifact.get("id") == report_artifact_id
+            and artifact.get("metadata", {}).get("artifactRole") == "reliability_report"
+        ),
+        None,
+    )
+    report = report_artifact.get("metadata", {}).get("reportPayload") if report_artifact else None
+    if not isinstance(report, dict):
+        return False
+    return _report_matches_target(report, target)
+
+
+def _report_matches_target(report: dict[str, Any], target: dict[str, Any]) -> bool:
+    expected_ids = set(target.get("artifactIds") or [])
+    report_ids = set(report.get("evaluatedArtifactIds") or [])
+    if expected_ids != report_ids:
+        return False
+    report_hashes = report.get("evaluatedArtifactHashes") or {}
+    if not isinstance(report_hashes, dict):
+        return False
+    for artifact_id, artifact_hash in (target.get("artifactHashes") or {}).items():
+        if report_hashes.get(artifact_id) != artifact_hash:
+            return False
+    return True
 
 
 def _expected_count(goal: str) -> int | None:
@@ -869,13 +1203,69 @@ def _expected_count(goal: str) -> int | None:
     return None
 
 
+def _expected_word_count(text: str) -> int | None:
+    matches = re.findall(r"\b([1-9]\d{2,5})\s*(?:-?\s*)?(?:words?|word|词)\b", text, flags=re.IGNORECASE)
+    if not matches:
+        return None
+    expected = max(int(match) for match in matches)
+    return expected if expected >= 100 else None
+
+
+def _content_word_count(text: str) -> int:
+    content = URL_RE.sub(" ", _claim_body_text(text))
+    return len(WORD_RE.findall(content))
+
+
+def _count_requirement_status(actual: int, expected: int) -> str:
+    if actual >= expected:
+        return "met"
+    if actual >= max(1, int(expected * 0.8)):
+        return "partially_met"
+    return "missing"
+
+
+def _requires_english(text: str) -> bool:
+    lowered = text.lower()
+    return any(term in lowered for term in ("english", "英文", "英语"))
+
+
+def _english_requirement(text: str) -> tuple[str, str]:
+    cjk_count = len(CHINESE_CHAR_RE.findall(text))
+    word_count = _content_word_count(text)
+    if word_count >= 80 and cjk_count <= 30:
+        return "met", f"Detected {word_count} English-like words and {cjk_count} CJK characters."
+    if word_count >= 40:
+        return "partially_met", f"Detected only {word_count} English-like words and {cjk_count} CJK characters."
+    return "missing", f"Detected only {word_count} English-like words and {cjk_count} CJK characters."
+
+
+def _requires_apa(text: str) -> bool:
+    return "apa" in text.lower()
+
+
+def _apa_requirement(text: str) -> tuple[str, str]:
+    has_references = bool(re.search(r"(?im)^\s{0,3}(?:#{1,6}\s*)?references\s*:?\s*$", text))
+    has_parenthetical = bool(re.search(r"\([A-Z][A-Za-z& .'-]{1,80},\s*(?:n\.d\.|\d{4}[a-z]?)\)", text))
+    has_author_year_reference = bool(APA_REFERENCE_RE.search(text))
+    if has_references and (has_parenthetical or has_author_year_reference):
+        return "met", "Detected References section and APA-style author/date citation shape."
+    if has_references or has_parenthetical or has_author_year_reference:
+        return "partially_met", "Detected only partial APA citation shape."
+    return "missing", "No APA-style References section or author/date citation shape was detected."
+
+
 def _entities(text: str) -> list[str]:
     found: list[str] = []
-    for match in ENTITY_RE.finditer(text):
+    text_without_urls = URL_RE.sub(" ", text)
+    stop_entities = {item.lower() for item in STOP_ENTITIES}
+    for match in ENTITY_RE.finditer(text_without_urls):
         entity = " ".join(match.group(0).split()).strip(" .:-")
-        if len(entity) < 3 or entity in STOP_ENTITIES:
+        entity_lower = entity.lower()
+        if len(entity) < 3 or entity_lower in stop_entities:
             continue
-        if entity.lower() in {item.lower() for item in found}:
+        if _looks_url_slug_entity(entity):
+            continue
+        if entity_lower in {item.lower() for item in found}:
             continue
         found.append(entity)
     return found[:20]
@@ -888,6 +1278,45 @@ def _best_entity(sentence: str) -> str:
 
 def _sentences(text: str) -> list[str]:
     return [item.strip(" -•\t") for item in SENTENCE_RE.split(text) if len(item.strip()) >= 20]
+
+
+def _claim_body_text(text: str) -> str:
+    body_lines: list[str] = []
+    for line in text.splitlines():
+        if REFERENCE_HEADING_RE.match(line):
+            break
+        body_lines.append(line)
+    return "\n".join(body_lines)
+
+
+def _is_reference_like_sentence(sentence: str) -> bool:
+    stripped = sentence.strip(" -•\t")
+    lowered = stripped.lower()
+    if not stripped:
+        return True
+    if REFERENCE_HEADING_RE.match(stripped):
+        return True
+    if APA_REFERENCE_RE.match(stripped):
+        return True
+    if lowered.startswith(("source:", "sources:", "reference:", "references:", "url:", "link:", "doi:")):
+        return True
+    if URL_RE.fullmatch(stripped):
+        return True
+    if URL_RE.match(stripped):
+        remainder = URL_RE.sub(" ", stripped)
+        return len(WORD_RE.findall(remainder)) <= 4
+    return False
+
+
+def _looks_url_slug_entity(entity: str) -> bool:
+    lowered = entity.lower()
+    return (
+        "http" in lowered
+        or "www" in lowered
+        or "/" in entity
+        or "." in entity
+        or entity.count("-") >= 2
+    )
 
 
 def _looks_factual(sentence: str) -> bool:
@@ -910,7 +1339,6 @@ def _looks_factual(sentence: str) -> bool:
         "war",
         "government",
         "history",
-        "source",
         "革命",
         "战争",
         "政府",
@@ -963,6 +1391,7 @@ def _support(claim: str, entity: str, evidence: list[EvidenceItem]) -> tuple[str
 
 
 def _tokens(text: str) -> set[str]:
+    text = URL_RE.sub(" ", text)
     tokens = {
         token.lower()
         for token in WORD_RE.findall(text)
@@ -1060,6 +1489,12 @@ def _all_evidence_text(evidence: list[EvidenceItem]) -> str:
 def _requirement_fix(requirement: RequirementItem) -> str:
     if requirement.field_name == "source link":
         return "Add one trace-backed source link for each researched entity."
+    if requirement.field_name == "word count":
+        return f"Expand the deliverable body to at least {requirement.expected_count} words before references."
+    if requirement.field_name == "language":
+        return "Rewrite the deliverable in the requested language."
+    if requirement.field_name == "APA format":
+        return "Add APA-style in-text citations and a References section, or revise existing citations to APA shape."
     if requirement.expected_count:
         return f"Revise the final answer to include {requirement.expected_count} researched entities."
     return "Revise the final answer to satisfy this requirement."

@@ -397,6 +397,24 @@ class ArtifactResponse(BaseModel):
     created_at: datetime = Field(alias="createdAt")
 
 
+class ArtifactIndexItemResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    mission_id: str | None = Field(default=None, alias="missionId")
+    product_id: str | None = Field(default=None, alias="productId")
+    kind: str
+    title: str
+    label: str
+    summary: str = ""
+    artifact_role: str | None = Field(default=None, alias="artifactRole")
+    deliverable: bool = False
+    loaded: bool = False
+    source: str = "artifact"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime | None = Field(default=None, alias="createdAt")
+
+
 class ProductResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -443,5 +461,7 @@ class MissionDetailResponse(BaseModel):
     latest_run: RunResponse | None = Field(default=None, alias="latestRun")
     events: list[EventResponse]
     artifacts: list[ArtifactResponse]
+    artifact_index: list[ArtifactIndexItemResponse] = Field(default_factory=list, alias="artifactIndex")
+    artifact_content_mode: str = Field(default="index_on_demand", alias="artifactContentMode")
     products: list[ProductResponse] = Field(default_factory=list)
     work_windows: list[WorkWindowResponse] = Field(default_factory=list, alias="workWindows")

@@ -507,14 +507,20 @@ Constraints:
 
 - MUST be read-only against Product content.
 - MUST run Evaluator Runtime against the visible Mission trace.
+- MUST evaluate the exact supplied `artifactIds` when they are present.
+- If `artifactIds` are absent, MUST evaluate the selected Product `deliverableArtifactId`.
+- MUST reject with `evaluation_target_required` when no explicit or Product-level deliverable candidate exists.
 - MUST persist a Reliability Report Artifact.
 - MUST emit `EVALUATION_STARTED` before report construction unless returning an unchanged current report.
 - MUST emit `RELIABILITY_REPORTED`.
 - MUST emit `EVALUATION_FAILED` if no report can be produced.
-- MUST return score, status, issue counts, top issues, report Artifact id, and recommended next tool.
+- MUST return evaluated Artifact ids, evaluated content hashes, gate status, score, issue counts, blocking issues, report
+  Artifact id, and recommended next action contract.
 - MUST NOT modify Product content.
 - MUST NOT mark Mission completed.
 - For research/paper-like Missions, a current report after the latest Product update is required before `finish_mission`.
+- For research/paper-like Missions, the current report must cover the exact `finalArtifactIds` and matching content
+  hashes before `finish_mission` can complete.
 
 ### 13.7 Evaluate Product Observation
 
@@ -523,6 +529,12 @@ Constraints:
   "tool": "evaluate_product",
   "status": "ok",
   "profile": "research_reliability_v1",
+  "gateStatus": "repair_required",
+  "evaluatedProductIds": ["product_id"],
+  "evaluatedArtifactIds": ["artifact_id"],
+  "evaluatedArtifactHashes": {
+    "artifact_id": "sha256..."
+  },
   "score": 80,
   "reliabilityStatus": "needs_human_review",
   "issueCounts": {
@@ -530,6 +542,16 @@ Constraints:
     "medium": 1
   },
   "reportArtifactId": "artifact_id",
+  "blockingIssues": [
+    {
+      "id": "I1",
+      "type": "missing_requirement",
+      "severity": "high",
+      "artifactIds": ["artifact_id"],
+      "requiredAction": "revise_candidate",
+      "suggestedTool": "work_product"
+    }
+  ],
   "topIssues": [
     {
       "id": "I1",
@@ -539,9 +561,40 @@ Constraints:
       "suggestedFix": "Revise the final answer."
     }
   ],
-  "recommendedNextTool": "work_product"
+  "recommendedNextTool": "work_product",
+  "nextActionContract": {
+    "ifEditing": {
+      "tool": "work_product",
+      "operation": "revise_artifact",
+      "sourceArtifactIds": ["artifact_id"]
+    },
+    "afterEditing": {
+      "tool": "evaluate_product",
+      "artifactIds": ["new_artifact_id"]
+    },
+    "finishOnlyAfter": "gateStatus pass and report hashes match finalArtifactIds"
+  }
 }
 ```
+
+`finish_mission` rejection observations for Reliability failures MUST include structured fields whenever available:
+
+```json
+{
+  "tool": "finish_mission",
+  "status": "rejected",
+  "code": "reliability_evaluation_required",
+  "requiredTool": "evaluate_product",
+  "finalArtifactIds": ["artifact_id"],
+  "latestReportArtifactId": "artifact_id|null",
+  "latestReportCoversFinalArtifacts": false,
+  "latestProductUpdatedAfterReport": true,
+  "blockingIssueIds": ["I1"]
+}
+```
+
+The Lead MUST repair the specific blocking issues or evaluate the current final Artifact before calling
+`finish_mission` again. It MUST NOT repeatedly rewrite only to chase a numeric score.
 
 ## 14. Invalid Turns
 

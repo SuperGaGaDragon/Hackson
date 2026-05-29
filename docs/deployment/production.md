@@ -69,7 +69,8 @@ Last Modified by: Codex
 
 ## public domain deployment steps
 1. Confirm local tests and frontend build pass.
-2. Sync the current working tree to `~/hackson_domain_8145` with `rsync`, excluding `.git`, local dependency caches, and backend `.venv`.
+2. Sync the current working tree to `~/hackson_domain_8145` with `rsync`, excluding `.git`, local dependency caches,
+   backend `.venv`, frontend `node_modules`, build caches, and all target-only env files such as `backend/.env`.
 3. Reuse or create `~/hackson_domain_8145/backend/.venv`.
 4. Build frontend `dist` locally or on target, then ensure `HACKSON_STATIC_FRONTEND_DIR=/home/catadragon/hackson_domain_8145/frontend/dist`.
 5. Run target backend tests in `~/hackson_domain_8145/backend`.
@@ -155,6 +156,8 @@ Last Modified by: Codex
 - Idle Auto smoke service `hackson-idle-auto-8147.service` is active on `127.0.0.1:8147` for isolated verification of topic start, user interjection, server-owned speaker selection, and rate-limit behavior.
 - Idle Auto smoke UI path `5187 -> 18147 -> 8147` verified rate-limit behavior: frontend shows `Model busy`, Auto turns off, no extra tick request is scheduled, and failed tick leaves no messages.
 - Idle Auto screenshot: `/tmp/hackson_idle_auto_model_busy_ui.png`.
+- Progress multi-select public promotion on 2026-05-29 backed up touched public files to `~/hackson_domain_8145_backups/progress_multiselect_20260529084901`, verified no running Mission/window restart blockers, restarted only `hackson-domain-8145.service`, verified public `/health`, root asset `/assets/index-DElU9OI7.js`, Work Command Rail public smoke, Product Reader public smoke, and saved screenshots `scripts/artifacts/work_command_rail_multiselect_public.png`, `scripts/artifacts/work_command_rail_multiselect_public_mobile.png`, `scripts/artifacts/work_product_reader_multiselect_public.png`, and `scripts/artifacts/work_product_reader_multiselect_public_mobile.png`.
+- Reliability target-bound gate public promotion on 2026-05-29 backed up touched public files to `~/hackson_domain_8145_backups/reliability_gate_20260529092134`, verified isolated target Work Mode tests on `~/hackson_reliability_8168`, verified isolated `127.0.0.1:8168` health/API smoke, ran public-directory Work Mode tests (`142 passed`), built frontend asset `/assets/index-DElU9OI7.js`, restored target-only `backend/.env` after a sync exclusion miss, restarted only `hackson-domain-8145.service`, verified public `/health`, root HTML, evaluator version `2026-05-29.target-bound-gate.v1`, and public Work API smoke.
 - Latest public screenshots:
   - `/tmp/hackson_public_work_agents_desktop.png`
   - `/tmp/hackson_public_work_done_desktop.png`

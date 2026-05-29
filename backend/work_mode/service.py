@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
@@ -45,6 +45,8 @@ DEFAULT_LEAD_EMPLOYEE = {
 }
 DEFAULT_PROJECT_REPO_PATH = ""
 USER_AGENT_LEAD_IDS = {"agent_1", "agent_2"}
+MISSION_DETAIL_ARTIFACT_LIMIT = 40
+MISSION_DETAIL_REQUIRED_ARTIFACT_LIMIT = 80
 
 
 class WorkModeRepositoryProtocol(Protocol):
@@ -73,6 +75,8 @@ class WorkModeRepositoryProtocol(Protocol):
     def create_artifact(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def update_artifact(self, artifact_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
     def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]: ...
+    def list_artifacts_by_ids(self, user_id: str, mission_id: str, artifact_ids: list[str]) -> list[dict[str, Any]]: ...
+    def find_artifact(self, user_id: str, mission_id: str, artifact_id: str) -> dict[str, Any] | None: ...
     def create_product(self, document: dict[str, Any]) -> dict[str, Any]: ...
     def find_product(self, product_id: str, user_id: str) -> dict[str, Any] | None: ...
     def update_product(self, product_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any] | None: ...
@@ -222,10 +226,48 @@ class WorkModeService:
         project = self._require_project(user_id, str(mission["project_id"]))
         active_run = self.repository.find_active_run(str(mission["_id"]), user_id)
         latest_run = active_run or self.repository.find_latest_run(str(mission["_id"]), user_id)
-        events = self.repository.list_events(user_id, str(mission["_id"]), after_sequence=None, limit=100)
-        artifacts = self.repository.list_artifacts(user_id, str(mission["_id"]), limit=20)
         products = self.repository.list_products(user_id, str(mission["_id"]), limit=50)
         work_windows = self.repository.list_work_windows(user_id, str(mission["_id"]), limit=100)
+        events = self.repository.list_events(user_id, str(mission["_id"]), after_sequence=None, limit=100)
+        recent_artifacts = self.repository.list_artifacts(
+            user_id,
+            str(mission["_id"]),
+            limit=MISSION_DETAIL_ARTIFACT_LIMIT,
+        )
+        required_artifact_ids = _required_content_artifact_ids(products, work_windows)
+        known_artifact_ids = {str(artifact["_id"]) for artifact in recent_artifacts}
+        missing_required_ids = sorted(required_artifact_ids - known_artifact_ids)[:MISSION_DETAIL_REQUIRED_ARTIFACT_LIMIT]
+        artifacts = list(recent_artifacts)
+        if missing_required_ids:
+            artifacts.extend(self.repository.list_artifacts_by_ids(user_id, str(mission["_id"]), missing_required_ids))
+        artifacts = _dedupe_artifacts(artifacts)
+        referenced_artifact_ids = _visible_artifact_ids(products, work_windows)
+        known_artifact_ids = {str(artifact["_id"]) for artifact in artifacts}
+        artifact_index = _artifact_index(products, work_windows, artifacts, referenced_artifact_ids, known_artifact_ids)
+        artifacts = _loaded_artifacts_for_detail(artifacts, referenced_artifact_ids, required_artifact_ids)
+        return {
+            "project": public_project(project),
+            "mission": public_mission(mission),
+            "activeRun": public_run(active_run) if active_run is not None else None,
+            "latestRun": public_run(latest_run) if latest_run is not None else None,
+            "events": [public_event(event) for event in events],
+            "artifacts": [public_artifact(artifact) for artifact in artifacts],
+            "artifactIndex": artifact_index,
+            "artifactContentMode": "index_on_demand",
+            "products": [public_product(product) for product in products],
+            "workWindows": [public_work_window(window) for window in work_windows],
+        }
+
+    def get_mission_evaluation_detail(self, user_id: str, mission_id: str) -> dict[str, Any]:
+        """Return a complete Mission trace for backend Reliability evaluation."""
+        mission = self._require_mission(user_id, mission_id)
+        project = self._require_project(user_id, str(mission["project_id"]))
+        active_run = self.repository.find_active_run(str(mission["_id"]), user_id)
+        latest_run = active_run or self.repository.find_latest_run(str(mission["_id"]), user_id)
+        events = self.repository.list_events(user_id, str(mission["_id"]), after_sequence=None, limit=1000)
+        artifacts = self.repository.list_artifacts(user_id, str(mission["_id"]), limit=1000)
+        products = self.repository.list_products(user_id, str(mission["_id"]), limit=200)
+        work_windows = self.repository.list_work_windows(user_id, str(mission["_id"]), limit=500)
         return {
             "project": public_project(project),
             "mission": public_mission(mission),
@@ -920,8 +962,7 @@ class WorkModeService:
 
     def require_artifact(self, user_id: str, mission_id: str, artifact_id: str) -> dict[str, Any]:
         mission = self._require_mission(user_id, mission_id)
-        artifacts = self.repository.list_artifacts(user_id, mission_id, limit=500)
-        artifact = next((row for row in artifacts if str(row["_id"]) == artifact_id), None)
+        artifact = self.repository.find_artifact(user_id, mission_id, artifact_id)
         if artifact is None or str(artifact["mission_id"]) != str(mission["_id"]):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="artifact_not_found")
         return public_artifact(artifact)
@@ -1286,6 +1327,213 @@ def _product_metadata_with_artifact_manifest(
     )
     values["artifactManifest"] = manifest[-100:]
     return values
+
+
+def _dedupe_artifacts(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_id: dict[str, dict[str, Any]] = {}
+    for artifact in artifacts:
+        by_id[str(artifact["_id"])] = artifact
+    return sorted(by_id.values(), key=lambda item: (item.get("created_at"), str(item.get("_id"))))
+
+
+def _required_content_artifact_ids(products: list[dict[str, Any]], work_windows: list[dict[str, Any]]) -> set[str]:
+    required_ids: set[str] = set()
+    for product in products:
+        for key in ("deliverable_artifact_id", "latest_artifact_id"):
+            if product.get(key) is not None:
+                required_ids.add(str(product[key]))
+        manifest_deliverable_id = _deliverable_id_from_product_manifest(product)
+        if manifest_deliverable_id:
+            required_ids.add(manifest_deliverable_id)
+    for window in work_windows:
+        if window.get("result_artifact_id") is not None:
+            required_ids.add(str(window["result_artifact_id"]))
+    return required_ids
+
+
+def _visible_artifact_ids(products: list[dict[str, Any]], work_windows: list[dict[str, Any]]) -> set[str]:
+    referenced_ids: set[str] = set()
+    for product in products:
+        referenced_ids.update(str(value) for value in product.get("artifact_ids", []) if value is not None)
+        for key in ("latest_artifact_id", "deliverable_artifact_id"):
+            if product.get(key) is not None:
+                referenced_ids.add(str(product[key]))
+        for manifest_item in product.get("metadata", {}).get("artifactManifest", []) or []:
+            if isinstance(manifest_item, dict) and manifest_item.get("id"):
+                referenced_ids.add(str(manifest_item["id"]))
+    for window in work_windows:
+        if window.get("result_artifact_id") is not None:
+            referenced_ids.add(str(window["result_artifact_id"]))
+    return referenced_ids
+
+
+def _loaded_artifacts_for_detail(
+    artifacts: list[dict[str, Any]],
+    referenced_ids: set[str],
+    required_ids: set[str],
+) -> list[dict[str, Any]]:
+    return sorted(artifacts, key=lambda item: (item.get("created_at"), str(item.get("_id"))))
+
+
+def _artifact_index(
+    products: list[dict[str, Any]],
+    work_windows: list[dict[str, Any]],
+    artifacts: list[dict[str, Any]],
+    referenced_ids: set[str],
+    loaded_ids: set[str],
+) -> list[dict[str, Any]]:
+    by_id = {str(artifact["_id"]): artifact for artifact in artifacts}
+    items: dict[str, dict[str, Any]] = {}
+    order = 0
+
+    for product in products:
+        product_id = str(product["_id"])
+        for manifest_item in product.get("metadata", {}).get("artifactManifest", []) or []:
+            if not isinstance(manifest_item, dict) or not manifest_item.get("id"):
+                continue
+            artifact_id = str(manifest_item["id"])
+            order += 1
+            items[artifact_id] = _artifact_index_item(
+                artifact_id=artifact_id,
+                product_id=product_id,
+                manifest_item=manifest_item,
+                artifact=by_id.get(artifact_id),
+                loaded=artifact_id in loaded_ids,
+                source="manifest",
+                order=order,
+            )
+        for artifact_id in product.get("artifact_ids", []) or []:
+            artifact_id = str(artifact_id)
+            if artifact_id in items:
+                continue
+            order += 1
+            items[artifact_id] = _artifact_index_item(
+                artifact_id=artifact_id,
+                product_id=product_id,
+                manifest_item={},
+                artifact=by_id.get(artifact_id),
+                loaded=artifact_id in loaded_ids,
+                source="product",
+                order=order,
+            )
+
+    for window in work_windows:
+        artifact_id = str(window.get("result_artifact_id")) if window.get("result_artifact_id") is not None else ""
+        if not artifact_id or artifact_id in items:
+            continue
+        order += 1
+        items[artifact_id] = _artifact_index_item(
+            artifact_id=artifact_id,
+            product_id=None,
+            manifest_item={
+                "title": window.get("title"),
+                "summary": window.get("summary"),
+                "artifactRole": "window_result",
+            },
+            artifact=by_id.get(artifact_id),
+            loaded=artifact_id in loaded_ids,
+            source="work_window",
+            order=order,
+        )
+
+    for artifact_id in sorted(referenced_ids):
+        if artifact_id in items:
+            continue
+        order += 1
+        items[artifact_id] = _artifact_index_item(
+            artifact_id=artifact_id,
+            product_id=None,
+            manifest_item={},
+            artifact=by_id.get(artifact_id),
+            loaded=artifact_id in loaded_ids,
+            source="reference",
+            order=order,
+        )
+
+    for artifact in artifacts:
+        artifact_id = str(artifact["_id"])
+        if artifact_id in items:
+            continue
+        order += 1
+        product_id = artifact.get("metadata", {}).get("productId")
+        items[artifact_id] = _artifact_index_item(
+            artifact_id=artifact_id,
+            product_id=str(product_id) if product_id else None,
+            manifest_item={},
+            artifact=artifact,
+            loaded=True,
+            source="artifact",
+            order=order,
+        )
+
+    return sorted(items.values(), key=lambda item: (item.pop("_order"), item["id"]))
+
+
+def _artifact_index_item(
+    artifact_id: str,
+    product_id: str | None,
+    manifest_item: dict[str, Any],
+    artifact: dict[str, Any] | None,
+    loaded: bool,
+    source: str,
+    order: int,
+) -> dict[str, Any]:
+    metadata = artifact.get("metadata", {}) if artifact else {}
+    kind = manifest_item.get("kind") or (artifact.get("kind") if artifact else None) or "other"
+    role = manifest_item.get("artifactRole") or metadata.get("artifactRole")
+    title = manifest_item.get("title") or (artifact.get("title") if artifact else None) or "Untitled artifact"
+    summary = manifest_item.get("summary") or metadata.get("summary") or metadata.get("changeSummary") or ""
+    created_at = manifest_item.get("createdAt") or (artifact.get("created_at") if artifact else None)
+    item_product_id = product_id or metadata.get("productId")
+    return {
+        "_order": order,
+        "id": artifact_id,
+        "missionId": str(artifact["mission_id"]) if artifact and artifact.get("mission_id") is not None else None,
+        "productId": str(item_product_id) if item_product_id else None,
+        "kind": str(kind),
+        "title": str(title),
+        "label": _artifact_label(str(kind), role),
+        "summary": str(summary),
+        "artifactRole": str(role) if role else None,
+        "deliverable": bool(manifest_item.get("deliverable")) or (bool(artifact) and _artifact_is_deliverable(artifact)),
+        "loaded": loaded,
+        "source": source,
+        "metadata": {
+            "revisionOf": metadata.get("revisionOf"),
+            "sourceArtifactIds": metadata.get("sourceArtifactIds", []),
+            "workWindowId": metadata.get("workWindowId"),
+            "operation": metadata.get("operation"),
+        },
+        "createdAt": created_at,
+    }
+
+
+def _artifact_label(kind: str, role: Any) -> str:
+    if role == "review":
+        return "Review"
+    if role == "discussion":
+        return "Discussion"
+    if role == "search_summary":
+        return "Search notes"
+    if role == "reliability_report":
+        return "Quality report"
+    if role == "window_result":
+        return "Window result"
+    if role == "final" or kind == "final":
+        return "Final"
+    if kind == "revision":
+        return "Revision"
+    if kind == "draft":
+        return "Draft"
+    if kind == "outline":
+        return "Outline"
+    if kind == "chapter":
+        return "Chapter"
+    if kind == "report":
+        return "Report"
+    if kind == "notes":
+        return "Notes"
+    return "Artifact"
 
 
 def _deliverable_id_from_product_manifest(product: dict[str, Any]) -> str | None:

@@ -22,6 +22,7 @@ import {
   Wrench,
   ShieldCheck,
 } from "lucide-react";
+import { formatEasternTime } from "./timeFormat";
 
 const actionLabels = {
   ask_user: "Ask",
@@ -141,14 +142,7 @@ export function eventView(event) {
 
 export function formatEventTime(event) {
   const raw = event?.createdAt || event?.created_at;
-  if (!raw) return "";
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(date);
+  return formatEasternTime(raw);
 }
 
 export function sortByCreatedAt(rows) {

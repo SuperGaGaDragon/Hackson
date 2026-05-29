@@ -13,6 +13,7 @@ import {
   createProject,
   evaluateMission,
   getMission,
+  getMissionArtifact,
   listMissionEvents,
   listProjectMissions,
   listProjects,
@@ -46,6 +47,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
   const [selectedMission, setSelectedMission] = useState(null);
   const [events, setEvents] = useState([]);
   const [artifacts, setArtifacts] = useState([]);
+  const [artifactIndex, setArtifactIndex] = useState([]);
   const [products, setProducts] = useState([]);
   const [workWindows, setWorkWindows] = useState([]);
   const [projectName, setProjectName] = useState("");
@@ -142,9 +144,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents((current) => mergeEvents(current, nextEvents));
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
     }
 
     function startPollingFallback() {
@@ -173,9 +173,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           setSelectedMission(detail.mission);
           setMissions((current) => replaceMission(current, detail.mission));
           setEvents(detail.events || []);
-          setArtifacts(detail.artifacts || []);
-          setProducts(detail.products || []);
-          setWorkWindows(detail.workWindows || []);
+          applyMissionDetail(detail);
           if (["running", "stopping"].includes(detail.mission?.status)) {
             startPollingFallback();
           }
@@ -236,9 +234,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     setMissions(replaceMission(missionRows, selected));
     setSelectedMission(selected);
     setEvents(detail?.events || []);
-    setArtifacts(detail?.artifacts || []);
-    setProducts(detail?.products || []);
-    setWorkWindows(detail?.workWindows || []);
+    applyMissionDetail(detail);
     setAnswerText("");
     setFollowUpText("");
     setInstructionText("");
@@ -256,9 +252,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
         setMissions(replaceMission(missionRows, selected));
         setSelectedMission(selected);
         setEvents(detail?.events || []);
-        setArtifacts(detail?.artifacts || []);
-        setProducts(detail?.products || []);
-        setWorkWindows(detail?.workWindows || []);
+        applyMissionDetail(detail);
         setAnswerText("");
         setFollowUpText("");
         setInstructionText("");
@@ -274,6 +268,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     setSelectedMission(null);
     setEvents([]);
     setArtifacts([]);
+    setArtifactIndex([]);
     setProducts([]);
     setWorkWindows([]);
     setAnswerText("");
@@ -288,6 +283,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
     setSelectedMission(null);
     setEvents([]);
     setArtifacts([]);
+    setArtifactIndex([]);
     setProducts([]);
     setWorkWindows([]);
     setMissionLeadId(defaultLeadId);
@@ -316,9 +312,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setMissions((current) => [detail.mission, ...current]);
       setSelectedMission(detail.mission);
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
       if (detail.mission?.status !== "waiting_input") setAnswerText("");
       setAnswerText("");
       setFollowUpText("");
@@ -343,9 +337,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
       if (detail.mission?.status !== "waiting_input") setAnswerText("");
       setAnswerText("");
       setFollowUpText("");
@@ -369,9 +361,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
       setFollowUpText("");
       setInstructionText("");
     } catch (err) {
@@ -390,9 +380,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
     } catch (err) {
       setError(err.message || "Stop failed");
     } finally {
@@ -409,9 +397,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
     } catch (err) {
       setError(err.message || "Pause failed");
     } finally {
@@ -429,9 +415,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
       setAnswerText("");
     } catch (err) {
       setError(err.message || "Reply failed");
@@ -450,9 +434,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
       setFollowUpText("");
     } catch (err) {
       setError(err.message || "Continue failed");
@@ -471,9 +453,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
       setInstructionText("");
     } catch (err) {
       setError(err.message || "Send failed");
@@ -491,13 +471,35 @@ function WorkPage({ agents = [], initialRoute = {} }) {
       setSelectedMission(detail.mission);
       setMissions((current) => replaceMission(current, detail.mission));
       setEvents(detail.events || []);
-      setArtifacts(detail.artifacts || []);
-      setProducts(detail.products || []);
-      setWorkWindows(detail.workWindows || []);
+      applyMissionDetail(detail);
     } catch (err) {
       setError(err.message || "Evaluate failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  function applyMissionDetail(detail) {
+    setArtifacts(detail?.artifacts || []);
+    setArtifactIndex(detail?.artifactIndex || []);
+    setProducts(detail?.products || []);
+    setWorkWindows(detail?.workWindows || []);
+  }
+
+  async function loadArtifact(artifactId) {
+    if (!selectedMission || !artifactId) return null;
+    const existing = artifacts.find((artifact) => artifact.id === artifactId);
+    if (existing) return existing;
+    try {
+      const artifact = await getMissionArtifact(selectedMission.id, artifactId);
+      setArtifacts((current) => mergeArtifacts(current, [artifact]));
+      setArtifactIndex((current) =>
+        current.map((item) => (item.id === artifact.id ? { ...item, loaded: true } : item)),
+      );
+      return artifact;
+    } catch (err) {
+      setError(err.message || "Artifact load failed");
+      return null;
     }
   }
 
@@ -558,6 +560,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           busy={busy || loading}
           mission={selectedMission}
           onEvaluate={evaluate}
+          onOpenInfo={() => setShowMissionInfo(true)}
           onPause={pause}
         />
         <div className="mission-content">
@@ -565,7 +568,13 @@ function WorkPage({ agents = [], initialRoute = {} }) {
             <ActivityStrip events={events} mission={selectedMission} />
           </section>
           <section ref={sectionRefs.product}>
-            <ProductPanel artifacts={artifacts} mission={selectedMission} products={products} />
+            <ProductPanel
+              artifactIndex={artifactIndex}
+              artifacts={artifacts}
+              mission={selectedMission}
+              onLoadArtifact={loadArtifact}
+              products={products}
+            />
           </section>
           <section ref={sectionRefs.windows}>
             <WorkWindowPanel artifacts={artifacts} workWindows={workWindows} />
@@ -589,7 +598,7 @@ function WorkPage({ agents = [], initialRoute = {} }) {
           qualitySummary={currentReliabilitySummary}
           windowsCount={workWindows.length}
         />
-        <WarningCard events={events} />
+        <WarningCard events={events} mission={selectedMission} />
       </div>
       {showMissionInfo && (
         <Modal title="Mission info" onClose={() => setShowMissionInfo(false)}>
@@ -642,6 +651,19 @@ function mergeEvents(current, nextEvents) {
     map.set(event.id, event);
   }
   return Array.from(map.values()).sort((a, b) => a.sequence - b.sequence);
+}
+
+function mergeArtifacts(current, nextArtifacts) {
+  const map = new Map(current.map((artifact) => [artifact.id, artifact]));
+  for (const artifact of nextArtifacts) {
+    map.set(artifact.id, artifact);
+  }
+  return Array.from(map.values()).sort((a, b) => {
+    const left = new Date(a.createdAt || 0).getTime();
+    const right = new Date(b.createdAt || 0).getTime();
+    if (left !== right) return left - right;
+    return String(a.id || "").localeCompare(String(b.id || ""));
+  });
 }
 
 function replaceMission(missions, mission) {

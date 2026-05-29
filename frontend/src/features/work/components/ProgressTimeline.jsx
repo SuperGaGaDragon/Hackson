@@ -63,6 +63,8 @@ const progressFilters = [
   { id: "issues", label: "Issues" },
 ];
 
+const allFilterId = "all";
+
 const filterTypes = {
   thinking: new Set(["MODEL_TURN_STARTED", "MODEL_TURN_HEARTBEAT", "MODEL_TURN_COMPLETED", "MODEL_TURN_RETRYING", "MODEL_TURN_INVALID", "TOOL_CALLED"]),
   reliability: new Set(["EVALUATION_STARTED", "RELIABILITY_REPORTED", "EVALUATION_FAILED"]),
@@ -97,36 +99,53 @@ const filterTypes = {
 
 function ProgressTimeline({ events }) {
   const [expandedId, setExpandedId] = useState(null);
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [activeFilters, setActiveFilters] = useState([]);
   const allRows = compactTimeline(events.filter((event) => timelineTypes.has(event.type)));
-  const rows = filterRows(allRows, activeFilter);
+  const rows = filterRows(allRows, activeFilters);
   const counts = progressFilterCounts(allRows);
+  const activeFilterSet = new Set(activeFilters);
+  const allFiltersActive = activeFilterSet.size === 0;
+  const progressCount = allFiltersActive ? allRows.length : `${rows.length} / ${allRows.length}`;
+  const toggleFilter = (filterId) => {
+    setExpandedId(null);
+    if (filterId === allFilterId) {
+      setActiveFilters([]);
+      return;
+    }
+    setActiveFilters((current) => {
+      if (current.includes(filterId)) {
+        return current.filter((item) => item !== filterId);
+      }
+      return [...current, filterId];
+    });
+  };
   return (
     <div className="work-card timeline-card">
       <div className="card-head progress-head">
         <div>
           <p className="eyebrow">Progress</p>
-          <span>{activeFilter === "all" ? allRows.length : `${rows.length} / ${allRows.length}`}</span>
+          <span>{progressCount}</span>
         </div>
         <div className="progress-filters" aria-label="Progress filters">
-          {progressFilters.map((filter) => (
-            <button
-              className={activeFilter === filter.id ? "active" : ""}
-              key={filter.id}
-              onClick={() => {
-                setActiveFilter(filter.id);
-                setExpandedId(null);
-              }}
-              type="button"
-            >
-              <span>{filter.label}</span>
-              <small>{counts[filter.id]}</small>
-            </button>
-          ))}
+          {progressFilters.map((filter) => {
+            const active = filter.id === allFilterId ? allFiltersActive : activeFilterSet.has(filter.id);
+            return (
+              <button
+                aria-pressed={active}
+                className={active ? "active" : ""}
+                key={filter.id}
+                onClick={() => toggleFilter(filter.id)}
+                type="button"
+              >
+                <span>{filter.label}</span>
+                <small>{counts[filter.id]}</small>
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="progress-list">
-        {rows.length === 0 && <p className="muted">{activeFilter === "all" ? "No events" : "No matching events"}</p>}
+        {rows.length === 0 && <p className="muted">{allFiltersActive ? "No events" : "No matching events"}</p>}
         {rows.map((event) => {
           const view = eventView(event);
           const Icon = view.icon;
@@ -164,18 +183,23 @@ function ProgressTimeline({ events }) {
   );
 }
 
-function filterRows(rows, activeFilter) {
-  if (activeFilter === "all") return rows;
-  const accepted = filterTypes[activeFilter];
-  if (!accepted) return rows;
+function filterRows(rows, activeFilters) {
+  if (!activeFilters.length) return rows;
+  const accepted = new Set();
+  for (const activeFilter of activeFilters) {
+    const types = filterTypes[activeFilter];
+    if (!types) continue;
+    for (const type of types) accepted.add(type);
+  }
+  if (!accepted.size) return rows;
   return rows.filter((event) => accepted.has(event.type));
 }
 
 function progressFilterCounts(rows) {
   const counts = { all: rows.length };
   for (const filter of progressFilters) {
-    if (filter.id === "all") continue;
-    counts[filter.id] = filterRows(rows, filter.id).length;
+    if (filter.id === allFilterId) continue;
+    counts[filter.id] = filterRows(rows, [filter.id]).length;
   }
   return counts;
 }

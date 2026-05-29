@@ -128,7 +128,7 @@ Decision:
 | V1.0.5 | Controlled Web Search | Add `web_search` as a Lead-visible read-only research tool. | Search smoke creates a visible search event, returns bounded sourced results, and a later Product references the search observation without bypassing `work_product`. |
 | V1.0.6 | Evaluator Tool And Paper Gate | Add `evaluate_product`, deterministic paper final-draft completion checks, replay mode, lifecycle events, report tool failures, and Reliability UI field coverage. | A paper/research smoke cannot finish with outline-only content, can run Reliability, shows started/reported/failed lifecycle, and blocks completion on no-evidence needs-review reports. |
 | V1.0.8 | Command Rail And Compact Reading UI | Refactor selected Project rail into Directory plus Composer and enforce compact default rows for long text. | Browser smoke proves Mission navigation, waiting-input answer, completed follow-up, and long text clamping are usable on desktop and mobile. |
-| V1.0.9 | Progress Filters | Add single-select Progress filters for Thinking, Reliability, Products, Windows, Search, Inputs, and Issues. | Browser smoke proves Thinking and Reliability filters isolate matching events without affecting Diagnostics. |
+| V1.0.9 | Progress Filters | Add multi-select Progress filters for Thinking, Reliability, Products, Windows, Search, Inputs, and Issues. | Browser smoke proves focused and combined filters isolate matching events without affecting Diagnostics. |
 
 ## 4. V1.0.1 UI Contract
 

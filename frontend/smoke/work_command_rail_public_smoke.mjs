@@ -92,13 +92,27 @@ async function main() {
   if (thinkingRows < 1) throw new Error('thinking_filter_empty');
   const thinkingText = await page.locator('.timeline-card').innerText();
   if (thinkingText.includes('Reliability\\n80 / 100')) throw new Error(`thinking_filter_leaked_reliability:${thinkingText}`);
+  await assertActiveFilters(page, ['Thinking']);
+  await page.locator('.progress-filters').getByRole('button', { name: /Products/ }).click();
+  await assertActiveFilters(page, ['Thinking', 'Products']);
+  const combinedText = await page.locator('.timeline-card').innerText();
+  if (!combinedText.includes('Thinking') || !combinedText.includes('法国大革命文献综述大纲')) {
+    throw new Error(`combined_filter_missing_expected_rows:${combinedText}`);
+  }
+  if (combinedText.includes('Reliability\\n80 / 100')) throw new Error(`combined_filter_leaked_reliability:${combinedText}`);
+  await page.locator('.progress-filters').getByRole('button', { name: /All/ }).click();
+  await assertActiveFilters(page, ['All']);
   await page.locator('.progress-filters').getByRole('button', { name: /Reliability/ }).click();
+  await assertActiveFilters(page, ['Reliability']);
   const reliabilityText = await page.locator('.timeline-card').innerText();
   if (!/Reliability|Evaluation/.test(reliabilityText)) throw new Error(`reliability_filter_missing:${reliabilityText}`);
+  await page.locator('.progress-filters').getByRole('button', { name: /All/ }).click();
   await page.locator('.progress-filters').getByRole('button', { name: /Inputs/ }).click();
+  await assertActiveFilters(page, ['Inputs']);
   const inputText = await page.locator('.timeline-card').innerText();
   if (!inputText.includes('Instruction')) throw new Error(`input_filter_missing_instruction:${inputText}`);
   await page.locator('.progress-filters').getByRole('button', { name: /All/ }).click();
+  await assertActiveFilters(page, ['All']);
   await page.locator('.mission-map-panel').waitFor();
   await page.locator('.mission-map-row', { hasText: 'Product' }).click();
   await page.locator('.product-panel').waitFor();
@@ -158,6 +172,15 @@ async function assertPublicInstructionRoute() {
   const text = await response.text();
   if (response.status !== 409 || !text.includes('mission_not_running')) {
     throw new Error(`instruction_route_probe_failed:${response.status}:${text}`);
+  }
+}
+
+async function assertActiveFilters(page, expected) {
+  const activeLabels = await page.locator('.progress-filters button.active span').allTextContents();
+  const normalized = activeLabels.map((label) => label.trim()).sort();
+  const sortedExpected = [...expected].sort();
+  if (JSON.stringify(normalized) !== JSON.stringify(sortedExpected)) {
+    throw new Error(`active_filters_mismatch:${normalized.join(',')}:${sortedExpected.join(',')}`);
   }
 }
 

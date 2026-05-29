@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Lst Modified by: Codex
 
 # Work Mode UI Contract
@@ -113,6 +113,29 @@ If a final Product exists, Product Panel MUST default to an all-Artifact reader 
 
 Artifact navigation MUST keep a stable scan rhythm. Desktop SHOULD render a fixed-width Artifact Navigator beside the reader instead of a wrapping card grid. Navigator rows SHOULD clamp generated titles, expose short type labels, and avoid letting title length resize the Product Panel. Mobile MAY stack the navigator above the reader.
 
+Product History MUST remain complete for the current Product as an Artifact Index. The Mission detail response may keep
+full Artifact content bounded, but it must expose every visible lineage item through lightweight metadata:
+
+- id,
+- product id,
+- title,
+- kind,
+- human role label,
+- summary,
+- deliverable flag,
+- created time,
+- whether the full content is already loaded.
+
+The UI must not silently drop earlier drafts, reviews, revisions, source notes, or finals. Selecting an unloaded History
+row MUST load that Artifact through a dedicated read route. Increasing the full-content preload limit is not a product
+solution.
+
+Model-facing Product context SHOULD mirror this UI contract: show the Lead Agent a manifest first, then let it choose
+which Artifact to inspect. Historical full text should not be blindly stuffed into every turn.
+
+Default Artifact metadata MUST use human labels only. Raw ids, operation names, `revisionOf`, `productId`, and similar
+implementation details belong behind an explicit Technical details disclosure, not in the Deliverable header.
+
 ## 6. Mission Progress
 
 Timeline shows the process.
@@ -163,10 +186,13 @@ Progress row expansion:
 
 Progress filters:
 
-- Progress MUST support client-side single-select filters.
+- Progress MUST support client-side multi-select filters.
 - Default filter MUST be `All`.
+- `All` MUST be mutually exclusive and clear every category filter.
+- Non-`All` filters MAY be combined and MUST render the union of matching events.
 - Required filters are `Thinking`, `Reliability`, `Products`, `Windows`, `Search`, `Inputs`, and `Issues`.
-- Filter controls SHOULD show event counts.
+- Filter controls SHOULD show global event counts for the current event log.
+- The Progress header count SHOULD show total rows for `All`, and visible/total rows for a filtered view.
 - Empty filtered views MUST say `No matching events`.
 - Diagnostics MUST remain unfiltered.
 
@@ -188,6 +214,9 @@ It MUST NOT push the Deliverable or Product Panel down the main Mission column.
 
 Full Reliability details SHOULD render in a focused modal or drawer. Expanded details can include issues, evidence,
 claims, limitations, suggested fixes, and report history.
+
+Reliability history rows SHOULD be selectable. The latest report opens by default; selecting an older report should show
+that report body without exposing raw report ids in the default row copy.
 
 ## 6.2 Mission Map
 
@@ -219,6 +248,18 @@ It SHOULD show:
 - Payload JSON.
 
 Diagnostics MUST NOT be named `Logs` in the main UI.
+
+## 7.1 Time, Warnings, And Long Text
+
+Work Console timestamps MUST use Eastern Time with an explicit `ET` label. Raw ISO timestamps MUST NOT appear in normal
+Product, Progress, Quality, or Window UI.
+
+Warnings MUST be derived state, not a permanent raw event dump. The default warning surface shows active blockers only.
+Resolved warnings may appear behind a collapsed `Resolved` disclosure. Immutable warning events remain available in
+Progress and Diagnostics.
+
+Mission Header and Progress rows MUST clamp long user-provided instructions by default. The full text remains available
+through Mission Info or row expansion.
 
 ## 8. Control Panel
 

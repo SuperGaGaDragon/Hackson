@@ -296,6 +296,7 @@ Known risks:
 - Long model turn progress and timeout UX: `issues/issue7-long-turn-progress.md`
 - Delegate result tolerance after real-model wrapper misses: `issues/issue8-delegate-result-tolerance.md`
 - Work UI hierarchy, Product lineage, and diagnostics clarity: `issues/issue9-work-ui-information-architecture.md`
+- Work Console reading polish, complete history access, ET timestamps, and warning state: `issues/issue40-work-console-reading-polish.md`
 - Final Product reader hiding earlier Artifacts after Done: `issues/issue10-product-reader-final-lineage.md`
 - Progress inline details and Mission create modal: `issues/issue11-progress-details-and-create-modal.md`
 - Review and Delegate discussion tool design: `issues/issue12-review-discussion-tools.md`

@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 */
 
@@ -53,6 +53,24 @@ const artifacts = [
   ),
   artifact("artifact_review", "《我能看见万物价格》成稿审查", "review", "review", reviewContent()),
 ];
+const loadedArtifacts = artifacts.filter((item) => item.id !== "artifact_outline");
+const artifactIndex = artifacts.map((item) => ({
+  id: item.id,
+  missionId: mission.id,
+  productId,
+  kind: item.kind,
+  title: item.title,
+  label: artifactLabel(item),
+  summary: item.metadata.summary,
+  artifactRole: item.metadata.artifactRole,
+  deliverable: ["chapter", "final"].includes(item.metadata.artifactRole),
+  loaded: item.id !== "artifact_outline",
+  source: "manifest",
+  metadata: {
+    productId,
+  },
+  createdAt,
+}));
 const product = {
   id: productId,
   title: "长篇爽文《我能看见万物价格》",
@@ -123,8 +141,14 @@ async function main() {
 
   await page.locator(".artifact-navigator").getByRole("button", { name: /All artifacts/ }).click();
   const allText = await page.locator(".artifact-content").innerText();
-  if (!allText.includes("故事大纲") || !allText.includes("最终成稿") || !allText.includes("成稿审查")) {
-    throw new Error("all_artifacts_reader_missing_sections");
+  if (!allText.includes("Open") || !allText.includes("最终成稿") || !allText.includes("成稿审查")) {
+    throw new Error("all_artifacts_reader_missing_loaded_sections");
+  }
+  await page.locator(".artifact-navigator .artifact-nav-row", { hasText: /故事大纲/ }).click();
+  await page.locator(".artifact-content", { hasText: "题材定位" }).waitFor();
+  const outlineText = await page.locator(".artifact-content").innerText();
+  if (!outlineText.includes("故事大纲") || outlineText.includes("第一章草稿")) {
+    throw new Error("on_demand_artifact_reader_failed");
   }
   await page.locator(".artifact-navigator .artifact-nav-row", { hasText: /成稿审查/ }).click();
   const reviewText = await page.locator(".artifact-content").innerText();
@@ -188,6 +212,12 @@ async function installApiMocks(page) {
       await json(route, missionDetail());
       return;
     }
+    const artifactMatch = url.pathname.match(new RegExp(`^/api/work/missions/${mission.id}/artifacts/(.+)$`));
+    if (artifactMatch) {
+      const artifactRow = artifacts.find((item) => item.id === artifactMatch[1]);
+      await json(route, artifactRow || { detail: "artifact_not_found" }, artifactRow ? 200 : 404);
+      return;
+    }
     if (url.pathname === `/api/work/missions/${mission.id}/events`) {
       await json(route, []);
       return;
@@ -211,7 +241,9 @@ function missionDetail() {
       }),
       event("event_completed", 3, "MISSION_COMPLETED", "Mission completed"),
     ],
-    artifacts,
+    artifacts: loadedArtifacts,
+    artifactIndex,
+    artifactContentMode: "index_on_demand",
     products: [product],
     workWindows: [
       {
@@ -232,6 +264,14 @@ function missionDetail() {
     ],
     report: null,
   };
+}
+
+function artifactLabel(item) {
+  if (item.metadata.artifactRole === "review") return "Review";
+  if (item.metadata.artifactRole === "final") return "Final";
+  if (item.kind === "outline") return "Outline";
+  if (item.kind === "chapter") return "Chapter";
+  return "Artifact";
 }
 
 function artifact(id, title, kind, role, content) {

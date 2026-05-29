@@ -338,8 +338,25 @@ class WorkModeRoutesTest(TestCase):
         detail = self.client.get(f"/api/work/missions/{mission['id']}").json()
 
         self.assertEqual(detail["artifacts"], [])
+        self.assertEqual(detail["artifactIndex"], [])
+        self.assertEqual(detail["artifactContentMode"], "index_on_demand")
         self.assertEqual(detail["products"], [])
         self.assertEqual(detail["workWindows"], [])
+
+    def test_artifact_route_reads_single_artifact_content(self) -> None:
+        project = self.client.post("/api/work/projects", json={"name": "Artifact Read"}).json()
+        mission = self.client.post(
+            "/api/work/missions",
+            json={"projectId": project["id"], "title": "Draft", "goal": "Write one scene."},
+        ).json()
+        started = self.client.post(f"/api/work/missions/{mission['id']}/start", json={}).json()
+        artifact = self.client.get(f"/api/work/missions/{mission['id']}").json()["artifacts"][0]
+
+        response = self.client.get(f"/api/work/missions/{mission['id']}/artifacts/{artifact['id']}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id"], artifact["id"])
+        self.assertIn("Route generated artifact.", response.json()["content"])
 
     def test_events_route_serializes_invalid_model_turn_events(self) -> None:
         project = self.client.post("/api/work/projects", json={"name": "Novel"}).json()

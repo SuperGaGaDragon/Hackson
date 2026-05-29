@@ -200,11 +200,27 @@ class FakeWorkModeRepository:
         return row
 
     def list_artifacts(self, user_id: str, mission_id: str, limit: int) -> list[dict[str, Any]]:
-        return [
+        rows = [
             row
             for row in self.artifacts.values()
             if row["user_id"] == user_id and row["mission_id"] == mission_id
-        ][:limit]
+        ]
+        rows.sort(key=lambda row: row.get("created_at"), reverse=True)
+        return rows[:limit]
+
+    def list_artifacts_by_ids(self, user_id: str, mission_id: str, artifact_ids: list[str]) -> list[dict[str, Any]]:
+        wanted = set(artifact_ids)
+        return [
+            row
+            for row in self.artifacts.values()
+            if row["_id"] in wanted and row["user_id"] == user_id and row["mission_id"] == mission_id
+        ]
+
+    def find_artifact(self, user_id: str, mission_id: str, artifact_id: str) -> dict[str, Any] | None:
+        row = self.artifacts.get(artifact_id)
+        if row is None or row["user_id"] != user_id or row["mission_id"] != mission_id:
+            return None
+        return row
 
     def create_product(self, document: dict[str, Any]) -> dict[str, Any]:
         row = dict(document)
@@ -730,6 +746,101 @@ class WorkModeServiceTest(TestCase):
         self.assertTrue(completed["products"][0]["metadata"]["artifactManifest"][0]["deliverable"])
         self.assertEqual(completed["artifacts"][0]["metadata"]["productId"], product["id"])
         self.assertEqual(completed["artifacts"][0]["metadata"]["sourceArtifactIds"], [])
+
+    def test_mission_detail_exposes_complete_artifact_index_without_preloading_every_artifact(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="Essay",
+            summary="Essay product.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        first = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="draft",
+            title="First draft",
+            content="First draft content.",
+            summary="First draft.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+        for index in range(205):
+            self.service.create_artifact(
+                "user_1",
+                mission["id"],
+                run_id,
+            kind="notes",
+            title=f"Extra {index}",
+            content="Non-product note.",
+            metadata={},
+        )
+        latest = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="final",
+            title="Final",
+            content="Final content.",
+            summary="Final.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[first["id"]],
+            work_window_id=None,
+        )
+
+        completed = self.service.get_mission_detail("user_1", mission["id"])
+        artifact_ids = [artifact["id"] for artifact in completed["artifacts"]]
+        index_ids = [item["id"] for item in completed["artifactIndex"]]
+        first_index = next(item for item in completed["artifactIndex"] if item["id"] == first["id"])
+        latest_index = next(item for item in completed["artifactIndex"] if item["id"] == latest["id"])
+
+        self.assertIn(first["id"], index_ids)
+        self.assertIn(latest["id"], index_ids)
+        self.assertIn(latest["id"], artifact_ids)
+        self.assertEqual(first_index["title"], "First draft")
+        self.assertEqual(first_index["summary"], "First draft.")
+        self.assertFalse(first_index["loaded"])
+        self.assertTrue(latest_index["loaded"])
+        self.assertEqual(latest_index["label"], "Final")
+        self.assertEqual(completed["artifactContentMode"], "index_on_demand")
+        self.assertEqual(completed["products"][0]["artifactIds"], [first["id"], latest["id"]])
+
+    def test_require_artifact_reads_unloaded_history_item_by_id(self) -> None:
+        mission = self._mission()
+        detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
+        run_id = detail["activeRun"]["id"]
+        product = self.service.create_product(
+            "user_1",
+            mission["id"],
+            title="Essay",
+            summary="Essay product.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+        )
+        artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="draft",
+            title="Draft",
+            content="Full draft content.",
+            summary="Draft summary.",
+            created_by={"id": "agent_1", "name": "Planner", "role": "lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+        )
+
+        loaded = self.service.require_artifact("user_1", mission["id"], artifact["id"])
+
+        self.assertEqual(loaded["id"], artifact["id"])
+        self.assertEqual(loaded["content"], "Full draft content.")
 
     def test_outline_only_product_has_history_but_no_authoritative_deliverable(self) -> None:
         mission = self._mission()

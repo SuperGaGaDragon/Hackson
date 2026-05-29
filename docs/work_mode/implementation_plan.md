@@ -576,12 +576,14 @@ Exit criteria:
 
 ## 21. Loop 20: V1.0.9 Progress Filters
 
-Add focused views for the Mission Progress audit trail.
+Add focused and combinable views for the Mission Progress audit trail.
 
 Required behavior:
 
-- Progress card supports a single active filter.
+- Progress card supports multiple active non-`All` filters.
 - Default filter is `All`.
+- `All` is mutually exclusive and clears category filters.
+- Combined filters show the union of matching rows.
 - Filters include Thinking, Reliability, Products, Windows, Search, Inputs, and Issues.
 - Filter chips show counts.
 - Selecting a filter resets expanded row state.
@@ -597,6 +599,7 @@ npm --prefix frontend run build
 Browser checks:
 
 - Thinking filter shows model/tool decision events only.
+- Thinking plus Products shows both model/tool decision events and Product rows.
 - Reliability filter shows evaluator lifecycle/report events only.
 - Issues filter shows invalid/failure/blocked/retry events.
 - Returning to All restores the full Progress feed.

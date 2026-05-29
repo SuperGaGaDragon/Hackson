@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 
 # Issue 34: Progress Filters
@@ -52,14 +52,24 @@ Decision:
 
 ### 2. Should multiple filters be selectable at once?
 
-No for the first implementation.
+Yes for the current product surface.
 
-Multiple selection adds visual complexity and unclear counts. The user asked for focused filters like all Thinking or all Reliability.
+Single-select is easy to explain, but it makes realistic inspection awkward. Users often want to see a combined slice such as `Thinking + Products`, `Search + Reliability`, or `Windows + Issues` without bouncing between chips.
+
+Self-grilled branch decisions:
+
+- Multi-select semantics MUST be union/OR, not intersection/AND. One event normally belongs to one primary group, so AND would usually produce an empty feed.
+- `All` MUST be mutually exclusive. Clicking `All` clears every category filter.
+- Clicking a non-`All` filter toggles that category. If the last category is removed, the UI returns to `All`.
+- Filter counts stay global for the current event log. They do not change based on the selected subset.
+- The Progress header count shows total rows for `All`, and `visible / total` for any filtered state.
+- No backend API change is needed for V1.0.x.
 
 Decision:
 
-- Use single-select segmented controls.
-- Show counts per filter so users know where important events live.
+- Use multi-select filter chips for every non-`All` category.
+- Preserve `All` as the obvious reset control.
+- Show counts per filter so users know where important events live before selecting.
 
 ### 3. Where should the filter UI live?
 
@@ -69,7 +79,7 @@ Filters belong to the audit trail surface, not the global Mission Header or left
 
 Decision:
 
-- Progress header renders title, total count, and compact filter chips.
+- Progress header renders title, visible/total count, and compact filter chips.
 - On mobile, chips wrap below the title.
 
 ### 4. Should filtered-out events vanish permanently?
@@ -81,6 +91,7 @@ The UI must make it clear that the user is viewing a filtered subset and can ret
 Decision:
 
 - `All` stays first.
+- `All` active means no category filters are selected.
 - Empty filtered states say `No matching events`, not `No events`.
 - Diagnostics remains unaffected by Progress filters.
 
@@ -130,6 +141,7 @@ Decision:
 `Search`:
 
 - `WEB_SEARCH_COMPLETED`
+- `SEARCH_SUMMARY_CREATED`
 - `WEB_SEARCH_FAILED`
 
 `Inputs`:
@@ -158,7 +170,11 @@ Decision:
 
 - Progress card shows filter chips with counts.
 - `All` is selected by default.
+- Users can select multiple non-`All` filters at once.
+- Multi-select filtering shows the union of matching rows.
+- Clicking `All` clears every category selection.
 - Selecting `Thinking` shows only model/tool decision events.
+- Selecting `Thinking` plus `Products` shows both model/tool decision events and Product/Review/Inspect events.
 - Selecting `Reliability` shows evaluator lifecycle and report events.
 - Selecting `Products` shows Product/Review/Inspect events.
 - Selecting `Issues` surfaces failures, invalid turns, retry, blocked, and warning events.

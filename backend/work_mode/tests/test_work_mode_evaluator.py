@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-05-29
 Last Modified by: Codex
 """
 
@@ -167,12 +167,16 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertEqual(report_event["payload"]["reportArtifactId"], report_artifact["id"])
         self.assertEqual(report_event["payload"]["evaluatorVersion"], EVALUATOR_VERSION)
         self.assertEqual(report_event["payload"]["mode"], "live")
+        self.assertEqual(report_event["payload"]["gateStatus"], report_artifact["metadata"]["reportPayload"]["gateStatus"])
+        self.assertEqual(report_event["payload"]["evaluatedArtifactIds"], [final_artifact["id"]])
         self.assertEqual(report_artifact["metadata"]["evaluatorVersion"], EVALUATOR_VERSION)
         self.assertIn("reportPayload", report_artifact["metadata"])
         self.assertEqual(report_artifact["metadata"]["reportPayload"]["reportArtifactId"], report_artifact["id"])
         self.assertFalse(report_artifact["metadata"]["reportPayload"]["objective"])
         self.assertIn("scoreMeaning", report_artifact["metadata"]["reportPayload"])
         self.assertIn("confidenceReason", report_artifact["metadata"]["reportPayload"])
+        self.assertEqual(report_artifact["metadata"]["reportPayload"]["evaluatedArtifactIds"], [final_artifact["id"]])
+        self.assertIn(final_artifact["id"], report_artifact["metadata"]["reportPayload"]["evaluatedArtifactHashes"])
 
     def test_paused_mission_is_not_ship_ready_even_with_final_artifact(self) -> None:
         mission, run_id, product, _final_artifact = self._research_mission()
@@ -190,6 +194,156 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertIn("mission_incomplete", issue_types)
         self.assertEqual(report.status, "needs_human_review")
         self.assertLess(report.score, 85)
+
+    def test_running_mission_evaluates_candidate_without_mission_incomplete_penalty(self) -> None:
+        mission, _run_id, _product, _final_artifact = self._research_mission()
+
+        report = build_reliability_report(self.service.get_mission_evaluation_detail("user_1", mission["id"]))
+        issue_types = {issue.type for issue in report.issues}
+
+        self.assertNotIn("mission_incomplete", issue_types)
+        self.assertNotIn("Mission is not completed", report.confidence_reason)
+
+    def test_evaluator_targets_current_deliverable_candidate_before_completion(self) -> None:
+        mission, run_id, product, old_artifact = self._research_mission(
+            content="MapleNeural Labs is a Toronto-based enterprise AI company."
+        )
+        current_artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Current candidate",
+            content="Cohere provides enterprise AI models and is headquartered in Toronto.",
+            summary="Current candidate.",
+            created_by={"id": "agent_1", "name": "Agent 1", "role": "Lead"},
+            source_artifact_ids=[old_artifact["id"]],
+            work_window_id=None,
+            metadata={"summary": "Current candidate.", "sources": [{"url": "https://cohere.com", "title": "Cohere enterprise AI", "snippet": "Cohere provides enterprise AI models and is headquartered in Toronto."}]},
+        )
+
+        report = build_reliability_report(self.service.get_mission_evaluation_detail("user_1", mission["id"]))
+        claim_artifact_ids = {claim.artifact_id for claim in report.claims}
+
+        self.assertEqual(claim_artifact_ids, {current_artifact["id"]})
+
+    def test_evaluator_honors_explicit_artifact_target(self) -> None:
+        mission, run_id, product, old_artifact = self._research_mission(
+            content="MapleNeural Labs is a Toronto-based enterprise AI company."
+        )
+        current_artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Current candidate",
+            content="Cohere provides enterprise AI models and is headquartered in Toronto.",
+            summary="Current candidate.",
+            created_by={"id": "agent_1", "name": "Agent 1", "role": "Lead"},
+            source_artifact_ids=[old_artifact["id"]],
+            work_window_id=None,
+            metadata={"summary": "Current candidate."},
+        )
+
+        report = build_reliability_report(
+            self.service.get_mission_evaluation_detail("user_1", mission["id"]),
+            artifact_ids=[old_artifact["id"]],
+            product_ids=[product["id"]],
+        )
+        claim_artifact_ids = {claim.artifact_id for claim in report.claims}
+
+        self.assertEqual(claim_artifact_ids, {old_artifact["id"]})
+        self.assertEqual(report.evaluated_artifact_ids, [old_artifact["id"]])
+        self.assertEqual(report.evaluated_product_ids, [product["id"]])
+        self.assertIn(old_artifact["id"], report.evaluated_artifact_hashes)
+        self.assertNotIn(current_artifact["id"], report.evaluated_artifact_hashes)
+
+    def test_reference_url_lines_do_not_become_reliability_claims(self) -> None:
+        mission, run_id, product, _old_artifact = self._research_mission(content="Old draft.")
+        mission_document = self.service._require_mission("user_1", mission["id"])
+        self.service.append_event(
+            "user_1",
+            mission_document,
+            run={"_id": run_id},
+            step=None,
+            event_type="WEB_SEARCH_COMPLETED",
+            title="Search",
+            message="French Revolution historiography",
+            payload={
+                "tool": "web_search",
+                "status": "ok",
+                "query": "French Revolution historiography",
+                "provider": "fake",
+                "results": [
+                    {
+                        "title": "French Revolution historiography",
+                        "url": "https://history.example/french-revolution",
+                        "source": "history.example",
+                        "snippet": (
+                            "French Revolution historiography treats 1789 as a political and social rupture shaped "
+                            "by fiscal crisis, popular mobilization, and revolutionary government."
+                        ),
+                        "publishedAt": None,
+                    }
+                ],
+            },
+        )
+        current_artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Current candidate",
+            content=(
+                "French Revolution historiography treats 1789 as a political and social rupture shaped by fiscal "
+                "crisis, popular mobilization, and revolutionary government.\n\n"
+                "References\n"
+                "https://www.scribd.com/document/700183256/French-Revolution-Historiography\n"
+                "https://www.britannica.com/event/French-Revolution"
+            ),
+            summary="Current candidate.",
+            created_by={"id": "agent_1", "name": "Agent 1", "role": "Lead"},
+            source_artifact_ids=[],
+            work_window_id=None,
+            metadata={"summary": "Current candidate."},
+        )
+
+        report = build_reliability_report(self.service.get_mission_evaluation_detail("user_1", mission["id"]))
+        issue_descriptions = [issue.description for issue in report.issues]
+
+        self.assertEqual([claim.artifact_id for claim in report.claims], [current_artifact["id"]])
+        self.assertFalse(any("https://" in description for description in issue_descriptions))
+        self.assertFalse(any("French-Revolution-Historiography" in description for description in issue_descriptions))
+
+    def test_title_word_count_requirement_blocks_short_running_paper_candidate(self) -> None:
+        mission, _run_id, _product, _artifact = self._paper_mission(
+            kind="revision",
+            title="French Revolution literature review",
+            content=(
+                "Historiography of the French Revolution: A Minimal Literature Review\n\n"
+                "The French Revolution has a long historiography. This short English draft mentions political history "
+                "and revolutionary government, but it is intentionally far below the requested length.\n\n"
+                "References\n"
+                "Doyle, W. (1989). The Oxford history of the French Revolution."
+            ),
+            mission_title="French Revolution literature review 3000 words",
+            mission_goal="Use English and APA format.",
+        )
+
+        report = build_reliability_report(self.service.get_mission_evaluation_detail("user_1", mission["id"]))
+        word_requirement = next(
+            requirement for requirement in report.requirements if requirement.field_name == "word count"
+        )
+        issue_types = {issue.type for issue in report.issues}
+
+        self.assertEqual(word_requirement.expected_count, 3000)
+        self.assertEqual(word_requirement.status, "missing")
+        self.assertIn("missing_requirement", issue_types)
+        self.assertLess(report.score, 85)
+        self.assertNotEqual(report.status, "ship_ready")
 
     def test_evaluator_does_not_duplicate_current_report_without_new_trace(self) -> None:
         mission, run_id, product, final_artifact = self._research_mission()
@@ -225,6 +379,77 @@ class WorkModeEvaluatorTest(TestCase):
         self.assertEqual(len(second_reports), 1)
         self.assertEqual(len(report_events), 1)
         self.assertEqual(len(started_events), 1)
+
+    def test_repeated_blocking_issue_moves_gate_to_human_review(self) -> None:
+        mission, run_id, product, first_artifact = self._research_mission(
+            content="MapleNeural Labs is a Toronto-based enterprise AI company."
+        )
+        mission_document = self.service._require_mission("user_1", mission["id"])
+        self.service.append_event(
+            "user_1",
+            mission_document,
+            run={"_id": run_id},
+            step=None,
+            event_type="WEB_SEARCH_COMPLETED",
+            title="Search",
+            message="Toronto enterprise AI",
+            payload={
+                "tool": "web_search",
+                "status": "ok",
+                "query": "Toronto enterprise AI",
+                "provider": "fake",
+                "results": [
+                    {
+                        "title": "Cohere enterprise AI",
+                        "url": "https://cohere.com",
+                        "source": "cohere.com",
+                        "snippet": "Cohere provides enterprise AI models and is headquartered in Toronto.",
+                        "publishedAt": None,
+                    }
+                ],
+            },
+        )
+        runtime = EvaluatorRuntime(self.service)
+
+        first_detail = runtime.evaluate("user_1", mission["id"], product_ids=[product["id"]], artifact_ids=[first_artifact["id"]])
+        first_report = _latest_report_payload(first_detail)
+        second_artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Second candidate",
+            content="MapleNeural Labs is a Toronto-based enterprise AI company.",
+            summary="Second candidate.",
+            created_by={"id": "agent_1", "name": "Agent 1", "role": "Lead"},
+            source_artifact_ids=[first_artifact["id"]],
+            work_window_id=None,
+            metadata={"summary": "Second candidate."},
+        )
+        second_detail = runtime.evaluate("user_1", mission["id"], product_ids=[product["id"]], artifact_ids=[second_artifact["id"]])
+        second_report = _latest_report_payload(second_detail)
+
+        third_artifact = self.service.create_product_artifact(
+            "user_1",
+            mission["id"],
+            run_id,
+            product["id"],
+            kind="revision",
+            title="Third candidate",
+            content="MapleNeural Labs is a Toronto-based enterprise AI company.",
+            summary="Third candidate.",
+            created_by={"id": "agent_1", "name": "Agent 1", "role": "Lead"},
+            source_artifact_ids=[second_artifact["id"]],
+            work_window_id=None,
+            metadata={"summary": "Third candidate."},
+        )
+        third_detail = runtime.evaluate("user_1", mission["id"], product_ids=[product["id"]], artifact_ids=[third_artifact["id"]])
+        third_report = _latest_report_payload(third_detail)
+
+        self.assertEqual(first_report["gateStatus"], "repair_required")
+        self.assertEqual(second_report["gateStatus"], "repair_required")
+        self.assertEqual(third_report["gateStatus"], "human_review")
 
     def test_replay_mode_uses_fixture_evidence_without_mutating_search_trace(self) -> None:
         mission, run_id, product, final_artifact = self._research_mission()
@@ -421,14 +646,21 @@ class WorkModeEvaluatorTest(TestCase):
         )
         return mission, run_id, product, artifact
 
-    def _paper_mission(self, kind: str, title: str, content: str) -> tuple[dict, str, dict, dict]:
+    def _paper_mission(
+        self,
+        kind: str,
+        title: str,
+        content: str,
+        mission_title: str = "海地革命论文",
+        mission_goal: str = "写一篇关于海地革命的研究论文，需要有最终稿。",
+    ) -> tuple[dict, str, dict, dict]:
         project = self.service.create_project("user_1", ProjectCreateRequest(name="Paper"))
         mission = self.service.create_mission(
             "user_1",
             MissionCreateRequest(
                 projectId=project["id"],
-                title="海地革命论文",
-                goal="写一篇关于海地革命的研究论文，需要有最终稿。",
+                title=mission_title,
+                goal=mission_goal,
             ),
         )
         detail = self.service.start_mission("user_1", mission["id"], MissionStartRequest())
@@ -455,3 +687,12 @@ class WorkModeEvaluatorTest(TestCase):
             metadata={"summary": "论文稿。"},
         )
         return mission, run_id, product, artifact
+
+
+def _latest_report_payload(detail: dict) -> dict:
+    reports = [
+        artifact["metadata"]["reportPayload"]
+        for artifact in detail["artifacts"]
+        if artifact["metadata"].get("artifactRole") == "reliability_report"
+    ]
+    return reports[-1]
