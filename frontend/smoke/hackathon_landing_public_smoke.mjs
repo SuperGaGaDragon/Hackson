@@ -21,12 +21,13 @@ async function main() {
   await page.getByText("TMLS Agentic Hackathon", { exact: false }).waitFor();
   await page.getByText("Parallex", { exact: true }).first().waitFor();
   await page.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
-  await page.getByText("Parallex turns rough intent", { exact: false }).waitFor();
-  await page.getByText("Mission Runtime", { exact: true }).waitFor();
-  await page.getByText("Core runtime", { exact: false }).waitFor();
-  await page.getByText("The runtime behind the agents.", { exact: true }).waitFor();
-  await page.getByText("Entry surfaces", { exact: false }).waitFor();
-  await page.getByText("The product is the trace.", { exact: true }).waitFor();
+  await page.getByText("Intent to product, with the trace intact.", { exact: true }).waitFor();
+  await page.getByText("Mission 042", { exact: true }).waitFor();
+  await page.getByText("Research brief", { exact: true }).waitFor();
+  await page.getByText("What changes", { exact: false }).waitFor();
+  await page.getByText("Not a chat stream. A supervised work surface.", { exact: true }).waitFor();
+  await page.getByText("traceable steps", { exact: true }).waitFor();
+  await page.getByText("AgentLens marks evidence gaps", { exact: false }).waitFor();
   const catImageCount = await page.locator('img[src="/assets/companion-cat-preview.png"]').count();
   if (catImageCount !== 0) throw new Error("landing_cat_image_should_not_render");
   await assertNoHorizontalOverflow(page, "desktop_landing");
@@ -34,7 +35,7 @@ async function main() {
   await page.getByRole("button", { name: "Create Account" }).first().click();
   await page.getByRole("heading", { name: "Create Account" }).waitFor();
   await page.getByRole("button", { name: "Back to intro" }).click();
-  await page.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Parallex" }).waitFor();
   await page.getByRole("button", { name: "Quick Try" }).first().click();
   await page.locator(".work-workspace-view").waitFor();
   await page.getByText("Workspace", { exact: true }).first().waitFor();
@@ -44,7 +45,7 @@ async function main() {
   if (!tokenStored) throw new Error("quick_try_token_not_session_scoped");
   await assertNoHorizontalOverflow(page, "desktop_work");
   await page.getByRole("button", { name: "Back to intro" }).click();
-  await page.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Parallex" }).waitFor();
   const tokenCleared = await page.evaluate(() => !window.sessionStorage.getItem("hackson_quick_access_token"));
   if (!tokenCleared) throw new Error("quick_try_back_to_intro_should_clear_session");
 
@@ -53,7 +54,7 @@ async function main() {
   await mobile.goto(baseUrl, { waitUntil: "networkidle" });
   await mobile.getByText("TMLS Agentic Hackathon", { exact: false }).waitFor();
   await mobile.getByText("Agentic work, made inspectable.", { exact: true }).waitFor();
-  await mobile.getByText("Core runtime", { exact: false }).waitFor();
+  await mobile.getByText("Not a chat stream. A supervised work surface.", { exact: true }).waitFor();
   await mobile.getByText("Quick Try", { exact: true }).first().waitFor();
   await assertNoHorizontalOverflow(mobile, "mobile");
   await mobile.screenshot({ path: mobileScreenshot, fullPage: true });

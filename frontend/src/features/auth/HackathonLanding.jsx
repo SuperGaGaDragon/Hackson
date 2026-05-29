@@ -6,11 +6,10 @@ Last Modified by: Codex
 */
 import {
   ArrowRight,
-  Brain,
   BriefcaseBusiness,
-  CircleDot,
-  Layers3,
-  MessageSquare,
+  CheckCircle2,
+  FileText,
+  ScanLine,
   ShieldCheck,
   UserPlus,
 } from "lucide-react";
@@ -55,13 +54,9 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
       <section className="hackathon-hero">
         <div className="hackathon-copy">
           <p className="eyebrow">TMLS Agentic Hackathon</p>
-          <h1>Agentic work, made inspectable.</h1>
-          <p className="hackathon-lede">
-            Parallex turns rough intent into missions, product history, and reliability checks.
-          </p>
-          <p className="hackathon-subcopy">
-            Two persistent agents can brainstorm, delegate, revise, and leave a trail you can actually read.
-          </p>
+          <h1>Parallex</h1>
+          <p className="hackathon-lede">Agentic work, made inspectable.</p>
+          <p className="hackathon-subcopy">Intent to product, with the trace intact.</p>
           <div className="hackathon-actions">
             <button className="hackathon-primary" disabled={loading} onClick={startQuickTry} type="button">
               <span>{loading ? "Starting" : "Quick Try"}</span>
@@ -76,66 +71,59 @@ function HackathonLanding({ onAuthed, onOpenAuth }) {
           <StatusLine error={error} />
         </div>
 
-        <div className="parallex-preview" aria-label="Parallex mission runtime preview">
-          <div className="parallex-preview-head">
-            <span>Mission Runtime</span>
-            <strong>live trace</strong>
+        <div className="parallex-stage" aria-label="Parallex mission runtime preview">
+          <div className="parallex-stage-head">
+            <span>Mission 042</span>
+            <strong>Inspectable</strong>
           </div>
-          <div className="parallex-thread">
-            <PreviewStep detail="rough brief" icon={CircleDot} label="Intent" />
-            <PreviewStep active detail="delegate + revise" icon={BriefcaseBusiness} label="Mission" />
-            <PreviewStep detail="versioned draft" icon={Layers3} label="Product" />
-            <PreviewStep accent detail="82 / review" icon={ShieldCheck} label="Reliability" />
+          <div className="parallex-stage-body">
+            <div className="parallex-stage-kpi">
+              <span>Trace</span>
+              <strong>27</strong>
+            </div>
+            <div className="parallex-stage-product">
+              <span>Product</span>
+              <strong>Research brief</strong>
+              <p>outline, sources, draft, review</p>
+            </div>
+            <div className="parallex-stage-kpi amber">
+              <span>Risk</span>
+              <strong>82</strong>
+            </div>
           </div>
-          <div className="parallex-product-strip">
-            <span>Current product</span>
-            <strong>Source-backed essay</strong>
-            <p>Readable deliverable. Auditable trace.</p>
+          <div className="parallex-stage-rail">
+            <RuntimeDot label="Intent" />
+            <RuntimeDot active label="Mission" />
+            <RuntimeDot label="Product" />
+            <RuntimeDot label="Review" />
           </div>
         </div>
       </section>
 
       <section className="hackathon-loop" aria-label="Parallex work loop">
-        <LoopStep label="Brainstorm" />
+        <LoopStep label="Intent" />
         <LoopStep label="Mission" />
         <LoopStep label="Product" />
-        <LoopStep label="Quality" />
-        <LoopStep label="Memory" />
+        <LoopStep label="Review" />
       </section>
 
-      <section className="hackathon-section-head">
-        <p className="eyebrow">Core runtime</p>
-        <h2>The runtime behind the agents.</h2>
-      </section>
-
-      <section className="hackathon-pillars" aria-label="Core runtime">
-        <Pillar icon={Brain} title="Context" text="Calls are built from traceable messages, summaries, memory, and agent identity." />
-        <Pillar icon={BriefcaseBusiness} title="Missions" text="Lead agents plan, delegate, review, and keep work moving inside a supervised loop." />
-        <Pillar icon={MessageSquare} title="Lineage" text="Deliverables live as Product and Artifact history, not loose transcript fragments." />
-        <Pillar icon={ShieldCheck} title="AgentLens" text="Quality reports risk, evidence gaps, missing requirements, and tool failures." />
-      </section>
-
-      <section className="hackathon-section-head compact">
-        <p className="eyebrow">Entry surfaces</p>
-        <h2>Start where the work feels natural.</h2>
-      </section>
-
-      <section className="hackathon-pillars hackathon-entry" aria-label="Entry surfaces">
-        <Pillar icon={MessageSquare} title="Idle" text="A low-friction brainstorm room where Nora and Vale explore a topic before Work." />
-        <Pillar icon={Brain} title="Companion" text="A conversational surface for the same editable agents and approved memory." />
-        <Pillar icon={BriefcaseBusiness} title="Work" text="A supervised Mission loop for products that need structure, review, and delivery." />
-      </section>
-
-      <section className="hackathon-explain" aria-label="How it works">
-        <div>
-          <p className="eyebrow">Why it matters</p>
-          <h2>The product is the trace.</h2>
+      <section className="hackathon-proof" aria-label="What Parallex makes visible">
+        <div className="hackathon-proof-copy">
+          <p className="eyebrow">What changes</p>
+          <h2>Not a chat stream. A supervised work surface.</h2>
         </div>
-        <div className="hackathon-flow">
-          <FlowStep icon={Brain} label="Memory governance" text="Useful context is retained with boundaries; raw Work trace does not leak everywhere." />
-          <FlowStep icon={BriefcaseBusiness} label="Readable delivery" text="Work Mode keeps a clean Product while preserving the revision trail." />
-          <FlowStep icon={ShieldCheck} label="Supervision" text="AgentLens makes risk visible without pretending the score is absolute truth." />
+        <div className="hackathon-metrics" aria-label="Parallex proof points">
+          <Metric value="2" label="persistent agents" />
+          <Metric value="1" label="clean product" />
+          <Metric value="∞" label="traceable steps" />
         </div>
+      </section>
+
+      <section className="hackathon-signal" aria-label="Parallex runtime signals">
+        <Signal icon={ScanLine} label="Context" text="The model sees a curated, auditable package." />
+        <Signal icon={BriefcaseBusiness} label="Mission" text="Work moves through selected tools, not hidden vibes." />
+        <Signal icon={FileText} label="Lineage" text="Drafts, reviews, and final products stay readable." />
+        <Signal icon={ShieldCheck} label="Review" text="AgentLens marks evidence gaps and delivery risk." />
       </section>
     </main>
   );
@@ -149,37 +137,30 @@ function LoopStep({ label }) {
   );
 }
 
-function Pillar({ icon: Icon, text, title }) {
+function RuntimeDot({ active = false, label }) {
   return (
-    <article className="hackathon-card">
-      <Icon size={18} />
-      <h2>{title}</h2>
-      <p>{text}</p>
-    </article>
-  );
-}
-
-function PreviewStep({ active = false, accent = false, detail, icon: Icon, label }) {
-  const className = active ? "parallex-step active" : accent ? "parallex-step accent" : "parallex-step";
-  return (
-    <div className={className}>
-      <Icon size={17} />
-      <div>
-        <strong>{label}</strong>
-        <span>{detail}</span>
-      </div>
+    <div className={active ? "runtime-dot active" : "runtime-dot"}>
+      <CheckCircle2 size={15} />
+      <span>{label}</span>
     </div>
   );
 }
 
-function FlowStep({ icon: Icon, label, text }) {
+function Metric({ label, value }) {
   return (
-    <article className="hackathon-flow-step">
+    <div className="hackathon-metric">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function Signal({ icon: Icon, label, text }) {
+  return (
+    <article className="hackathon-signal-item">
       <Icon size={18} />
-      <div>
-        <strong>{label}</strong>
-        <p>{text}</p>
-      </div>
+      <strong>{label}</strong>
+      <p>{text}</p>
     </article>
   );
 }

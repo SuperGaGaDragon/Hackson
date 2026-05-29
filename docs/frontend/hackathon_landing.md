@@ -70,6 +70,12 @@ Question: Should the page rely on a long feature explanation?
 Decision: No. The previous page asked judges to read too much. The new page must use short, confident copy blocks, more
 white space, and a visible system loop. Every paragraph should earn its place.
 
+Question: Is the current card-heavy version good enough for a judge-facing QR entry?
+
+Decision: No. It still has too many similar text blocks. The page must become an exhibition-style product entry:
+one dominant brand moment, one short positioning line, one product-state visual, and a few high-contrast proof points.
+Avoid rows of same-looking cards. Use scale, spacing, numbers, and sparse labels to create hierarchy.
+
 Question: Should the landing present Idle and Companion as core product value?
 
 Decision: No. The landing must not sell "two AIs chatting" or "another chatbot." It should present the product
@@ -87,14 +93,13 @@ it can inspect arbitrary Work artifacts or Reliability reports until explicit co
 
 Question: What should judges understand in the first minute?
 
-Decision: The landing should show the system loop, not a feature list:
+Decision: The landing should show the system loop, not a feature list. The loop can be compressed to:
 
 ```text
-Brainstorm -> Mission -> Product -> Quality -> Memory
+Intent -> Mission -> Product -> Review
 ```
 
-This explains why Idle, Work, AgentLens, and Memory belong together. It also makes Desktop Pet feel like visible
-presence rather than the product's main capability.
+This explains the product without forcing judges to read a feature matrix.
 
 Question: What visual direction is allowed?
 
@@ -108,13 +113,14 @@ Unauthenticated root page:
 
 - Brand label: `Parallex`.
 - Hackathon label: `TMLS Agentic Hackathon`.
-- Hero title: `Agentic work, made inspectable.`
-- Support line: `Parallex turns rough intent into missions, product history, and reliability checks.`
-- CSS-built product preview showing mission runtime, product lineage, and reliability state.
+- Hero title: `Parallex`.
+- Support line: `Agentic work, made inspectable.`
+- Short line: `Intent to product, with the trace intact.`
+- CSS-built product preview showing one mission, one product state, one reliability state, and trace count.
 - Primary CTA: `Quick Try`.
 - Secondary CTA: `Create Account`.
 - Clear temporary-session note near Quick Try.
-- A compact product explanation below the hero.
+- A compact proof section below the hero with no repeated long cards.
 - No cat image.
 - No sticky CTA if it adds clutter. The first viewport should make the primary actions obvious.
 
@@ -136,19 +142,19 @@ Quick Try backend:
 Primary headline:
 
 ```text
-Agentic work, made inspectable.
+Parallex
 ```
 
 Hero support:
 
 ```text
-Parallex turns rough intent into missions, product history, and reliability checks.
+Agentic work, made inspectable.
 ```
 
 Short explanation:
 
 ```text
-Two persistent agents can brainstorm, delegate, revise, and leave a trail you can actually read.
+Intent to product, with the trace intact.
 ```
 
 CTA copy:
@@ -159,22 +165,16 @@ CTA copy:
 
 Product pillars:
 
-- `Two agents`
-- `Mission work`
-- `Quality`
+- `Trace`
+- `Product`
+- `Reliability`
 
 Product architecture copy:
 
-- `Core runtime`
 - `Context`
-- `Missions`
+- `Mission`
 - `Lineage`
-- `Quality`
-- `Memory`
-- `Entry surfaces`
-- `Brainstorm`
-- `Companion`
-- `Work`
+- `Review`
 
 Forbidden copy:
 
@@ -193,6 +193,8 @@ Forbidden copy:
 - Create Account opens the normal auth form in register mode.
 - Existing login remains accessible.
 - Desktop and mobile screenshots have no horizontal overflow and no cramped text columns.
+- Landing uses fewer, more visually distinct modules instead of repeated same-style text cards.
+- Landing body copy stays sparse enough to read at a glance during a hackathon demo.
 - Public `https://hackson.catachess.com/` serves the landing after deployment.
 - Landing copy clearly separates core runtime from entry surfaces.
 - Landing does not overclaim unshipped Idle Summary Card, Promote to Work Mission, or Companion Work-context attachment.
