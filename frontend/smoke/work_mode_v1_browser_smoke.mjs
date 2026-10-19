@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-29
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 */
 
@@ -35,7 +35,7 @@ async function main() {
   await page.getByRole("button", { name: /Start/ }).click();
 
   await page.locator(".mission-head .chip", { hasText: "completed" }).waitFor({ timeout: completionTimeoutMs });
-  await page.getByRole("button", { name: /Check/ }).click();
+  await page.getByRole("button", { name: "Check", exact: true }).click();
   await page.locator(".mission-map-panel").waitFor();
   await assertVisible(page, "Quality");
   await assertReliabilityPanel(page);
@@ -176,7 +176,7 @@ async function main() {
 }
 
 async function register(page) {
-  await page.getByRole("button", { name: "Register" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await page.getByLabel("User").fill(`worksmoke${Date.now()}`);
   await page.getByLabel("Email").fill(`worksmoke${Date.now()}@example.com`);
   await page.getByLabel("Pass").fill("smokepass123");

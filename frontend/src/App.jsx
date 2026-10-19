@@ -1,14 +1,14 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-29
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 */
 import { Activity, BriefcaseBusiness, Download, MessageSquare, Sparkles, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listAgents } from "./api/agents";
 import { clearToken, getToken, hasSessionToken } from "./api/client";
-import { bindDesktopHandoff, getCurrentUser } from "./api/users";
+import { bindDesktopHandoff, getCurrentUser, quickTryUser, updateCurrentUser } from "./api/users";
 import { FALLBACK_AGENTS, normalizeAgents } from "./domain/agents";
 import AuthPage from "./features/auth/AuthPage";
 import HackathonLanding from "./features/auth/HackathonLanding";
@@ -26,6 +26,12 @@ const navItems = [
   { id: "me", label: "Me", icon: UserRound },
   { id: "download", label: "Mac", icon: Download },
 ];
+
+const TEMPORARY_PROFILE = "I am trying Parallax unlogged in; progress will not be saved.";
+const LEGACY_TEMPORARY_PROFILES = new Set([
+  "I am trying Parallax from the TMLS Agentic Hackathon landing page.",
+  "I am trying Parallex from the TMLS Agentic Hackathon landing page.",
+]);
 
 function App() {
   const initialRoute = readRouteFromLocation();
@@ -59,7 +65,7 @@ function App() {
       }
 
       try {
-        const currentUser = await getCurrentUser();
+        const currentUser = await normalizeTemporaryUser(await getCurrentUser());
         if (!mounted) return;
         setUser(currentUser);
         setSessionScoped(hasSessionToken());
@@ -84,7 +90,12 @@ function App() {
   }, [desktopAuthCode]);
 
   if (view === "download") {
-    return <CompanionDownloadPage onOpenApp={() => navigateTo("idle", setView, setRouteParams)} />;
+    return (
+      <CompanionDownloadPage
+        onHome={(event) => openHome(event, setAuthMode, setView, setRouteParams)}
+        onOpenApp={() => navigateTo(user ? "idle" : "home", setView, setRouteParams)}
+      />
+    );
   }
 
   if (booting) {
@@ -95,17 +106,40 @@ function App() {
     );
   }
 
-  if (!user) {
-    const handleAuth = (nextUser) => handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode);
-    const handleQuickAuth = async (nextUser) => {
-      navigateTo("work", setView, setRouteParams);
-      await handleAuth(nextUser);
-      setSessionScoped(hasSessionToken());
-    };
-    if (authMode === "landing") {
-      return <HackathonLanding onAuthed={handleQuickAuth} onOpenAuth={(mode) => setAuthMode(mode)} />;
+  if (authMode !== "landing") {
+    return (
+      <AuthPage
+        initialMode={authMode}
+        onAuthed={async (nextUser) => {
+          await handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode);
+          setSessionScoped(hasSessionToken());
+          setAuthMode("landing");
+          navigateTo("idle", setView, setRouteParams);
+        }}
+        onBack={() => {
+          setAuthMode("landing");
+          navigateTo("home", setView, setRouteParams);
+        }}
+      />
+    );
+  }
+
+  async function openLandingRoute(nextView) {
+    if (nextView === "download") {
+      navigateTo(nextView, setView, setRouteParams);
+      return;
     }
-    return <AuthPage initialMode={authMode} onAuthed={handleAuth} onBack={() => setAuthMode("landing")} />;
+    if (!user) {
+      const data = await quickTryUser();
+      const temporaryUser = await normalizeTemporaryUser(data.user);
+      await handleAuthed(temporaryUser, setUser, setAgents, setError, desktopAuthCode);
+      setSessionScoped(hasSessionToken());
+    }
+    navigateTo(nextView, setView, setRouteParams);
+  }
+
+  if (view === "home" || !user) {
+    return <HackathonLanding onOpenAuth={setAuthMode} onOpenRoute={openLandingRoute} />;
   }
 
   const visibleAgents = normalizeAgents(user.agentProfiles || agents);
@@ -128,7 +162,7 @@ function App() {
             onLogout={() => {
               setUser(null);
               setSessionScoped(false);
-              navigateTo("idle", setView, setRouteParams);
+              navigateTo("home", setView, setRouteParams);
             }}
             onUserUpdate={setUser}
             user={user}
@@ -141,6 +175,11 @@ function App() {
 
 async function loadAgentProfiles() {
   return normalizeAgents(await listAgents());
+}
+
+async function normalizeTemporaryUser(user) {
+  if (!user?.isTemporary || !LEGACY_TEMPORARY_PROFILES.has(user.personality)) return user;
+  return updateCurrentUser({ personality: TEMPORARY_PROFILE });
 }
 
 async function handleAuthed(nextUser, setUser, setAgents, setError, desktopAuthCode = "") {
@@ -160,7 +199,7 @@ function endTemporarySession(setUser, setAgents, setError, setSessionScoped, set
   setAgents(FALLBACK_AGENTS);
   setError("");
   setSessionScoped(false);
-  navigateTo("idle", setView, setRouteParams);
+  navigateTo("home", setView, setRouteParams);
 }
 
 function getDesktopAuthCode() {
@@ -180,6 +219,7 @@ async function completeDesktopHandoff(code, setError) {
 
 function readRouteFromLocation() {
   const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (pathname === "/") return { view: "home", params: {} };
   if (pathname === "/download/companion") return { view: "download", params: {} };
   if (pathname === "/companion") return { view: "chat", params: {} };
   if (pathname === "/work") return { view: "work", params: {} };
@@ -219,7 +259,19 @@ function pathForView(view, params = {}) {
   }
   if (view === "me") return "/me";
   if (view === "download") return "/download/companion";
+  if (view === "home") return "/";
   return "/idle";
+}
+
+function openHome(event, setAuthMode, setView, setRouteParams) {
+  if (event && isModifiedClick(event)) return;
+  event?.preventDefault();
+  setAuthMode("landing");
+  navigateTo("home", setView, setRouteParams);
+}
+
+function isModifiedClick(event) {
+  return event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 }
 
 function Sidebar({ setRouteParams, setView, user, view }) {
@@ -227,7 +279,7 @@ function Sidebar({ setRouteParams, setView, user, view }) {
     <aside className="sidebar">
       <div className="brand">
         <Sparkles size={18} />
-        <span>Parallex</span>
+        <span>Parallax</span>
       </div>
       <nav className="nav-list" aria-label="Main">
         {navItems.map((item) => {
@@ -261,7 +313,7 @@ function Topbar({ error, onBackToIntro, showBackToIntro = false, view }) {
   return (
     <header className="topbar">
       <div>
-        <p className="eyebrow">Parallex</p>
+        <p className="eyebrow">Parallax</p>
         <h1>{title}</h1>
       </div>
       <div className="topbar-actions">

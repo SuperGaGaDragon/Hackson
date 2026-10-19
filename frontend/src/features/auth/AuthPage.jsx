@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 */
 import { useState } from "react";
@@ -48,7 +48,7 @@ function AuthPage({ initialMode = "login", onAuthed, onBack }) {
   return (
     <main className="auth-shell">
       <section className="auth-panel">
-        <p className="eyebrow">Parallex</p>
+        <p className="eyebrow">Parallax</p>
         <h1>{mode === "register" ? "Create Account" : "Login"}</h1>
         {onBack && (
           <button className="auth-back" onClick={onBack} type="button">

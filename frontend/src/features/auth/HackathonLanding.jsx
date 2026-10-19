@@ -1,156 +1,142 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-29
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 */
-import {
-  ArrowRight,
-  FileText,
-  MessageSquareText,
-  ShieldCheck,
-  UserPlus,
-  Workflow,
-} from "lucide-react";
+import { ArrowRight, UserPlus } from "lucide-react";
 import { useState } from "react";
-import { quickTryUser } from "../../api/users";
+import BrandWordmark from "../../shared/components/BrandWordmark";
 import StatusLine from "../../shared/components/StatusLine";
 
-function HackathonLanding({ onAuthed, onOpenAuth }) {
+const productModes = [
+  {
+    description: "Two agents handle your task, with steps you can review.",
+    href: "/work",
+    label: "Open Work",
+    title: "Work",
+    view: "work",
+  },
+  {
+    description: "Sort out your thoughts and explore ideas before acting.",
+    href: "/idle",
+    label: "Open Idle",
+    title: "Idle",
+    view: "idle",
+  },
+  {
+    description: "Talk with an AI companion, or simply think out loud.",
+    href: "/companion",
+    label: "Open Chat",
+    title: "Chat",
+    view: "chat",
+  },
+];
+
+function HackathonLanding({ onOpenAuth, onOpenRoute }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function startQuickTry() {
-    setLoading(true);
+  async function openRoute(event, view) {
+    if (isModifiedClick(event)) return;
+    event.preventDefault();
+    if (loading) return;
+    setLoading(view);
     setError("");
     try {
-      const data = await quickTryUser();
-      onAuthed(data.user);
+      await onOpenRoute(view);
     } catch (err) {
-      setError(err.message || "Quick Try failed");
+      setError(err.message || "Could not open this page");
     } finally {
-      setLoading(false);
+      setLoading("");
     }
   }
 
   return (
-    <main className="hackathon-shell">
-      <header className="hackathon-nav">
-        <div className="hackathon-nav-actions">
-          <button className="secondary-button" onClick={() => onOpenAuth("login")} type="button">
-            Login
-          </button>
-          <button className="primary-button" disabled={loading} onClick={startQuickTry} type="button">
-            Quick Try
-          </button>
-        </div>
-      </header>
+    <div className="home-shell">
+      <div className="home-inner">
+        <header className="home-header">
+          <BrandWordmark />
+          <a className="home-header-link" href="/work" onClick={(event) => openRoute(event, "work")}>
+            <span>Open workspace</span>
+            <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+          </a>
+        </header>
 
-      <section className="hackathon-hero">
-        <div className="hackathon-copy">
-          <h1>Parallex</h1>
-          <p className="hackathon-lede">Agentic work, made inspectable.</p>
-          <div className="hackathon-actions">
-            <button className="hackathon-primary" disabled={loading} onClick={startQuickTry} type="button">
-              <span>{loading ? "Starting" : "Quick Try"}</span>
-              <ArrowRight size={18} />
-            </button>
-            <button className="hackathon-secondary" onClick={() => onOpenAuth("register")} type="button">
-              <UserPlus size={17} />
-              <span>Create Account</span>
-            </button>
-          </div>
-          <StatusLine error={error} />
-        </div>
+        <main>
+          <section className="home-hero" aria-label="About Parallax">
+            <h1>
+              <span>Think with AI.</span>
+              <span>Work with agents.</span>
+            </h1>
+            <p className="home-subtitle">
+              <span>With your personalized agents,</span>
+              <span>talk things through, get things done.</span>
+            </p>
+            <div className="home-actions">
+              <a
+                aria-busy={loading === "work"}
+                className="try-first"
+                href="/work"
+                onClick={(event) => openRoute(event, "work")}
+              >
+                <span>{loading === "work" ? "Starting" : "Try first"}</span>
+                <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+              </a>
+              <button className="create-account" onClick={() => onOpenAuth("register")} type="button">
+                <UserPlus aria-hidden="true" size={15} strokeWidth={1.8} />
+                <span>Create account</span>
+              </button>
+            </div>
+            <StatusLine error={error} />
+          </section>
 
-        <div className="parallex-feature-panel" aria-label="Parallex product capabilities">
-          <div className="parallex-feature-list">
-            <FeatureItem
-              accent="teal"
-              icon={MessageSquareText}
-              kicker="Idle Mode"
-              title="Brainstorm with multiple AI agents."
-            />
-            <FeatureItem
-              accent="green"
-              icon={Workflow}
-              kicker="Work Mode"
-              title="Visualize missions, progress, windows, and products."
-            />
-            <FeatureItem
-              accent="amber"
-              icon={ShieldCheck}
-              kicker="Evaluator"
-              title="Reduce hallucination risk with evidence-gap checks."
-            />
-            <FeatureItem
-              accent="slate"
-              icon={FileText}
-              kicker="Product History"
-              title="Keep drafts, reviews, revisions, and finals readable."
-            />
-          </div>
-        </div>
-      </section>
+          <section className="home-modes" aria-label="Ways to use Parallax">
+            {productModes.map((mode) => (
+              <article className="home-mode" key={mode.view}>
+                <h2>{mode.title}</h2>
+                <p>{mode.description}</p>
+                <a href={mode.href} onClick={(event) => openRoute(event, mode.view)}>
+                  <span>{mode.label}</span>
+                  <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+                </a>
+              </article>
+            ))}
+          </section>
 
-      <section className="workflow-section" aria-label="Parallex visual workflow">
-        <div className="workflow-copy">
-          <p className="eyebrow">Visual workflow</p>
-          <h2>Brainstorm to final, visibly.</h2>
-        </div>
-        <div className="workflow-track">
-          <WorkflowStep index="01" label="Brainstorm" text="Multiple AI directions" />
-          <WorkflowStep index="02" label="Assign" text="Supervised mission" />
-          <WorkflowStep index="03" label="Watch" text="Live progress" />
-          <WorkflowStep index="04" label="Deliver" text="Drafts to final" />
-          <WorkflowStep index="05" label="Evaluate" text="Evidence gaps" />
-        </div>
-      </section>
+          <section className="home-secondary" aria-label="Agent customization and Desktop Pet">
+            <article>
+              <h2>
+                <a href="/me" onClick={(event) => openRoute(event, "me")}>
+                  <span>Customize your agents</span>
+                  <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+                </a>
+              </h2>
+              <p>Choose how your agents work with you.</p>
+            </article>
+            <article>
+              <h2>
+                <a href="/download/companion" onClick={(event) => openRoute(event, "download")}>
+                  <span>Try Desktop Pet</span>
+                  <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+                </a>
+              </h2>
+              <p>A small cat that lives on your desktop and mirrors Parallax Work progress.</p>
+            </article>
+          </section>
+        </main>
 
-      <section className="memory-section" aria-label="Parallex universal memory">
-        <div>
-          <p className="eyebrow">Permanent agents</p>
-          <h2>Universal memory.</h2>
-        </div>
-        <div className="memory-grid">
-          <MemoryPoint label="Your two agents" text="Same team" />
-          <MemoryPoint label="Approved memory" text="Context you allow" />
-          <MemoryPoint label="Controlled context" text="Only what matters" />
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function FeatureItem({ accent, icon: Icon, kicker, title }) {
-  return (
-    <article className={`parallex-feature-item ${accent}`}>
-      <Icon size={21} />
-      <div>
-        <span>{kicker}</span>
-        <strong>{title}</strong>
+        <footer className="home-footer">
+          <span>Parallax</span>
+          <span>Work. Idle. Chat.</span>
+        </footer>
       </div>
-    </article>
+    </div>
   );
 }
 
-function WorkflowStep({ index, label, text }) {
-  return (
-    <article className="workflow-step">
-      <span>{index}</span>
-      <strong>{label}</strong>
-      <p>{text}</p>
-    </article>
-  );
-}
-
-function MemoryPoint({ label, text }) {
-  return (
-    <article className="memory-point">
-      <strong>{label}</strong>
-      <p>{text}</p>
-    </article>
-  );
+function isModifiedClick(event) {
+  return event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 }
 
 export default HackathonLanding;

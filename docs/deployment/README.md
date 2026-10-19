@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-26
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 
 ## brief intro
@@ -15,6 +15,7 @@ Last Modified by: Codex
 ## folder structure
 |-README.md deployment folder guide
 |-production.md production deployment plan and verification record
+|-parallax-pages.md parallel Parallax Pages entry, edge proxy, release gate, and rollback contract
 
 ## 代办
 - Add rollback steps after the first production service has been running long enough to define release cadence.

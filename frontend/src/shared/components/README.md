@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-25
+Last Modified at: 2026-10-19
 Lst Modified by: Codex
 
 ## brief intro
@@ -14,6 +14,7 @@ Lst Modified by: Codex
 ## folder structure
 |-README.md components folder guide
 |-AgentSlot.jsx fixed-slot Agent identity display
+|-BrandWordmark.jsx shared Parallax wordmark for public and product navigation
 |-Timeline.jsx transcript rendering for backend messages
 |-StatusLine.jsx compact loading and error display
 

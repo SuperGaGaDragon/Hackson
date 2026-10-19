@@ -1,10 +1,36 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-05-29
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 
-# Parallex Hackathon Landing Page
+# Parallax Public Landing Page
+
+## 2026-10-19 Pages Integration Decision
+
+The current `https://parallax-epv.pages.dev/` landing is the authoritative public-home presentation and supersedes the older hackathon landing visuals described later in this file.
+
+The preserved home contains:
+
+- `Parallax` wordmark.
+- `Think with AI. Work with agents.` headline.
+- `With your personalized agents, talk things through, get things done.` support copy.
+- `Open workspace`, `Try first`, and `Create account` actions.
+- Work, Idle, and Chat product entry rows.
+- `Customize your agents` and `Try Desktop Pet` secondary rows.
+- `Parallax / Work. Idle. Chat.` footer.
+
+Behavior contract:
+
+- `/` always shows this landing, including when a user already has a valid session.
+- Work, Idle, Chat, and Me entry links create a real temporary Hackson user only when the visitor is signed out, then open the requested product surface.
+- Desktop Companion remains public and does not create a user.
+- Product routes remain inside the same Pages origin so local/session JWT storage and authenticated SSE requests continue to work.
+- The existing Hackson frontend owns every post-entry product surface.
+- User-visible branding on the Pages experience is `Parallax`. Internal Hackson package, token, API, database, and service names remain unchanged.
+- The Hackson public domain remains deployed and independent.
+
+See `../deployment/parallax-pages.md` for proxy, verification, deployment, and rollback rules.
 
 ## Purpose
 

@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-10-19
 Lst Modified by: Codex
 
 ## brief intro
@@ -13,6 +13,7 @@ Lst Modified by: Codex
 
 ## folder structure
 |-README.md public asset folder guide
+|-_worker.js Cloudflare Pages edge proxy, security headers, and SPA fallback
 |-assets/ stable public assets copied to `/assets/*`
 
 ## 代办

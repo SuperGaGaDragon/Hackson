@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 """
 
@@ -211,8 +211,31 @@ class SearchSmokeLeadClient:
 
     def generate_action(self, context: dict[str, Any]):
         self.calls += 1
-        product = (context.get("productManifest") or [None])[0]
+        products = context.get("productManifest") or []
+        product = next((item for item in products if item.get("deliverableArtifactId")), None)
         observation = context.get("lastObservation") or {}
+        if observation.get("tool") == "web_search" and observation.get("status") == "ok":
+            self.saw_search_observation = True
+            url = observation["results"][0]["url"]
+            source_artifact_ids = [observation["summaryArtifactId"]] if observation.get("summaryArtifactId") else []
+            return parse_tool_action(
+                f"""
+                {{
+                  "tool": "work_product",
+                  "arguments": {{
+                    "reason": "把搜索结果整理成可读产物。",
+                    "operation": "create_product",
+                    "productId": null,
+                    "sourceArtifactIds": {json.dumps(source_artifact_ids)},
+                    "productTitle": "搜索来源摘要",
+                    "artifactTitle": "来源摘要",
+                    "artifactKind": "final",
+                    "content": "已找到可引用来源：{url}",
+                    "summary": "完成搜索来源摘要。"
+                  }}
+                }}
+                """
+            )
         if product is not None:
             return parse_tool_action(
                 f"""
@@ -222,28 +245,7 @@ class SearchSmokeLeadClient:
                     "reason": "搜索来源摘要已保存。",
                     "summary": "搜索工具闭环完成。",
                     "finalProductIds": ["{product["id"]}"],
-                    "finalArtifactIds": ["{product["latestArtifactId"]}"]
-                  }}
-                }}
-                """
-            )
-        if observation.get("tool") == "web_search" and observation.get("status") == "ok":
-            self.saw_search_observation = True
-            url = observation["results"][0]["url"]
-            return parse_tool_action(
-                f"""
-                {{
-                  "tool": "work_product",
-                  "arguments": {{
-                    "reason": "把搜索结果整理成可读产物。",
-                    "operation": "create_product",
-                    "productId": null,
-                    "sourceArtifactIds": [],
-                    "productTitle": "搜索来源摘要",
-                    "artifactTitle": "来源摘要",
-                    "artifactKind": "report",
-                    "content": "已找到可引用来源：{url}",
-                    "summary": "完成搜索来源摘要。"
+                    "finalArtifactIds": ["{product["deliverableArtifactId"]}"]
                   }}
                 }}
                 """

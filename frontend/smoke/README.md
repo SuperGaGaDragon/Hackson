@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-10-19
 Lst Modified by: Codex
 
 ## brief intro
@@ -20,6 +20,7 @@ Lst Modified by: Codex
 |-hackathon_landing_public_smoke.mjs Playwright smoke for QR-code landing, Create Account path, Quick Try session, and responsive overflow
 |-context_runtime_me_smoke.mjs Playwright smoke for Me IA, Agent editor priority, collapsed Debug, prompt-log access, and memory controls
 |-idle_interruption_smoke.mjs Playwright smoke for typing during Idle Working state; `HACKSON_SMOKE_TIMEOUT_MS` covers slower public model turns
+|-pages_edge_worker_smoke.mjs deterministic Pages proxy, SSE, download, static asset, security-header, and SPA-fallback smoke
 
 ## 代办
 - Add mobile viewport smoke after the desktop V1 release gate is stable.
