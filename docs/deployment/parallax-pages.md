@@ -96,6 +96,14 @@ Before production publication:
 - Production color audit found no unintended large dark surfaces, no horizontal overflow, no failed requests, and no browser console errors.
 - `hackson.catachess.com` remained independent, live, and unchanged.
 
+## production Pet-label deployment record — 2026-10-20
+- Pages production deployment: `e59e367f-b465-417d-9b82-17887805ba08`.
+- Immutable deployment URL: `https://e59e367f.parallax-epv.pages.dev/`.
+- Source commit: `8dd583d` on `startup`.
+- Immediate rollback deployment: `4e7b8d2b-f563-476b-a379-1371af705ef8`.
+- Sidebar navigation now says `Pet`; Desktop Companion platform copy remains `Mac alpha` and Apple Silicon.
+- Production desktop/mobile route smoke, Pages health, and Hackson health passed.
+
 ## Cloudflare project identity
 - Pages project name: `parallax`.
 - Production Pages domain: `https://parallax-epv.pages.dev/`.

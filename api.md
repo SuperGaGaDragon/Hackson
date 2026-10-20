@@ -30,9 +30,9 @@ Last Modified by: Codex
 | Public URL | `https://hackson.catachess.com/` |
 | Parallel Parallax Pages URL | `https://parallax-epv.pages.dev/` |
 | Parallax Pages project | `parallax` |
-| Parallax Pages production deployment | `4e7b8d2b-f563-476b-a379-1371af705ef8`, source commit `f5da8f0` |
+| Parallax Pages production deployment | `e59e367f-b465-417d-9b82-17887805ba08`, source commit `8dd583d` |
 | Parallax Pages edge contract | Static React assets on Pages; fixed proxy for `/api/*`, `/health`, and download fallback to `https://hackson.catachess.com`; authenticated SSE remains same-origin |
-| Parallax Pages frontend assets | `/assets/index-D0F-n9xA.js`, `/assets/index-sbIvP9B0.css` |
+| Parallax Pages frontend assets | `/assets/index-CqKdx0RE.js`, `/assets/index-sbIvP9B0.css` |
 | Public source path | `~/hackson_domain_8145` |
 | Public backend path | `~/hackson_domain_8145/backend` |
 | Public frontend build path | `~/hackson_domain_8145/frontend/dist` |
@@ -707,6 +707,10 @@ POST /api/work/missions/{missionId}/evaluate
 Returns Mission detail after writing a `report` Artifact with `metadata.artifactRole="reliability_report"` and `metadata.reportPayload`. The evaluator only treats trace evidence, especially `WEB_SEARCH_COMPLETED` snippets, as evidence; final answer text cannot support itself.
 
 ## latest verification
+- Parallax sidebar Pet-label release on 2026-10-20:
+  - Pages production deployment `e59e367f-b465-417d-9b82-17887805ba08` changed only the authenticated sidebar label from `Mac` to `Pet`; the download page retains accurate `Mac alpha` and Apple Silicon copy.
+  - Production browser smoke verified one visible `Pet` navigation entry, zero `Mac` navigation entries, desktop/mobile overflow checks, and all existing entry routes.
+  - Pages and Hackson health checks remained `200`; edge smoke, Pages build, and dependency audit passed.
 - Parallax authenticated light-product release on 2026-10-20:
   - Existing Pages project `parallax` deployed production version `4e7b8d2b-f563-476b-a379-1371af705ef8` from source commit `f5da8f0`.
   - Preserved public home and all deep links returned `200`; production assets are `/assets/index-D0F-n9xA.js` and `/assets/index-sbIvP9B0.css`.
