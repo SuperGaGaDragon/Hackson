@@ -1,12 +1,13 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 
 ## intro
 - **Product:** Hackson is an AI work operating system built around two persistent, user-editable Agents, not a one-off chatbot thread.
 - **Public demo:** The current public build runs at `https://hackson.catachess.com/` on the target server, backed by FastAPI, React + Vite, MongoDB, systemd services, and a Cloudflare tunnel.
+- **Parallel Parallax entry:** `https://parallax-epv.pages.dev/` preserves the Parallax public home and hands Work, Idle, Chat, Me, API, SSE, and Desktop Companion flows to the same verified Hackson backend without replacing the Hackson domain.
 - **Agent profiles:** Each user owns two editable Agent profiles with names, personalities, voices, stories, and account-level continuity. The same Agents appear across Idle, Companion, Work, memory, and Desktop Pet flows.
 - **Idle Mode:** Two Agents can hold an ongoing topic-driven conversation. Users can start topics, let the Agents continue, interrupt while a turn is generating, and join the discussion without corrupting transcript order.
 - **Companion Mode:** Users can either branch from Idle into a context-aware companion conversation or start a direct companion chat for a focused user-Agent exchange.
@@ -56,6 +57,8 @@ Last Modified by: Codex
 | Target machine | `catadragon@100.70.248.39` |
 | Secret connection note | See ignored local file `docs/数据库/machine.md`; never push it |
 | Hackson public domain URL | `https://hackson.catachess.com/`, verified and running |
+| Parallax Pages URL | `https://parallax-epv.pages.dev/`, verified and running |
+| Parallax Pages project | `parallax`, production deployment `2894ac0e-1f1d-43ac-ab90-833752c34aa5` |
 | Hackson public domain service | `hackson-domain-8145.service`, user-level systemd, enabled |
 | Hackson public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled |
 | Hackson public domain path | `~/hackson_domain_8145` |

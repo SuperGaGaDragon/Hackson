@@ -68,6 +68,17 @@ Before production publication:
 - Verify the exact production URL after deployment.
 - If any release check fails, restore the prior Pages deployment. Do not change the Hackson domain.
 
+## production deployment record — 2026-10-19
+- Cloudflare account ownership verified through Wrangler OAuth.
+- Pages project: `parallax`.
+- Production deployment: `2894ac0e-1f1d-43ac-ab90-833752c34aa5`.
+- Deployment URL: `https://2894ac0e.parallax-epv.pages.dev/`.
+- Production alias: `https://parallax-epv.pages.dev/`.
+- Source commit: `f2d8723` on `startup`.
+- Previous production rollback deployment: `9b91d1df-6047-4469-8759-a6d96f77f8b2`.
+- Production verification passed for root, hashed assets, health, public API, protected API boundary, deep links, packaged Desktop Companion download, desktop/mobile landing, and real Quick Try handoff.
+- `hackson.catachess.com` remained live and was not restarted or modified.
+
 ## Cloudflare project identity
 - Pages project name: `parallax`.
 - Production Pages domain: `https://parallax-epv.pages.dev/`.
@@ -88,5 +99,4 @@ Before production publication:
 - Correct project ownership was verified through Wrangler OAuth before production deployment.
 
 ## 代办
-- Record the production deployment id after publication.
-- Record the final public verification results in `api.md` only after deployment succeeds.
+- Keep the prior deployment id available for rollback until the new Pages release has completed its observation window.

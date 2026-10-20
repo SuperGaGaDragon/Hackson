@@ -1,12 +1,13 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-29
+Last Modified at: 2026-10-19
 Last Modified by: Codex
 
 ## brief intro
 - This document is the current verified API and port map for the Parallex public product on Hackson-named infrastructure.
 - Public product traffic now uses `https://hackson.catachess.com/`.
+- Parallel Parallax Pages traffic is live at `https://parallax-epv.pages.dev/`; it serves the preserved Parallax home and proxies fixed product API, health, SSE, and download routes to the same Hackson backend.
 - Public UI brand is `Parallex`; legacy Hackson names remain in service names, database names, token keys, and the confirmed public domain until a separate infrastructure migration.
 - Public-domain rows describe the currently promoted product service, including Desktop Pet browser handoff login.
 - The `8147` rows describe the isolated Idle Auto smoke service used for its fix.
@@ -27,6 +28,11 @@ Last Modified by: Codex
 | Target machine | `catadragon@100.70.248.39` |
 | Target access note | Ignored local file `docs/数据库/machine.md`; never push it |
 | Public URL | `https://hackson.catachess.com/` |
+| Parallel Parallax Pages URL | `https://parallax-epv.pages.dev/` |
+| Parallax Pages project | `parallax` |
+| Parallax Pages production deployment | `2894ac0e-1f1d-43ac-ab90-833752c34aa5`, source commit `f2d8723` |
+| Parallax Pages edge contract | Static React assets on Pages; fixed proxy for `/api/*`, `/health`, and download fallback to `https://hackson.catachess.com`; authenticated SSE remains same-origin |
+| Parallax Pages frontend assets | `/assets/index-kOw9ovgW.js`, `/assets/index-PMZYRz6x.css` |
 | Public source path | `~/hackson_domain_8145` |
 | Public backend path | `~/hackson_domain_8145/backend` |
 | Public frontend build path | `~/hackson_domain_8145/frontend/dist` |
@@ -701,6 +707,15 @@ POST /api/work/missions/{missionId}/evaluate
 Returns Mission detail after writing a `report` Artifact with `metadata.artifactRole="reliability_report"` and `metadata.reportPayload`. The evaluator only treats trace evidence, especially `WEB_SEARCH_COMPLETED` snippets, as evidence; final answer text cannot support itself.
 
 ## latest verification
+- Parallax Pages production verification on 2026-10-19:
+  - Existing Cloudflare Pages project `parallax` deployed as production deployment `2894ac0e-1f1d-43ac-ab90-833752c34aa5` at `https://parallax-epv.pages.dev/`.
+  - Root and all tested deep links returned `200`; root served `/assets/index-kOw9ovgW.js` and `/assets/index-PMZYRz6x.css`.
+  - Pages `/health` returned `200 application/json` with `{"status":"ok"}`.
+  - Pages `/api/agents` returned `200 application/json`; unauthenticated `/api/work/projects` returned the expected `401 application/json`.
+  - Pages Desktop Companion download returned `200 application/zip` with `6079128` bytes.
+  - Production desktop/mobile landing smoke passed for preserved content, responsive overflow, Work, Idle, Chat, Me, and Desktop Companion entry routes.
+  - Real Quick Try browser smoke stored a session-scoped JWT, opened the Hackson Work workspace, returned `200` from `/api/users/me`, `/api/work/projects`, and `/api/agents`, then cleared the token through `Back to intro`; no failed request or console error occurred.
+  - `https://hackson.catachess.com/health` remained `200` throughout the Pages deployment; no Hackson service restart or domain change occurred.
 - AgentLens evaluator local verification on 2026-05-28:
   - Work Mode evaluator and route tests passed with `PYTHONPATH=backend .venv/bin/python -m pytest backend/work_mode/tests/test_work_mode_evaluator.py backend/work_mode/tests/test_work_mode_routes.py -q`.
   - Full local Work Mode suite passed with `77` tests.
