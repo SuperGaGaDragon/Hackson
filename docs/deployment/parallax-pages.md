@@ -85,6 +85,17 @@ Before production publication:
 - Keep `hackson.catachess.com` independent and unchanged.
 - Validate the complete local test and browser matrix before a new production Pages deployment.
 
+## production light-theme deployment record — 2026-10-20
+- Pages production deployment: `4e7b8d2b-f563-476b-a379-1371af705ef8`.
+- Immutable deployment URL: `https://4e7b8d2b.parallax-epv.pages.dev/`.
+- Production alias: `https://parallax-epv.pages.dev/`.
+- Source commit: `f5da8f0` on `startup`.
+- Immediate rollback deployment: `2894ac0e-1f1d-43ac-ab90-833752c34aa5`.
+- Production assets: `/assets/index-D0F-n9xA.js` and `/assets/index-sbIvP9B0.css`.
+- Real Quick Try and mocked route matrix verified Auth, Work, Idle, Chat, Me, desktop/mobile layout, backend auth, API, and return-to-intro behavior.
+- Production color audit found no unintended large dark surfaces, no horizontal overflow, no failed requests, and no browser console errors.
+- `hackson.catachess.com` remained independent, live, and unchanged.
+
 ## Cloudflare project identity
 - Pages project name: `parallax`.
 - Production Pages domain: `https://parallax-epv.pages.dev/`.

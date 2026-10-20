@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Last Modified by: Codex
 
 ## intro
@@ -58,7 +58,7 @@ Last Modified by: Codex
 | Secret connection note | See ignored local file `docs/数据库/machine.md`; never push it |
 | Hackson public domain URL | `https://hackson.catachess.com/`, verified and running |
 | Parallax Pages URL | `https://parallax-epv.pages.dev/`, verified and running |
-| Parallax Pages project | `parallax`, production deployment `2894ac0e-1f1d-43ac-ab90-833752c34aa5` |
+| Parallax Pages project | `parallax`, production deployment `4e7b8d2b-f563-476b-a379-1371af705ef8` |
 | Hackson public domain service | `hackson-domain-8145.service`, user-level systemd, enabled |
 | Hackson public tunnel service | `hackson-cloudflared.service`, user-level systemd, enabled |
 | Hackson public domain path | `~/hackson_domain_8145` |

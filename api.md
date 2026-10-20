@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Last Modified by: Codex
 
 ## brief intro
@@ -30,9 +30,9 @@ Last Modified by: Codex
 | Public URL | `https://hackson.catachess.com/` |
 | Parallel Parallax Pages URL | `https://parallax-epv.pages.dev/` |
 | Parallax Pages project | `parallax` |
-| Parallax Pages production deployment | `2894ac0e-1f1d-43ac-ab90-833752c34aa5`, source commit `f2d8723` |
+| Parallax Pages production deployment | `4e7b8d2b-f563-476b-a379-1371af705ef8`, source commit `f5da8f0` |
 | Parallax Pages edge contract | Static React assets on Pages; fixed proxy for `/api/*`, `/health`, and download fallback to `https://hackson.catachess.com`; authenticated SSE remains same-origin |
-| Parallax Pages frontend assets | `/assets/index-kOw9ovgW.js`, `/assets/index-PMZYRz6x.css` |
+| Parallax Pages frontend assets | `/assets/index-D0F-n9xA.js`, `/assets/index-sbIvP9B0.css` |
 | Public source path | `~/hackson_domain_8145` |
 | Public backend path | `~/hackson_domain_8145/backend` |
 | Public frontend build path | `~/hackson_domain_8145/frontend/dist` |
@@ -707,6 +707,16 @@ POST /api/work/missions/{missionId}/evaluate
 Returns Mission detail after writing a `report` Artifact with `metadata.artifactRole="reliability_report"` and `metadata.reportPayload`. The evaluator only treats trace evidence, especially `WEB_SEARCH_COMPLETED` snippets, as evidence; final answer text cannot support itself.
 
 ## latest verification
+- Parallax authenticated light-product release on 2026-10-20:
+  - Existing Pages project `parallax` deployed production version `4e7b8d2b-f563-476b-a379-1371af705ef8` from source commit `f5da8f0`.
+  - Preserved public home and all deep links returned `200`; production assets are `/assets/index-D0F-n9xA.js` and `/assets/index-sbIvP9B0.css`.
+  - Auth, Work, Idle, Chat, Me, modals, Product/Artifact reader, Quality, navigation, and Desktop Companion surfaces use the semantic warm-light palette from `docs/frontend/light_theme.md`.
+  - Browser audits at desktop, 1180px, and 390px verified no document horizontal overflow and no unintended large dark surfaces after transitions settle.
+  - Real Quick Try traversed Work, Idle, Chat, and Me with `/api/users/me`, `/api/work/projects`, and `/api/agents` returning `200`; session token cleanup passed with no failed request or console error.
+  - Palette contrast audit passed WCAG AA for primary, secondary, muted, accent, success, warning, and danger text/background pairs.
+  - Backend `294` tests, Context Runtime `4` cases, Work full/HTTP/search/waiting-input smokes, Pages edge smoke, Work browser desktop/mobile smoke, Web/Desktop builds, Desktop `10` JavaScript tests, Desktop `3` Rust tests, and both dependency audits passed.
+  - Pages `/health`, public API, protected API boundary, SSE/static proxy contract, deep-link fallback, and `6079128`-byte Desktop Companion download remained healthy.
+  - `https://hackson.catachess.com/health` remained `200`; no Hackson deployment, service restart, tunnel change, or domain removal occurred.
 - Parallax Pages production verification on 2026-10-19:
   - Existing Cloudflare Pages project `parallax` deployed as production deployment `2894ac0e-1f1d-43ac-ab90-833752c34aa5` at `https://parallax-epv.pages.dev/`.
   - Root and all tested deep links returned `200`; root served `/assets/index-kOw9ovgW.js` and `/assets/index-PMZYRz6x.css`.
