@@ -1,7 +1,7 @@
 /*
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Last Modified by: Codex
 */
 import { chromium } from "playwright";
@@ -47,6 +47,7 @@ async function main() {
   await page.locator(".work-workspace-view").waitFor();
   await page.getByText("Workspace", { exact: true }).first().waitFor();
   await page.getByLabel("Project name").waitFor();
+  await page.getByTitle("Pet").waitFor();
   await page.getByRole("button", { name: "Back to intro" }).waitFor();
   const tokenStored = await page.evaluate(() => Boolean(window.sessionStorage.getItem("hackson_quick_access_token")));
   if (!tokenStored) throw new Error("quick_try_token_not_session_scoped");

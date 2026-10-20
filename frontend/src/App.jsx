@@ -25,7 +25,7 @@ const navItems = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "work", label: "Work", icon: BriefcaseBusiness },
   { id: "me", label: "Me", icon: UserRound },
-  { id: "download", label: "Mac", icon: Download },
+  { id: "download", label: "Pet", icon: Download },
 ];
 
 const TEMPORARY_PROFILE = "I am trying Parallax unlogged in; progress will not be saved.";

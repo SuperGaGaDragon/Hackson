@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-28
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Lst Modified by: Codex
 
 ## brief intro
@@ -11,6 +11,7 @@ Lst Modified by: Codex
   - Keep download pages public and separate from authenticated product workspaces.
   - Show the current public brand as Parallax while preserving existing signed/static artifact filenames.
   - Pages builds package the local Mac app at the stable download path; the edge worker may fall back to the Hackson origin.
+  - The authenticated sidebar labels this product entry `Pet`; platform-specific `Mac alpha` copy remains inside the download page.
   - State platform limits clearly before users download.
   - Reuse static artifacts served from the production `/assets` mount.
 
