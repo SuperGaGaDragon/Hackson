@@ -1,10 +1,10 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Last Modified by: Codex
 */
-import { Activity, BriefcaseBusiness, Download, MessageSquare, Sparkles, UserRound } from "lucide-react";
+import { Activity, BriefcaseBusiness, Download, MessageSquare, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listAgents } from "./api/agents";
 import { clearToken, getToken, hasSessionToken } from "./api/client";
@@ -17,6 +17,7 @@ import CompanionDownloadPage from "./features/download/CompanionDownloadPage";
 import IdlePage from "./features/idle/IdlePage";
 import MePage from "./features/me/MePage";
 import WorkPage from "./features/work/WorkPage";
+import BrandWordmark from "./shared/components/BrandWordmark";
 import StatusLine from "./shared/components/StatusLine";
 
 const navItems = [
@@ -146,7 +147,13 @@ function App() {
 
   return (
     <main className="app-shell">
-      <Sidebar setRouteParams={setRouteParams} setView={setView} user={user} view={view} />
+      <Sidebar
+        onHome={(event) => openHome(event, setAuthMode, setView, setRouteParams)}
+        setRouteParams={setRouteParams}
+        setView={setView}
+        user={user}
+        view={view}
+      />
       <section className="workspace">
         <Topbar
           error={error}
@@ -274,12 +281,11 @@ function isModifiedClick(event) {
   return event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 }
 
-function Sidebar({ setRouteParams, setView, user, view }) {
+function Sidebar({ onHome, setRouteParams, setView, user, view }) {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <Sparkles size={18} />
-        <span>Parallax</span>
+        <BrandWordmark href="/" onClick={onHome} />
       </div>
       <nav className="nav-list" aria-label="Main">
         {navItems.map((item) => {
@@ -313,7 +319,6 @@ function Topbar({ error, onBackToIntro, showBackToIntro = false, view }) {
   return (
     <header className="topbar">
       <div>
-        <p className="eyebrow">Parallax</p>
         <h1>{title}</h1>
       </div>
       <div className="topbar-actions">
@@ -322,7 +327,6 @@ function Topbar({ error, onBackToIntro, showBackToIntro = false, view }) {
             Back to intro
           </button>
         )}
-        <span className="chip">{view}</span>
         {error && <span className="chip error-chip">{error}</span>}
       </div>
     </header>

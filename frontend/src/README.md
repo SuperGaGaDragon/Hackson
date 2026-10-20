@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Lst Modified by: Codex
 
 ## brief intro
@@ -11,6 +11,7 @@ Lst Modified by: Codex
   - `App.jsx` owns the public home, temporary-user handoff, authenticated routing, and app shell.
   - `main.jsx` mounts the React app.
   - `styles.css` defines the full product visual system for the prototype.
+  - `light-theme.css` applies the authenticated Parallax light product theme after the base component layout rules.
   - `api/` owns HTTP calls to verified APIs.
   - `domain/` owns message and Agent display mapping.
   - `features/` owns product flows for Auth, Idle, Chat, and Me.
@@ -25,6 +26,7 @@ Lst Modified by: Codex
 |-App.jsx app shell and authenticated route switching
 |-main.jsx React root mount
 |-styles.css frontend visual system and responsive layout
+|-light-theme.css semantic light palette and authenticated product surface overrides
 |-api/ verified backend API client modules
 |-domain/ frontend domain mapping helpers
 |-features/ product feature modules

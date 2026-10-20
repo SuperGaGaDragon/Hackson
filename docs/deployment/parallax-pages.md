@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-10-19
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Last Modified by: Codex
 
 # Parallax Pages Production Contract
@@ -78,6 +78,12 @@ Before production publication:
 - Previous production rollback deployment: `9b91d1df-6047-4469-8759-a6d96f77f8b2`.
 - Production verification passed for root, hashed assets, health, public API, protected API boundary, deep links, packaged Desktop Companion download, desktop/mobile landing, and real Quick Try handoff.
 - `hackson.catachess.com` remained live and was not restarted or modified.
+
+## 2026-10-20 light-product release contract
+- Extend the public home's warm light visual language into authenticated Auth, Idle, Chat, Work, Me, modal, and Desktop Companion surfaces.
+- Preserve all Pages proxy, authentication, SSE, Product/Artifact, download, and rollback behavior.
+- Keep `hackson.catachess.com` independent and unchanged.
+- Validate the complete local test and browser matrix before a new production Pages deployment.
 
 ## Cloudflare project identity
 - Pages project name: `parallax`.

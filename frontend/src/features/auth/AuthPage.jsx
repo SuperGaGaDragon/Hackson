@@ -1,11 +1,12 @@
 /*
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Last Modified by: Codex
 */
 import { useState } from "react";
 import { loginUser, registerUser } from "../../api/users";
+import BrandWordmark from "../../shared/components/BrandWordmark";
 import StatusLine from "../../shared/components/StatusLine";
 
 function AuthPage({ initialMode = "login", onAuthed, onBack }) {
@@ -48,7 +49,7 @@ function AuthPage({ initialMode = "login", onAuthed, onBack }) {
   return (
     <main className="auth-shell">
       <section className="auth-panel">
-        <p className="eyebrow">Parallax</p>
+        <BrandWordmark />
         <h1>{mode === "register" ? "Create Account" : "Login"}</h1>
         {onBack && (
           <button className="auth-back" onClick={onBack} type="button">

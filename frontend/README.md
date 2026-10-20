@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-19
+Last Modified at: 2026-10-20
 Last Modified by: Codex
 
 ## brief intro
@@ -10,6 +10,7 @@ Last Modified by: Codex
 - 架构思路
   - Build only the surfaces backed by verified APIs in root `api.md`.
   - Current product surfaces are Auth, Idle, Chat, Work, and Me.
+  - Authenticated product surfaces use the semantic light palette defined in `docs/frontend/light_theme.md`.
   - Local dev calls `/api` through the Vite proxy to avoid browser CORS.
   - Production serves the built `dist/` bundle from FastAPI at `http://100.70.248.39:8130/`.
   - Current product-level local proxy target is `127.0.0.1:18126`, which tunnels to target backend `127.0.0.1:8126` using MongoDB database `hackson`.
