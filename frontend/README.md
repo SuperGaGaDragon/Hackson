@@ -28,7 +28,7 @@ Last Modified by: Codex
 |-package-lock.json locked npm dependency graph
 |-index.html Vite HTML entry
 |-vite.config.js Vite React configuration
-|-wrangler.jsonc Cloudflare Pages direct-deploy configuration for `parallax-epv`
+|-wrangler.jsonc Cloudflare Pages direct-deploy configuration for project `parallax` at `parallax-epv.pages.dev`
 |-src/ React source folder
 |-public/ static public assets folder
 |-smoke/ frontend browser smoke scripts

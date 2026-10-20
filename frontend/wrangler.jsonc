@@ -3,7 +3,7 @@
 // Last Modified at: 2026-10-19
 // Last Modified by: Codex
 {
-  "name": "parallax-epv",
+  "name": "parallax",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-10-19"
 }

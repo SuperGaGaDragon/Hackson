@@ -68,10 +68,10 @@ Before production publication:
 - Verify the exact production URL after deployment.
 - If any release check fails, restore the prior Pages deployment. Do not change the Hackson domain.
 
-## known access prerequisite
-- The current local Wrangler account does not list the `parallax-epv` Pages project.
-- Production publication requires the Cloudflare account or deployment credential that owns that exact project.
-- Do not create a replacement project or change the requested hostname to work around missing ownership.
+## Cloudflare project identity
+- Pages project name: `parallax`.
+- Production Pages domain: `https://parallax-epv.pages.dev/`.
+- Deploy only to the existing `parallax` project; do not create a replacement project or change the requested hostname.
 
 ## local verification record — 2026-10-19
 - Backend: `294 passed`.
@@ -85,8 +85,8 @@ Before production publication:
 - Visual regression: current public Pages reference and local landing shared `1440x1052` dimensions with only `71` differing pixels (`0.0047%`).
 - Frontend and Desktop dependency audits: `0 vulnerabilities` after compatible lockfile updates.
 - Desktop Pet: `10` JavaScript tests, Vite build, and `3` Rust tests passed.
-- Production Pages deployment remains pending only on access to the existing `parallax-epv` Cloudflare project.
+- Correct project ownership was verified through Wrangler OAuth before production deployment.
 
 ## 代办
-- Record the exact Pages project id and deployment id after authenticated access is available.
+- Record the production deployment id after publication.
 - Record the final public verification results in `api.md` only after deployment succeeds.
