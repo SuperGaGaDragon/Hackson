@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-11-08
 Last Modified by: Codex
 
 ## brief intro
@@ -43,6 +43,7 @@ Last Modified by: Codex
 - Platform API keys should live in secret refs or environment variables.
 - `model_runtime_configs` may store `api_key_secret_ref`, never raw user-facing secrets.
 - MVP supports one platform-managed OpenAI-compatible Codex relay, or an explicitly configured Codex CLI provider on the target machine.
+- DeepSeek uses the existing `openai_compatible` provider with `HACKSON_MODEL_BASE_URL=https://api.deepseek.com`, `HACKSON_MODEL_NAME=deepseek-flash`, and Chat Completions `max_tokens` compatibility.
 - MVP reads `HACKSON_MODEL_*` env vars first, then falls back to local Codex/OpenAI-compatible env vars such as `OPENAI_API_KEY` and `STYLE_REPORT_MODEL`.
 - `HACKSON_MODEL_API_MODE=responses` enables the Responses API path; default remains `chat_completions`.
 - `HACKSON_MODEL_RESPONSES_ENABLED=true` can also enable Responses mode when no explicit API mode is set.

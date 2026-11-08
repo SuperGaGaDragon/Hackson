@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-11-08
 Last Modified by: Codex
 """
 
@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 from typing import Any
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 import httpx
@@ -25,12 +26,13 @@ class OpenAICompatibleClient:
 
     def generate(self, config: ModelRuntimeConfig, request: ModelGenerateRequest) -> ModelGenerateResponse:
         url = _chat_completions_url(config.base_url)
+        max_tokens = request.max_output_tokens or config.max_output_tokens
         payload = {
             "model": config.model_name,
             "messages": [message.model_dump() for message in request.messages],
-            "max_completion_tokens": request.max_output_tokens or config.max_output_tokens,
             "temperature": request.temperature if request.temperature is not None else config.temperature,
         }
+        payload[_completion_token_field(config.base_url)] = max_tokens
         response = self._post_json(url, config.api_key, payload, _request_timeout(config, request))
         return ModelGenerateResponse(
             text=_extract_text(response),
@@ -152,6 +154,14 @@ def _chat_completions_url(base_url: str) -> str:
     if base_url.endswith("/chat/completions"):
         return base_url
     return f"{base_url}/chat/completions"
+
+
+def _completion_token_field(base_url: str) -> str:
+    """Choose the upstream-compatible Chat Completions output token field."""
+    hostname = (urlparse(base_url).hostname or "").lower()
+    if hostname == "api.deepseek.com" or hostname.endswith(".deepseek.com"):
+        return "max_tokens"
+    return "max_completion_tokens"
 
 
 def _codex_command(

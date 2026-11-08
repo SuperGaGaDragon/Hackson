@@ -1,7 +1,7 @@
 """
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-11-08
 Last Modified by: Codex
 """
 
@@ -276,6 +276,31 @@ class ModelRuntimeTest(TestCase):
             )
 
         self.assertEqual(fake_post.call_args.args[3], 12)
+
+    def test_deepseek_chat_completions_uses_max_tokens_field(self) -> None:
+        client = OpenAICompatibleClient()
+        config = ModelRuntimeConfig(
+            provider="openai_compatible",
+            base_url="https://api.deepseek.com",
+            model_name="deepseek-flash",
+            api_key="secret-deepseek",
+        )
+        with patch.object(
+            client,
+            "_post_json",
+            return_value={"id": "chat_1", "model": "deepseek-flash", "choices": [{"message": {"content": "ok"}}]},
+        ) as fake_post:
+            client.generate(
+                config,
+                ModelGenerateRequest(
+                    messages=[RuntimeMessage(role="user", content="hello")],
+                    max_output_tokens=321,
+                ),
+            )
+
+        payload = fake_post.call_args.args[2]
+        self.assertEqual(payload["max_tokens"], 321)
+        self.assertNotIn("max_completion_tokens", payload)
 
     def test_responses_client_builds_reasoning_payload_and_normalizes_response(self) -> None:
         client = OpenAIResponsesClient()

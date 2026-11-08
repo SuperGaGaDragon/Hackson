@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-11-08
 Lst Modified by: Codex
 
 ## brief intro
@@ -22,6 +22,7 @@ Lst Modified by: Codex
 |-plan.md V1 Hackson Orchestrator implementation manual
 |-eval.md fixed qualitative evaluation set for V1
 |-diary.md concise Chinese engineering log
+|-deepseek.md DeepSeek OpenAI-compatible runtime configuration, verification, and rollback contract
 
 ## 代办
 - Keep `eval.md` updated only when the quality gate changes.
