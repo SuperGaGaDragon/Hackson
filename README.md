@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-20
+Last Modified at: 2026-11-08
 Last Modified by: Codex
 
 ## intro
@@ -37,7 +37,7 @@ Last Modified by: Codex
 - **Modular architecture:** FastAPI modules separate users, Agents, conversations, interactions, context, model runtime, memory, workers, Work Mode, and evaluation. This makes the system easier to extend beyond the hackathon.
 - **Path to coding workflows without overclaiming:** The roadmap already separates current text/research Mission Runtime from future controlled Codex execution, diff capture, test capture, approval, and apply flows.
 - **Polished multi-surface experience:** Web app, Work Console, Me settings, Product reader, Reliability panel, and Desktop Pet all use the same backend truth instead of fragmented demos.
-- **Pragmatic AI stack:** Hackson uses React + Vite, FastAPI, MongoDB, Tauri, Codex CLI as the current model provider, OpenAI-compatible runtime support, controlled search, and standard Python/JS test tooling.
+- **Pragmatic AI stack:** Hackson uses React + Vite, FastAPI, MongoDB, Tauri, DeepSeek through the OpenAI-compatible runtime, controlled search, and standard Python/JS test tooling. The Codex CLI adapter remains available as a rollback-compatible runtime, not the current public provider.
 
 ## brief intro
 - goal for this folder.

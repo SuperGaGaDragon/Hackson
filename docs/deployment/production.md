@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-26
 Created by: Codex
-Last Modified at: 2026-05-27
+Last Modified at: 2026-11-08
 Last Modified by: Codex
 
 ## brief intro
@@ -37,6 +37,9 @@ Last Modified by: Codex
 | Tunnel service name | `hackson-cloudflared.service` |
 | Backend bind | `127.0.0.1:8145` |
 | Public MongoDB database | `hackson_domain_8145` |
+| Public model provider | DeepSeek via `openai_compatible` Chat Completions |
+| Public model | `deepseek-flash` |
+| Public model base URL | `https://api.deepseek.com` |
 
 ## port cleanup policy
 - Keep Hackson public domain services: `hackson-domain-8145.service` and `hackson-cloudflared.service`.
@@ -106,6 +109,8 @@ Last Modified by: Codex
 - Public domain serves FastAPI APIs and React `frontend/dist` from one origin.
 - Public backend binds to `127.0.0.1:8145`.
 - Public MongoDB database is `hackson_domain_8145`.
+- Public model runtime is `openai_compatible` against `https://api.deepseek.com` with `deepseek-flash`; its credential is target-only in `~/hackson_domain_8145/backend/.env` with mode `600`.
+- DeepSeek migration on 2026-11-08 backed up the prior model runtime files to `~/hackson_domain_8145_backups/deepseek_20261108_014544` and the prior environment to `~/hackson_domain_8145_backups/deepseek_env_20261108_014618.env`. After confirming no active Mission, Run, Work Window, or model process, only `hackson-domain-8145.service` was restarted. Pages and Hackson health returned `200`; Companion, Idle, and a real Work Mission passed through the public Pages entry.
 - Latest verified public frontend asset:
   - `/assets/index-BVIVPabB.js`
   - `/assets/index-CFlhTWvI.css`

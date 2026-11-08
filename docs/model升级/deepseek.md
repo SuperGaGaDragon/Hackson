@@ -61,5 +61,16 @@ DeepSeek Chat Completions accepts `max_tokens`. Hackson's generic OpenAI path pr
 - If production verification fails, restore the backup and restart only `hackson-domain-8145.service` after the same active-work safety check.
 - Do not restart the host, SSH, Tailscale, networking, or any power target.
 
+## production deployment record
+- Deployed on `2026-11-08` to `~/hackson_domain_8145`.
+- Previous runtime files: `~/hackson_domain_8145_backups/deepseek_20261108_014544`.
+- Previous environment: `~/hackson_domain_8145_backups/deepseek_env_20261108_014618.env`.
+- The target `.env` remained mode `600`; the credential was transferred through stdin and was not written to Git, command arguments, or logs.
+- The original public reproduction returned `503 model_unavailable`; after migration the same Companion path returned `201` in `961 ms` with provider `openai_compatible`.
+- Public Idle returned `201` in `2017 ms` with model `deepseek-flash`.
+- A real Work Mission completed with `10` events, a model-selected tool call, one Product, and one Artifact.
+- Local and target backend suites passed `295` tests. Context evaluation and deterministic Work, Work HTTP, search, and waiting-input smokes passed.
+- Pages `/health`, Hackson `/health`, and Pages `/api/agents` returned `200`; `hackson-domain-8145.service` was `active/running` after the only application-service restart.
+
 ## 代办
 - Evaluate `deepseek-v4-pro` for Work-only long-form quality after the shared runtime is stable.

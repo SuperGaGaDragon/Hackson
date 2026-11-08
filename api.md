@@ -1,7 +1,7 @@
 ## header
 Created at: 2026-05-25
 Created by: Codex
-Last Modified at: 2026-10-20
+Last Modified at: 2026-11-08
 Last Modified by: Codex
 
 ## brief intro
@@ -42,10 +42,11 @@ Last Modified by: Codex
 | Public MongoDB database | `hackson_domain_8145` |
 | Public Work Mode runtime | V1 model-driven loop with Product/Artifact lineage, explicit Product Deliverable contract, visible Work Windows, lifecycle progress events, bounded retry, retryable pause/resume, retryable empty-output handling, JSON-safe model-call context serialization, role-specific Lead/Delegate timeouts, waiting-input answer/resume, completed-Mission follow-up runs, running user instruction events, bounded Requirement Grill through `ask_user`, daemon worker launch, startup restart recovery for interrupted Missions, failed-window cleanup, Delegate result tolerance, review/discussion tools, controlled `web_search`, model-visible `evaluate_product`, research/paper final-draft gates, no-evidence Reliability human-review cap, side-rail Quality status with collapsed Reliability details, soft tool-use guidance, SSE event streaming with polling fallback, AgentLens Reliability evaluator, Activity -> Product -> Windows -> Progress -> Diagnostics UI, Directory + Composer Work rail, Progress category filters, final lineage validation, and Product Deliverable + History reader with fixed-rhythm Artifact Navigator |
 | Public Context Runtime | V1.7 with context package persistence, prompt-log controls, memory controls, Background Idle permission, idle turn idempotency locks, Idle Working input queue, relationship-aware idle dialogue prompt contract, product-grade Me information architecture, account-level Agent continuity across Idle/Companion/Work, evidence-backed relationship memory, derived-worker freshness lane, and source-backed Idle Brainstorm Card promotion into draft Work Missions |
-| Public model provider | `codex_cli` through target-machine Codex CLI |
-| Public model | `gpt-5.4` |
-| Public model command | `/home/catadragon/.nvm/versions/node/v20.19.6/bin/codex exec` |
-| Public model auth/config | `/home/catadragon/.codex` |
+| Public model provider | `openai_compatible` through the DeepSeek API |
+| Public model base URL | `https://api.deepseek.com` |
+| Public model API mode | `chat_completions` |
+| Public model | `deepseek-flash` |
+| Public model credential | Target-only `HACKSON_MODEL_API_KEY` in `~/hackson_domain_8145/backend/.env`; never committed |
 | Public model timeout | `HACKSON_MODEL_TIMEOUT_SECONDS=900` |
 | Public cloudflared config | `~/.cloudflared/hackson.yml` |
 | Idle Auto smoke source path | `~/hackson_idle_auto_8146` |
@@ -679,8 +680,8 @@ Mission detail returns the current timeline, products, work windows, and artifac
       },
       "metadata": {
         "runner": "model_runtime",
-        "modelName": "gpt-5.4",
-        "provider": "codex_cli"
+        "modelName": "deepseek-flash",
+        "provider": "openai_compatible"
       },
       "createdAt": "2026-05-27T18:00:00Z"
     }
@@ -707,6 +708,14 @@ POST /api/work/missions/{missionId}/evaluate
 Returns Mission detail after writing a `report` Artifact with `metadata.artifactRole="reliability_report"` and `metadata.reportPayload`. The evaluator only treats trace evidence, especially `WEB_SEARCH_COMPLETED` snippets, as evidence; final answer text cannot support itself.
 
 ## latest verification
+- DeepSeek public runtime migration on 2026-11-08:
+  - Reproduced the Pages-backed failure as `503 model_unavailable` while registration and conversation creation remained healthy; a target-side runtime probe confirmed the failing provider was the old `codex_cli` path.
+  - Added DeepSeek Chat Completions compatibility so `api.deepseek.com` receives `max_tokens` while other OpenAI-compatible upstreams retain their existing request contract.
+  - Switched only the public `8145` model environment to `openai_compatible`, `https://api.deepseek.com`, `chat_completions`, and `deepseek-flash`; the credential remains only in the target `.env` with mode `600`.
+  - Public Companion changed from `503` to `201` in `961 ms`; public Idle returned `201` in `2017 ms` with provider `openai_compatible` and model `deepseek-flash`.
+  - A real public Work Mission completed through the Pages entry with `10` events, a model-selected tool call, one Product, and one Artifact.
+  - Local and target full backend suites each passed `295` tests; deterministic Context, Work, Work HTTP, search, and waiting-input regression smokes also passed.
+  - Pages health, Hackson health, and Pages `/api/agents` returned `200`; post-restart service state was `active/running` and only `hackson-domain-8145.service` was restarted.
 - Parallax sidebar Pet-label release on 2026-10-20:
   - Pages production deployment `e59e367f-b465-417d-9b82-17887805ba08` changed only the authenticated sidebar label from `Mac` to `Pet`; the download page retains accurate `Mac alpha` and Apple Silicon copy.
   - Production browser smoke verified one visible `Pet` navigation entry, zero `Mac` navigation entries, desktop/mobile overflow checks, and all existing entry routes.

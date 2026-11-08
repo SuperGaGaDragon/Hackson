@@ -1,10 +1,22 @@
 ## header
 Created at: 2026-05-27
 Created by: Codex
-Last Modified at: 2026-05-28
+Last Modified at: 2026-11-08
 Last Modified by: Codex
 
 # Model 升级工程日志
+
+## 2026-11-08
+
+### DeepSeek 公网迁移
+- 通过 `https://parallax-epv.pages.dev/` 复现：Quick Try 和 conversation 创建成功，Companion 模型调用稳定返回 `503 model_unavailable`，证明 Pages 代理与数据库不是根因。
+- 目标机隔离探针确认当前配置仍为 `codex_cli` / `gpt-5.4`，直接 `ModelRuntime.generate` 返回 `model_codex_cli_error`。
+- 按 DeepSeek Chat Completions 合同补充 `max_tokens` 兼容逻辑与回归测试；其他 OpenAI-compatible 上游继续使用原字段，避免无关回归。
+- 本地与目标机后端全套测试各 `295 passed`；Context eval、Work full、Work HTTP、search、waiting-input smokes 全部通过。
+- 在目标机备份运行时代码与 `.env`，确认 active Mission、Run、Window、model process 均为 `0` 后，只重启 `hackson-domain-8145.service`，没有重启主机、网络、SSH、Tailscale 或 Cloudflare tunnel。
+- 公网验收：Companion 从 `503` 恢复为 `201`（`961 ms`）；Idle `201`（`2017 ms`），metadata 为 `provider=openai_compatible`、`model=deepseek-flash`；真实 Work Mission 完成 `10` 个事件，包含模型工具调用、Product 与 Artifact。
+- Pages `/health`、Hackson `/health`、Pages `/api/agents` 均返回 `200`；服务保持 `active/running`。
+- DeepSeek 密钥仅保存在目标机 mode `600` 的 `.env`，未进入 Git、命令参数、日志或本文档。
 
 ## 2026-05-27
 
